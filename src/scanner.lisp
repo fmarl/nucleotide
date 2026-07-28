@@ -1,0 +1,81 @@
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
+(in-package #:nucleotide)
+
+(defun lispify (wire-name)
+  (intern (substitute #\- #\_ (string-upcase wire-name)) '#:nucleotide))
+
+(defun lispify-keyword (wire-name)
+  (intern (substitute #\- #\_ (string-upcase wire-name)) '#:keyword))
+
+(defun request-arg-spec (arg)
+  (let ((name (lispify (xml:attr arg "name")))
+        (type (xml:attr arg "type"))
+        (interface (xml:attr arg "interface")))
+    (list name
+          (cond ((string= type "new_id")
+                 (if interface (list :new-id (lispify interface)) :new-id))
+                ((string= type "object") :object)
+                ((string= type "uint") :uint)
+                ((string= type "int") :int)
+                ((string= type "fixed") :fixed)
+                ((string= type "string") :string)
+                ((string= type "array") :array)
+                ((string= type "fd") :fd)
+                (t (error "unknown request arg type ~S" type))))))
+
+(defun event-arg-spec (arg)
+  (let ((name (lispify (xml:attr arg "name")))
+        (type (xml:attr arg "type"))
+        (interface (xml:attr arg "interface")))
+    (list name
+          (cond ((string= type "new_id") (list :new-id (lispify interface)))
+                ((string= type "object") '(:object))
+                ((string= type "uint") :uint)
+                ((string= type "int") :int)
+                ((string= type "fixed") :fixed)
+                ((string= type "string") :string)
+                ((string= type "array") :array)
+                (t (error "unsupported event arg type ~S" type))))))
+
+(defun interface-forms (interface)
+  (let ((class (lispify (xml:attr interface "name")))
+        (request-opcode -1)
+        (event-opcode -1)
+        (forms '()))
+    (dolist (child (xml:node-children interface))
+      (let ((kind (xml:node-name child))
+            (name (xml:attr child "name"))
+            (args (xml:children-named child "arg")))
+        (cond
+          ((string= kind "request")
+           (push `(define-request
+                      (,class ,(lispify name) ,(incf request-opcode)
+                       ,@(when (equal (xml:attr child "type") "destructor")
+                           '(:destructor t)))
+                    ,@(mapcar #'request-arg-spec args))
+                 forms))
+          ((string= kind "event")
+           (push `(define-event
+                      (,class ,(lispify-keyword name) ,(incf event-opcode))
+                    ,@(mapcar #'event-arg-spec args))
+                 forms)))))
+    (nreverse forms)))
+
+(defun protocol-forms (root)
+  (let ((interfaces (xml:children-named root "interface")))
+    (append
+     (mapcar (lambda (interface)
+               `(define-interface ,(lispify (xml:attr interface "name"))
+                    ,(xml:attr interface "name")
+		  ,(parse-integer (xml:attr interface "version"))))
+             interfaces)
+     (mapcan #'interface-forms interfaces))))
+
+(defun load-protocol (pathname)
+  (let ((root (xml:parse (uiop:read-file-string pathname))))
+    (unless (string= "protocol" (xml:node-name root))
+      (error "~A does not look like a Wayland protocol file" pathname))
+    (dolist (form (protocol-forms root))
+      (eval form))
+    (values)))
