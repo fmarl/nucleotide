@@ -6,7 +6,8 @@
   "This is a window manager. Look at me in the REPL. :-)")
 
 (defstruct (output-state (:conc-name output-))
-  proxy (x 0) (y 0) (width 0) (height 0))
+  proxy layer-shell (x 0) (y 0) (width 0) (height 0)
+  (usable-x 0) (usable-y 0) (usable-width 0) (usable-height 0))
 
 (defstruct (win (:conc-name win-))
   proxy node title app-id)
@@ -16,10 +17,20 @@
   display
   river
   seat
+  layer-shell
+  layer-shell-seat
+  layer-shell-focus
   (outputs '())
   (windows '())
   loop
   thread)
+
+(defun get-usable-output (output)
+  (if (plusp (output-usable-width output))
+      (values (output-usable-x output) (output-usable-y output)
+	      (output-usable-width output) (output-usable-height output))
+      (values (output-x output) (output-y output)
+	      (output-width output) (output-height output))))
 
 (defun handle-river-event (wm event &rest args)
   (case event
@@ -55,7 +66,22 @@
   (let ((output (make-output-state :proxy proxy)))
     (push output (wm-outputs wm))
     (push (lambda (&rest event) (apply #'handle-output-event wm output event))
-          (proxy-hooks proxy))))
+          (proxy-hooks proxy))
+    (when (wm-layer-shell wm)
+      (let ((ls (river-layer-shell-v1.get-output (wm-layer-shell wm) proxy)))
+	(setf (output-layer-shell output) ls)
+	(push (lambda (&rest event)
+		(apply #'handle-layer-shell-output-event wm output event))
+	      (proxy-hooks ls))))))
+
+(defun handle-layer-shell-output-event (wm output event &rest args)
+  (declare (ignore wm))
+  (when (eq event :non-exclusive-area)
+    (destructuring-bind (x y width height) args
+      (setf (output-usable-x output) x
+	    (output-usable-y output) y
+	    (output-usable-width output) width
+	    (output-usable-height output) height))))
 
 (defun handle-output-event (wm output event &rest args)
   (case event
@@ -67,6 +93,8 @@
            (output-height output) (second args)))
     (:removed
      (setf (wm-outputs wm) (remove output (wm-outputs wm)))
+     (when (output-layer-shell output)
+       (river-layer-shell-output-v1.destroy (output-layer-shell output)))
      (river-output-v1.destroy (output-proxy output)))))
 
 (defun attach-seat (wm proxy)
@@ -75,7 +103,20 @@
       (progn
         (setf (wm-seat wm) proxy)
         (push (lambda (&rest event) (apply #'handle-seat-event wm event))
-              (proxy-hooks proxy)))))
+              (proxy-hooks proxy))
+	(when (wm-layer-shell wm)
+	  (let ((ls (river-layer-shell-v1.get-seat (wm-layer-shell wm) proxy)))
+	    (setf (wm-layer-shell-seat wm) ls)
+	    (push (lambda (&rest event)
+		    (apply #'handle-layer-shell-seat-event wm event))
+		  (proxy-hooks ls)))))))
+
+(defun handle-layer-shell-seat-event (wm event &rest args)
+  (declare (ignore args))
+  (case event
+    (:focus-exclusive (setf (wm-layer-shell-focus wm) :exclusive))
+    (:focus-non-exclusive (setf (wm-layer-shell-focus wm) :non-exclusive))
+    (:focus-none (setf (wm-layer-shell-focus wm) nil))))
 
 (defun handle-seat-event (wm event &rest args)
   (case event
@@ -93,55 +134,64 @@
     (dolist (win (wm-windows wm))
       (river-window-v1.set-tiled (win-proxy win) #b1111)
       (when (and output (plusp (output-width output)))
-        (river-window-v1.propose-dimensions (win-proxy win)
-                                            (output-width output)
-                                            (output-height output))))
+	(multiple-value-bind (x y width height) (get-usable-output output)
+	  (declare (ignore x y))
+	  (river-window-v1.propose-dimensions (win-proxy win)
+					      width height))))
+    (let ((output (first (wm-outputs wm))))
+      (when (and output (output-layer-shell output))
+	(river-layer-shell-output-v1.set-default (output-layer-shell output))))
     (let ((focused (first (wm-windows wm))))
-      (when (and (wm-seat wm) focused)
-        (river-seat-v1.focus-window (wm-seat wm) (win-proxy focused))))))
+      (when (and (wm-seat wm) focused (not (wm-layer-shell-focus wm)))
+	(river-seat-v1.focus-window (wm-seat wm) (win-proxy focused))))))
 
 (defun render (wm)
   (let ((output (first (wm-outputs wm))))
     (dolist (win (reverse (wm-windows wm)))
       (river-window-v1.show (win-proxy win))
       (when output
-        (river-node-v1.set-position (win-node win)
-                                    (output-x output) (output-y output)))
+	(multiple-value-bind (x y width height) (get-usable-output output)
+	  (declare (ignore width height))
+	  (river-node-v1.set-position (win-node win) x y)))
       (river-node-v1.place-top (win-node win)))))
 
 (defun make-wm (display)
   (let ((wm (make-wm-bare :display display))
-        (registry (wl-display.get-registry display)))
+	(registry (wl-display.get-registry display)))
     (push (lambda (event &rest args)
-            (when (eq event :global)
-              (destructuring-bind (name interface version) args
-                (when (string= interface "river_window_manager_v1")
-                  (let ((river (wl-registry.bind registry name
-                                                 'river-window-manager-v1
-                                                 (min 4 version))))
-                    (setf (wm-river wm) river)
-                    (push (lambda (&rest event)
-                            (apply #'handle-river-event wm event))
-                          (proxy-hooks river)))))))
-          (proxy-hooks registry))
+	    (when (eq event :global)
+	      (destructuring-bind (name interface version) args
+		(cond ((string= interface "river_window_manager_v1")
+		       (let ((river (wl-registry.bind registry name
+						      'river-window-manager-v1
+						      (min 4 version))))
+			 (setf (wm-river wm) river)
+			 (push (lambda (&rest event)
+				 (apply #'handle-river-event wm event))
+			       (proxy-hooks river))))
+		      ((string= interface "river_layer_shell_v1")
+		       (setf (wm-layer-shell wm)
+			     (wl-registry.bind registry name
+					       'river-layer-shell-v1 1)))))))
+	  (proxy-hooks registry))
     wm))
 
 (defun start-wm (&key display-name)
   "Connect to river, take the window manager role, and run in a new thread."
   (when (and *wm* (wm-thread *wm*)
-             (sb-thread:thread-alive-p (wm-thread *wm*)))
+	     (sb-thread:thread-alive-p (wm-thread *wm*)))
     (error "a WM is already running; call (stop-wm) first"))
   (let* ((display (wl-display-connect display-name))
-         (wm (make-wm display)))
+	 (wm (make-wm display)))
     (wl-display-roundtrip display)
     (unless (wm-river wm)
       (wl-display-disconnect display)
       (error "no river_window_manager_v1 global, is WAYLAND_DISPLAY river?"))
     (setf (wm-loop wm) (make-event-loop display)
-          (wm-thread wm) (sb-thread:make-thread
-                          (lambda () (run-event-loop (wm-loop wm)))
-                          :name "nucleotide-wm")
-          *wm* wm)))
+	  (wm-thread wm) (sb-thread:make-thread
+			  (lambda () (run-event-loop (wm-loop wm)))
+			  :name "nucleotide-wm")
+	  *wm* wm)))
 
 (defun stop-wm ()
   (when *wm*
