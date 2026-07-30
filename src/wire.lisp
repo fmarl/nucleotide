@@ -98,7 +98,7 @@
 	   (min space (length (connection-scratch connection))))
 	(declare (ignore buffer))
 	(when (or (null n) (zerop n))
-	  (error 'wayland-disconnected))
+	  (error 'wl-disconnected))
 	(replace rbuf (connection-scratch connection)
 		 :start1 (connection-rend connection) :end2 n)
 	(incf (connection-rend connection) n)))))

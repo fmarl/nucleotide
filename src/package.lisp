@@ -56,5 +56,8 @@
    #:stop-wm
    #:in-wm
    #:start-repl-server
+   ;; keybinds
+   #:spawn
+   #:bind-key
    ;; debug
    #:wl-debug-info))
