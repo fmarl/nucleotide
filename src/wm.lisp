@@ -10,7 +10,7 @@
   (usable-x 0) (usable-y 0) (usable-width 0) (usable-height 0))
 
 (defstruct (win (:conc-name win-))
-  proxy node title app-id)
+  proxy node title app-id (x 0) (y 0))
 
 (defstruct (wm (:constructor make-wm-bare)
                (:conc-name wm-))
@@ -22,6 +22,9 @@
   layer-shell-focus
   (outputs '())
   (windows '())
+  (pending-bindings '())
+  focused
+  layout
   xkb
   loop
   thread)
@@ -45,12 +48,13 @@
      (render wm)
      (river-window-manager-v1.render-finish (wm-river wm)))
     (:unavailable
-     (warn "river reports the WM role as unavailable (another WM running?)"))))
+     (warn "river reports the WM role as unavailable (is another WM running?)"))))
 
 (defun attach-window (wm proxy)
   (let ((win (make-win :proxy proxy
                        :node (river-window-v1.get-node proxy))))
-    (push win (wm-windows wm))          ; new windows take focus
+    (push win (wm-windows wm))
+    (setf (wm-focused wm) win)
     (push (lambda (&rest event) (apply #'handle-window-event wm win event))
           (proxy-hooks proxy))))
 
@@ -58,6 +62,8 @@
   (case event
     (:closed
      (setf (wm-windows wm) (remove win (wm-windows wm)))
+     (when (eq (wm-focused wm) win)
+       (setf (wm-focused wm) (first (wm-windows wm))))
      (river-node-v1.destroy (win-node win))
      (river-window-v1.destroy (win-proxy win)))
     (:title (setf (win-title win) (first args)))
@@ -110,7 +116,8 @@
 	    (setf (wm-layer-shell-seat wm) ls)
 	    (push (lambda (&rest event)
 		    (apply #'handle-layer-shell-seat-event wm event))
-		  (proxy-hooks ls)))))))
+		  (proxy-hooks ls))))
+	(keybinds wm))))
 
 (defun handle-layer-shell-seat-event (wm event &rest args)
   (declare (ignore args))
@@ -128,33 +135,37 @@
          (river-window-manager-v1.manage-dirty (wm-river wm)))))))
 
 (defun focus-window (wm win)
-  (setf (wm-windows wm) (cons win (remove win (wm-windows wm)))))
+  (setf (wm-focused wm) win))
 
 (defun manage (wm)
+  (dolist (binding (wm-pending-bindings wm))
+    (river-xkb-binding-v1.enable binding))
+  (setf (wm-pending-bindings wm) '())
   (let ((output (first (wm-outputs wm))))
     (dolist (win (wm-windows wm))
-      (river-window-v1.set-tiled (win-proxy win) #b1111)
-      (when (and output (plusp (output-width output)))
-	(multiple-value-bind (x y width height) (get-usable-output output)
-	  (declare (ignore x y))
-	  (river-window-v1.propose-dimensions (win-proxy win)
-					      width height))))
-    (let ((output (first (wm-outputs wm))))
-      (when (and output (output-layer-shell output))
-	(river-layer-shell-output-v1.set-default (output-layer-shell output))))
-    (let ((focused (first (wm-windows wm))))
+      (river-window-v1.set-tiled (win-proxy win) #b1111))
+    (when (and output (plusp (output-width output)))
+      (multiple-value-bind (usable-x usable-y usable-width usable-height) (get-usable-output output)
+	(loop for win in (wm-windows wm)
+	      for (x y width height) in (tiling (length (wm-windows wm))
+						usable-x usable-y usable-width usable-height)
+	      do (setf (win-x win) x
+		       (win-y win) y)
+		 (river-window-v1.propose-dimensions (win-proxy win) width height))))
+    (when (and output (output-layer-shell output))
+      (river-layer-shell-output-v1.set-default (output-layer-shell output)))
+    (let ((focused (wm-focused wm)))
       (when (and (wm-seat wm) focused (not (wm-layer-shell-focus wm)))
 	(river-seat-v1.focus-window (wm-seat wm) (win-proxy focused))))))
 
 (defun render (wm)
-  (let ((output (first (wm-outputs wm))))
-    (dolist (win (reverse (wm-windows wm)))
-      (river-window-v1.show (win-proxy win))
-      (when output
-	(multiple-value-bind (x y width height) (get-usable-output output)
-	  (declare (ignore width height))
-	  (river-node-v1.set-position (win-node win) x y)))
-      (river-node-v1.place-top (win-node win)))))
+  (dolist (win (wm-windows wm))
+    (river-window-v1.show (win-proxy win))
+    (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
+    (river-node-v1.place-top (win-node win)))
+  (let ((focused (wm-focused wm)))
+    (when focused
+      (river-node-v1.place-top (win-node focused)))))
 
 (defun make-wm (display)
   (let ((wm (make-wm-bare :display display))
