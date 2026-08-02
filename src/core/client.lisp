@@ -56,6 +56,8 @@
     proxy))
 
 (defun send-request (proxy opcode signature args)
+  (when (proxy-destroyed-p proxy)
+    (error "request (opcode ~D) -> destroyed proxy ~S" opcode proxy))
   (let* ((conn (display-connection (proxy-display proxy)))
          (buf (connection-wbuf conn))
          (off 8))

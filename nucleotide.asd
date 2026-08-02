@@ -6,15 +6,17 @@
   :depends-on (#:sb-bsd-sockets #:sb-concurrency)
   :pathname "src"
   :serial t
-  :components ((:file "package")
-	       (:file "wire")
-	       (:file "client")
-	       (:file "protocols")
-	       (:file "xml")
-	       (:file "scanner")
-	       (:file "river")
-	       (:file "eventloop")
+  :components ((:file "package")	       
+	       (:module "core"
+		:serial t
+		:components ((:file "wire")
+			     (:file "client")
+			     (:file "xml")
+			     (:file "protocols")
+			     (:file "scanner")
+			     (:file "river")
+			     (:file "eventloop")
+			     (:file "debug")))
 	       (:file "wm")
 	       (:file "keybinds")
-	       (:file "layouts")
-	       (:file "debug")))
+	       (:file "layouts")))

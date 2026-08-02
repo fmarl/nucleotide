@@ -41,7 +41,7 @@
 
 (defun i32ref (buffer offset)
   (let ((v (u32ref buffer offset)))
-    (if (logbitp 31 v) (- #x100000000) v)))
+    (if (logbitp 31 v) (- v #x100000000) v)))
 
 (defun (setf i32ref) (value buffer offset)
   (setf (u32ref buffer offset) (ldb (byte 32 0) value))

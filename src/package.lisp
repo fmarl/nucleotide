@@ -24,16 +24,16 @@
    #:wl-proxy
    #:proxy-id
    #:proxy-version
-   #:proxy-display
+   #:proxy-display 
    #:proxy-hooks
-   #:proxy-destroy-p
+   #:proxy-destroyed-p
    #:make-proxy
    ;; condition
    #:wl-server-error
    #:wl-error-object
    #:wl-error-code
    #:wl-error-text
-   #:wl-disconnect
+   #:wl-disconnected
    ;; protocol definition DSL
    #:define-interface
    #:define-request
