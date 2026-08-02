@@ -25,4 +25,9 @@
   (logior modifier +mod-shift+))
 
 (defun keybinds (wm)
-  (bind-key wm +xk-return+ (shiftify +mod-super+) (lambda () (spawn "alacritty"))))
+  (bind-key wm +xk-return+ (shiftify +mod-super+) (lambda () (spawn "alacritty")))
+  (bind-key wm (char-code #\p) +mod-super+ (lambda () (spawn "bemenu-run")))
+  (bind-key wm (char-code #\k) +mod-super+ (lambda () (cycle-focus wm :prev)))
+  (bind-key wm (char-code #\l) +mod-super+ (lambda () (cycle-focus wm :next)))
+  (bind-key wm (char-code #\k) (shiftify +mod-super+) (lambda () (move-window wm :prev)))
+  (bind-key wm (char-code #\l) (shiftify +mod-super+) (lambda () (move-window wm :next))))
