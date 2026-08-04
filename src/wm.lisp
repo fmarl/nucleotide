@@ -12,6 +12,13 @@
 (defstruct (win (:conc-name win-))
   proxy node title app-id (x 0) (y 0))
 
+(defstruct (workspace (:conc-name ws-))
+  name
+  (windows '())
+  focused
+  layout
+  output)
+
 (defstruct (wm (:constructor make-wm-bare)
                (:conc-name wm-))
   display
@@ -22,9 +29,11 @@
   layer-shell-focus
   (outputs '())
   (windows '())
+  (workspaces '())
   (pending-bindings '())
+  active-workspace
   focused
-  layout
+  active-layout
   xkb
   loop
   thread)
@@ -54,7 +63,7 @@
   (let ((win (make-win :proxy proxy
                        :node (river-window-v1.get-node proxy))))
     (push win (wm-windows wm))
-    (setf (wm-focused wm) win)
+    (focus-window wm win)
     (push (lambda (&rest event) (apply #'handle-window-event wm win event))
           (proxy-hooks proxy))))
 
