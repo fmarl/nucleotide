@@ -33,7 +33,7 @@
   (pending-bindings '())
   active-workspace
   focused
-  active-layout
+  (active-layout 'tiling)
   xkb
   loop
   thread)
@@ -146,18 +146,23 @@
 (defun focus-window (wm win)
   (setf (wm-focused wm) win))
 
+(defun set-active-layout (wm layout)
+  (setf (wm-active-layout wm) layout)
+  (river-window-manager-v1.manage-dirty (wm-river wm)))
+
 (defun manage (wm)
   (dolist (binding (wm-pending-bindings wm))
     (river-xkb-binding-v1.enable binding))
   (setf (wm-pending-bindings wm) '())
   (let ((output (first (wm-outputs wm))))
     (dolist (win (wm-windows wm))
-      (river-window-v1.set-tiled (win-proxy win) #b1111))
+      (river-window-v1.set-tiled (win-proxy win) #b1111)
+      (river-window-v1.use-ssd (win-proxy win)))
     (when (and output (plusp (output-width output)))
       (multiple-value-bind (usable-x usable-y usable-width usable-height) (get-usable-output output)
 	(loop for win in (wm-windows wm)
-	      for (x y width height) in (tiling (length (wm-windows wm))
-						usable-x usable-y usable-width usable-height)
+	      for (x y width height) in (funcall (wm-active-layout wm) (length (wm-windows wm))
+						 usable-x usable-y usable-width usable-height)
 	      do (setf (win-x win) x
 		       (win-y win) y)
 		 (river-window-v1.propose-dimensions (win-proxy win) width height))))
@@ -170,6 +175,7 @@
 (defun render (wm)
   (dolist (win (wm-windows wm))
     (river-window-v1.show (win-proxy win))
+    (river-window-v1.set-borders (win-proxy win) #b1111 2 0 #xffffffff #xffffffff #xffffffff)
     (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
     (river-node-v1.place-top (win-node win)))
   (let ((focused (wm-focused wm)))
