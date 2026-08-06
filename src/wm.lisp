@@ -10,13 +10,13 @@
   (usable-x 0) (usable-y 0) (usable-width 0) (usable-height 0))
 
 (defstruct (win (:conc-name win-))
-  proxy node title app-id (x 0) (y 0))
+  proxy node title app-id workspace (x 0) (y 0))
 
 (defstruct (workspace (:conc-name ws-))
   name
   (windows '())
   focused
-  layout
+  (layout 'tiling)
   output)
 
 (defstruct (wm (:constructor make-wm-bare)
@@ -28,15 +28,34 @@
   layer-shell-seat
   layer-shell-focus
   (outputs '())
-  (windows '())
   (workspaces '())
   (pending-bindings '())
   active-workspace
-  focused
-  (active-layout 'tiling)
   xkb
   loop
   thread)
+
+(defun wm-windows (wm)
+  (ws-windows (wm-active-workspace wm)))
+
+(defun (setf wm-windows) (windows wm)
+  (setf (ws-windows (wm-active-workspace wm)) windows))
+
+(defun wm-focused (wm)
+  (ws-focused (wm-active-workspace wm)))
+
+(defun (setf wm-focused) (focused wm)
+  (setf (ws-focused (wm-active-workspace wm)) focused))
+
+(defun wm-active-layout (wm)
+  (ws-layout (wm-active-workspace wm)))
+
+(defun (setf wm-active-layout) (layout wm)
+  (setf (ws-layout (wm-active-workspace wm)) layout))
+
+(defun make-workspaces ()
+  (loop for i from 1 to 9
+	collect (make-workspace :name (princ-to-string i))))
 
 (defun get-usable-output (output)
   (if (plusp (output-usable-width output))
@@ -61,7 +80,8 @@
 
 (defun attach-window (wm proxy)
   (let ((win (make-win :proxy proxy
-                       :node (river-window-v1.get-node proxy))))
+                       :node (river-window-v1.get-node proxy)
+		       :workspace (wm-active-workspace wm))))
     (push win (wm-windows wm))
     (focus-window wm win)
     (push (lambda (&rest event) (apply #'handle-window-event wm win event))
@@ -73,6 +93,10 @@
      (setf (wm-windows wm) (remove win (wm-windows wm)))
      (when (eq (wm-focused wm) win)
        (setf (wm-focused wm) (first (wm-windows wm))))
+     (let ((ws (win-workspace win)))
+       (setf (ws-windows ws) (remove win (ws-windows ws)))
+       (when (eq (ws-focused ws) win)
+	 (setf (ws-focused ws) (first (ws-windows ws)))))
      (river-node-v1.destroy (win-node win))
      (river-window-v1.destroy (win-proxy win)))
     (:title (setf (win-title win) (first args)))
@@ -173,18 +197,25 @@
 	(river-seat-v1.focus-window (wm-seat wm) (win-proxy focused))))))
 
 (defun render (wm)
-  (dolist (win (wm-windows wm))
-    (river-window-v1.show (win-proxy win))
-    (river-window-v1.set-borders (win-proxy win) #b1111 2 0 #xffffffff #xffffffff #xffffffff)
-    (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
-    (river-node-v1.place-top (win-node win)))
+  (dolist (ws (wm-workspaces wm))
+    (if (eq ws (wm-active-workspace wm))
+	(dolist (win (ws-windows ws))
+	  (river-window-v1.show (win-proxy win))
+	  (river-window-v1.set-borders (win-proxy win) #b1111 2 0 #xffffffff #xffffffff #xffffffff)
+	  (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
+	  (river-node-v1.place-top (win-node win)))
+	(dolist (win (ws-windows ws))
+	  (river-window-v1.hide (win-proxy win)))))
   (let ((focused (wm-focused wm)))
     (when focused
       (river-node-v1.place-top (win-node focused)))))
 
 (defun make-wm (display)
-  (let ((wm (make-wm-bare :display display))
-	(registry (wl-display.get-registry display)))
+  (let* ((workspaces (make-workspaces))
+	 (wm (make-wm-bare :display display
+			   :workspaces workspaces
+			   :active-workspace (first workspaces)))
+	 (registry (wl-display.get-registry display)))
     (push (lambda (event &rest args)
 	    (when (eq event :global)
 	      (destructuring-bind (name interface version) args
