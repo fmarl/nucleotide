@@ -32,7 +32,7 @@
   (let ((win (wm-focused wm)))
     (when (and win (not (eq ws (win-workspace win))))
       (setf (wm-windows wm) (remove win (wm-windows wm))
-	    (wm-focused wm) (first (wm-focused wm))
+	    (wm-focused wm) (first (wm-windows wm))
 	    (win-workspace win) ws
 	    (ws-focused ws) win)
       (push win (ws-windows ws))
