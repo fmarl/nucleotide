@@ -31,6 +31,7 @@
   (bind-key wm (char-code #\l) +mod-super+ (lambda () (cycle-focus wm :next)))
   (bind-key wm (char-code #\k) (shiftify +mod-super+) (lambda () (move-window wm :prev)))
   (bind-key wm (char-code #\l) (shiftify +mod-super+) (lambda () (move-window wm :next)))
+  (bind-key wm (char-code #\c) (shiftify +mod-super+) (lambda () (close-focused wm)))
   (loop for ws in (wm-workspaces wm)
 	for key from (char-code #\1)
 	do (let ((ws ws))
