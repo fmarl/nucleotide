@@ -58,6 +58,8 @@
    #:start-repl-server
    #:cycle-focus
    #:move-window
+   #:switch-workspace
+   #:send-to-workspace
    ;; keybinds
    #:spawn
    #:bind-key
