@@ -1,9 +1,9 @@
 (require :asdf)
-(asdf:load-asd (merge-pathnames "nucleotide.asd" *load-truename*))
+(asdf:load-asd
+ (merge-pathnames
+  "nucleotide.asd"
+  (uiop:pathname-directory-pathname *load-truename*)))
 (asdf:load-system "nucleotide")
-
-(when (asdf:find-system "slynk" nil)
-  (asdf:load-system "slynk"))
 
 (if (asdf:find-system "slynk" nil)
     (progn
