@@ -60,6 +60,7 @@
    #:move-window
    #:switch-workspace
    #:send-to-workspace
+   #:exit
    ;; keybinds
    #:spawn
    #:bind-key

@@ -32,12 +32,16 @@
   (pending-bindings '())
   (pending-closes '())
   active-workspace
+  highlight
   xkb
   loop
   thread)
 
 (defun wm-windows (wm)
   (ws-windows (wm-active-workspace wm)))
+
+(defun wm-windows-global (wm)
+  (mapcan (lambda (ws) (copy-list (ws-windows ws))) (wm-workspaces wm)))
 
 (defun (setf wm-windows) (windows wm)
   (setf (ws-windows (wm-active-workspace wm)) windows))
@@ -57,6 +61,9 @@
 (defun make-workspaces ()
   (loop for i from 1 to 9
 	collect (make-workspace :name (princ-to-string i))))
+
+(defun exit (wm)
+  (river-window-manager-v1.exit-session (wm-river wm)))
 
 (defun get-usable-output (output)
   (if (plusp (output-usable-width output))
@@ -203,19 +210,29 @@
       (when (and (wm-seat wm) focused (not (wm-layer-shell-focus wm)))
 	(river-seat-v1.focus-window (wm-seat wm) (win-proxy focused))))))
 
+(defun render-show (wm win)
+  (river-window-v1.show (win-proxy win))
+  (river-window-v1.set-borders (win-proxy win) #b1111 2 0 #xffffffff #xffffffff #xffffffff)
+  (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
+  (river-node-v1.place-top (win-node win)))
+
 (defun render (wm)
-  (dolist (ws (wm-workspaces wm))
-    (if (eq ws (wm-active-workspace wm))
+  (if (eq (wm-highlight wm) nil)
+      (progn
+	(dolist (ws (wm-workspaces wm))
+	  (if (eq ws (wm-active-workspace wm))
+	      (dolist (win (ws-windows ws))
+		(render-show wm win))
+	      (dolist (win (ws-windows ws))
+		(river-window-v1.hide (win-proxy win)))))
+	(let ((focused (wm-focused wm)))
+	  (when focused
+	    (river-node-v1.place-top (win-node focused)))))
+      (let ((ws (wm-active-workspace wm))
+	    (win (wm-highlight wm)))
+	(render-show wm win)
 	(dolist (win (ws-windows ws))
-	  (river-window-v1.show (win-proxy win))
-	  (river-window-v1.set-borders (win-proxy win) #b1111 2 0 #xffffffff #xffffffff #xffffffff)
-	  (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
-	  (river-node-v1.place-top (win-node win)))
-	(dolist (win (ws-windows ws))
-	  (river-window-v1.hide (win-proxy win)))))
-  (let ((focused (wm-focused wm)))
-    (when focused
-      (river-node-v1.place-top (win-node focused)))))
+	  (river-window-v1.hide (win-proxy win))))))
 
 (defun make-wm (display)
   (let* ((workspaces (make-workspaces))
