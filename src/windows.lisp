@@ -48,10 +48,9 @@
       (river-window-manager-v1.manage-dirty (wm-river wm)))))
 
 (defun toggle-highlight (wm app-id)
-  (if (eq (wm-highlight wm) nil)
-      (let ((win (find app-id (wm-windows-global wm)
-		       :key #'win-app-id
-		       :test #'string=)))
-	(setf (wm-highlight wm) win))
-      (setf (wm-highlight wm) nil)))
-
+  (setf (wm-highlight wm)
+	(unless (wm-highlight wm)
+	  (find app-id (wm-windows-global wm)
+		:key #'win-app-id
+		:test #'equal)))
+  (river-window-manager-v1.manage-dirty (wm-river wm)))

@@ -60,9 +60,15 @@
    #:move-window
    #:switch-workspace
    #:send-to-workspace
+   #:close-focused
+   #:toggle-highlight
    #:exit
    ;; keybinds
    #:spawn
    #:bind-key
+   #:bind-key-chord
+   #:make-submap
+   #:enter-submap
+   #:leave-submap
    ;; debug
    #:wl-debug-info))
