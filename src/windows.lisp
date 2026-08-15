@@ -54,3 +54,10 @@
 		:key #'win-app-id
 		:test #'equal)))
   (river-window-manager-v1.manage-dirty (wm-river wm)))
+
+(defun toggle-fullscreen (wm)
+  (let ((win (wm-focused wm)))
+    (when win
+      (push (cons win (if (win-fullscreen win) :exit nil))
+	    (wm-pending-fullscreens wm))
+      (river-window-manager-v1.manage-dirty (wm-river wm)))))
