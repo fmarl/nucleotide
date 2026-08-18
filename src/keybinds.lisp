@@ -17,6 +17,12 @@
 	    (declare (ignore args))
 	    (when (eq event :pressed) (funcall action)))
 	  (proxy-hooks binding))
-    (river-xkb-binding-v1.enable binding)
+    (push binding (wm-pending-bindings wm))
+    (river-window-manager-v1.manage-dirty (wm-river wm))
     binding))
 
+(defun shiftify (modifier)
+  (logior modifier +mod-shift+))
+
+(defun keybinds (wm)
+  (bind-key wm +xk-return+ (shiftify +mod-super+) (lambda () (spawn "alacritty"))))
