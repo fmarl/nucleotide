@@ -15,4 +15,5 @@
 	       (:file "river")
 	       (:file "eventloop")
 	       (:file "wm")
+	       (:file "keybinds")
 	       (:file "debug")))

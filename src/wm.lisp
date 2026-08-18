@@ -22,6 +22,7 @@
   layer-shell-focus
   (outputs '())
   (windows '())
+  xkb
   loop
   thread)
 
@@ -172,7 +173,11 @@
 		      ((string= interface "river_layer_shell_v1")
 		       (setf (wm-layer-shell wm)
 			     (wl-registry.bind registry name
-					       'river-layer-shell-v1 1)))))))
+					       'river-layer-shell-v1 1)))
+		      ((string= interface "river_xkb_bindings_v1")
+		       (setf (wm-xkb wm)
+			     (wl-registry.bind registry name
+					       'river-xkb-bindings-v1 2)))))))
 	  (proxy-hooks registry))
     wm))
 
