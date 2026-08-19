@@ -18,5 +18,6 @@
 			     (:file "eventloop")
 			     (:file "debug")))
 	       (:file "wm")
+	       (:file "windows")
 	       (:file "keybinds")
 	       (:file "layouts")))

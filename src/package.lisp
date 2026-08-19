@@ -56,6 +56,8 @@
    #:stop-wm
    #:in-wm
    #:start-repl-server
+   #:cycle-focus
+   #:move-window
    ;; keybinds
    #:spawn
    #:bind-key
