@@ -17,6 +17,7 @@
 			     (:file "river")
 			     (:file "eventloop")
 			     (:file "debug")))
+	       (:file "config")
 	       (:file "autostart")
 	       (:file "wm")
 	       (:file "windows")
