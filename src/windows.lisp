@@ -6,6 +6,9 @@
   (mod (+ pos (ecase direction (:next 1) (:prev -1)))
        (length windows)))
 
+(defun focus-window (wm win)
+  (setf (wm-focused wm) win))
+
 (defun cycle-focus (wm &optional (direction :next))
   (let ((windows (wm-windows wm)))
     (when windows
@@ -21,6 +24,12 @@
       (let ((other (calc-new-pos windows pos direction)))
 	(rotatef (nth pos (wm-windows wm))
 		 (nth other (wm-windows wm))))
+      (river-window-manager-v1.manage-dirty (wm-river wm)))))
+
+(defun close-focused (wm)
+  (let ((win (wm-focused wm)))
+    (when win
+      (push win (wm-pending-closes wm))
       (river-window-manager-v1.manage-dirty (wm-river wm)))))
 
 (defun switch-workspace (wm ws)

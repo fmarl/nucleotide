@@ -30,6 +30,7 @@
   (outputs '())
   (workspaces '())
   (pending-bindings '())
+  (pending-closes '())
   active-workspace
   xkb
   loop
@@ -167,17 +168,23 @@
          (focus-window wm win)
          (river-window-manager-v1.manage-dirty (wm-river wm)))))))
 
-(defun focus-window (wm win)
-  (setf (wm-focused wm) win))
-
 (defun set-active-layout (wm layout)
   (setf (wm-active-layout wm) layout)
   (river-window-manager-v1.manage-dirty (wm-river wm)))
 
-(defun manage (wm)
+(defun manage-bindings (wm)
   (dolist (binding (wm-pending-bindings wm))
     (river-xkb-binding-v1.enable binding))
-  (setf (wm-pending-bindings wm) '())
+  (setf (wm-pending-bindings wm) '()))
+
+(defun manage-closes (wm)
+  (dolist (win (wm-pending-closes wm))
+    (river-window-v1.close (win-proxy win)))
+  (setf (wm-pending-closes wm) '()))
+
+(defun manage (wm)
+  (manage-bindings wm)
+  (manage-closes wm)
   (let ((output (first (wm-outputs wm))))
     (dolist (win (wm-windows wm))
       (river-window-v1.set-tiled (win-proxy win) #b1111)
