@@ -17,6 +17,7 @@
 			     (:file "river")
 			     (:file "eventloop")
 			     (:file "debug")))
+	       (:file "autostart")
 	       (:file "wm")
 	       (:file "windows")
 	       (:file "keybinds")

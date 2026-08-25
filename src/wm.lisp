@@ -135,10 +135,10 @@
   (case event
     (:position
      (setf (output-x output) (first args)
-           (output-y output) (second args)))
+	   (output-y output) (second args)))
     (:dimensions
      (setf (output-width output) (first args)
-           (output-height output) (second args)))
+	   (output-height output) (second args)))
     (:removed
      (setf (wm-outputs wm) (remove output (wm-outputs wm)))
      (when (output-layer-shell output)
@@ -149,9 +149,9 @@
   (if (wm-seat wm)
       (warn "multiple seats are not supported yet")
       (progn
-        (setf (wm-seat wm) proxy)
-        (push (lambda (&rest event) (apply #'handle-seat-event wm event))
-              (proxy-hooks proxy))
+	(setf (wm-seat wm) proxy)
+	(push (lambda (&rest event) (apply #'handle-seat-event wm event))
+	      (proxy-hooks proxy))
 	(when (wm-layer-shell wm)
 	  (let ((ls (river-layer-shell-v1.get-seat (wm-layer-shell wm) proxy)))
 	    (setf (wm-layer-shell-seat wm) ls)
@@ -172,8 +172,8 @@
     (:window-interaction
      (let ((win (find (first args) (wm-windows wm) :key #'win-proxy)))
        (when win
-         (focus-window wm win)
-         (river-window-manager-v1.manage-dirty (wm-river wm)))))))
+	 (focus-window wm win)
+	 (river-window-manager-v1.manage-dirty (wm-river wm)))))))
 
 (defun set-active-layout (wm layout)
   (setf (wm-active-layout wm) layout)
@@ -210,7 +210,7 @@
       (when (and (wm-seat wm) focused (not (wm-layer-shell-focus wm)))
 	(river-seat-v1.focus-window (wm-seat wm) (win-proxy focused))))))
 
-(defun render-show (wm win)
+(defun render-show (win)
   (river-window-v1.show (win-proxy win))
   (river-window-v1.set-borders (win-proxy win) #b1111 2 0 #xffffffff #xffffffff #xffffffff)
   (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
@@ -222,7 +222,7 @@
 	(dolist (ws (wm-workspaces wm))
 	  (if (eq ws (wm-active-workspace wm))
 	      (dolist (win (ws-windows ws))
-		(render-show wm win))
+		(render-show win))
 	      (dolist (win (ws-windows ws))
 		(river-window-v1.hide (win-proxy win)))))
 	(let ((focused (wm-focused wm)))
@@ -230,7 +230,7 @@
 	    (river-node-v1.place-top (win-node focused)))))
       (let ((ws (wm-active-workspace wm))
 	    (win (wm-highlight wm)))
-	(render-show wm win)
+	(render-show win)
 	(dolist (win (ws-windows ws))
 	  (river-window-v1.hide (win-proxy win))))))
 
@@ -277,7 +277,8 @@
 	  (wm-thread wm) (sb-thread:make-thread
 			  (lambda () (run-event-loop (wm-loop wm)))
 			  :name "nucleotide-wm")
-	  *wm* wm)))
+	  *wm* wm)
+    (run-autostart)))
 
 (defun stop-wm ()
   (when *wm*
