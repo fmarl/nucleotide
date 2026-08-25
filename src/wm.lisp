@@ -19,6 +19,9 @@
   (layout 'tiling)
   output)
 
+(defstruct (submap (:conc-name submap-))
+  (bindings '()))
+
 (defstruct (wm (:constructor make-wm-bare)
                (:conc-name wm-))
   display
@@ -31,9 +34,12 @@
   (workspaces '())
   (pending-bindings '())
   (pending-closes '())
+  (pending-submap-ops '())
   active-workspace
+  active-submap
   highlight
   xkb
+  xkb-seat
   loop
   thread)
 
@@ -65,6 +71,31 @@
 (defun exit (wm)
   (river-window-manager-v1.exit-session (wm-river wm)))
 
+(defun enter-submap (wm submap)
+  (setf (wm-active-submap wm) submap)
+  (push (cons :enter submap) (wm-pending-submap-ops wm))
+  (river-window-manager-v1.manage-dirty (wm-river wm)))
+
+(defun leave-submap (wm)
+  (let ((submap (wm-active-submap wm)))
+    (when submap
+      (setf (wm-active-submap wm) nil)
+      (push (cons :leave submap) (wm-pending-submap-ops wm))
+      (river-window-manager-v1.manage-dirty (wm-river wm)))))
+
+(defun manage-submap (wm)
+  (dolist (op (nreverse (wm-pending-submap-ops wm)))
+    (destructuring-bind (kind . submap) op
+      (ecase kind
+	(:enter
+	 (dolist (binding (submap-bindings submap))
+	   (river-xkb-binding-v1.enable binding))
+	 (river-xkb-bindings-seat-v1.ensure-next-key-eaten (wm-xkb-seat wm)))
+	(:leave
+	 (dolist (binding (submap-bindings submap))
+	   (river-xkb-binding-v1.disable binding))))))
+  (setf (wm-pending-submap-ops wm) '()))
+
 (defun get-usable-output (output)
   (if (plusp (output-usable-width output))
       (values (output-usable-x output) (output-usable-y output)
@@ -78,11 +109,13 @@
     (:output (attach-output wm (first args)))
     (:seat (attach-seat wm (first args)))
     (:manage-start
-     (manage wm)
-     (river-window-manager-v1.manage-finish (wm-river wm)))
+     (unwind-protect
+	  (manage wm)
+       (river-window-manager-v1.manage-finish (wm-river wm))))
     (:render-start
-     (render wm)
-     (river-window-manager-v1.render-finish (wm-river wm)))
+     (unwind-protect
+	  (render wm)
+       (river-window-manager-v1.render-finish (wm-river wm))))
     (:unavailable
      (warn "river reports the WM role as unavailable (is another WM running?)"))))
 
@@ -95,18 +128,20 @@
     (push (lambda (&rest event) (apply #'handle-window-event wm win event))
           (proxy-hooks proxy))))
 
+(defun detach-window (wm win)
+  (let ((ws (win-workspace win)))
+    (setf (ws-windows ws) (remove win (ws-windows ws)))
+    (when (eq (ws-focused ws) win)
+      (setf (ws-focused ws) (first (ws-windows ws)))))
+  (when (eq (wm-highlight wm) win)
+    (setf (wm-highlight wm) nil))
+  (setf (wm-pending-closes wm) (remove win (wm-pending-closes wm)))
+  (river-node-v1.destroy (win-node win))
+  (river-window-v1.destroy (win-proxy win)))
+
 (defun handle-window-event (wm win event &rest args)
   (case event
-    (:closed
-     (setf (wm-windows wm) (remove win (wm-windows wm)))
-     (when (eq (wm-focused wm) win)
-       (setf (wm-focused wm) (first (wm-windows wm))))
-     (let ((ws (win-workspace win)))
-       (setf (ws-windows ws) (remove win (ws-windows ws)))
-       (when (eq (ws-focused ws) win)
-	 (setf (ws-focused ws) (first (ws-windows ws)))))
-     (river-node-v1.destroy (win-node win))
-     (river-window-v1.destroy (win-proxy win)))
+    (:closed (detach-window wm win))
     (:title (setf (win-title win) (first args)))
     (:app-id (setf (win-app-id win) (first args)))))
 
@@ -158,7 +193,18 @@
 	    (push (lambda (&rest event)
 		    (apply #'handle-layer-shell-seat-event wm event))
 		  (proxy-hooks ls))))
+	(when (and (wm-xkb wm) (>= (proxy-version (wm-xkb wm)) 2))
+	  (let ((xkb-seat (river-xkb-bindings-v1.get-seat (wm-xkb wm) proxy)))
+	    (setf (wm-xkb-seat wm) xkb-seat)
+	    (push (lambda (&rest event)
+		    (apply #'handle-xkb-seat-event wm event))
+		  (proxy-hooks xkb-seat))))
 	(keybinds wm))))
+
+(defun handle-xkb-seat-event (wm event &rest args)
+  (declare (ignore args))
+  (when (eq event :ate-unbound-key)
+    (leave-submap wm)))
 
 (defun handle-layer-shell-seat-event (wm event &rest args)
   (declare (ignore args))
@@ -192,6 +238,7 @@
 (defun manage (wm)
   (manage-bindings wm)
   (manage-closes wm)
+  (manage-submap wm)
   (let ((output (first (wm-outputs wm))))
     (dolist (win (wm-windows wm))
       (river-window-v1.set-tiled (win-proxy win) #b1111)
@@ -216,23 +263,20 @@
   (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
   (river-node-v1.place-top (win-node win)))
 
+(defun window-visible-p (wm win)
+  (let ((highlight (wm-highlight wm)))
+    (if highlight
+	(eq win highlight)
+	(eq (win-workspace win) (wm-active-workspace wm)))))
+
 (defun render (wm)
-  (if (eq (wm-highlight wm) nil)
-      (progn
-	(dolist (ws (wm-workspaces wm))
-	  (if (eq ws (wm-active-workspace wm))
-	      (dolist (win (ws-windows ws))
-		(render-show win))
-	      (dolist (win (ws-windows ws))
-		(river-window-v1.hide (win-proxy win)))))
-	(let ((focused (wm-focused wm)))
-	  (when focused
-	    (river-node-v1.place-top (win-node focused)))))
-      (let ((ws (wm-active-workspace wm))
-	    (win (wm-highlight wm)))
+  (dolist (win (wm-windows-global wm))
+    (if (window-visible-p wm win)
 	(render-show win)
-	(dolist (win (ws-windows ws))
-	  (river-window-v1.hide (win-proxy win))))))
+	(river-window-v1.hide (win-proxy win))))
+  (let ((focused (wm-focused wm)))
+    (when (and focused (window-visible-p wm focused))
+      (river-node-v1.place-top (win-node focused)))))
 
 (defun make-wm (display)
   (let* ((workspaces (make-workspaces))
@@ -254,11 +298,11 @@
 		      ((string= interface "river_layer_shell_v1")
 		       (setf (wm-layer-shell wm)
 			     (wl-registry.bind registry name
-					       'river-layer-shell-v1 1)))
+					       'river-layer-shell-v1 (min 1 version))))
 		      ((string= interface "river_xkb_bindings_v1")
 		       (setf (wm-xkb wm)
 			     (wl-registry.bind registry name
-					       'river-xkb-bindings-v1 2)))))))
+					       'river-xkb-bindings-v1 (min 2 version))))))))
 	  (proxy-hooks registry))
     wm))
 
