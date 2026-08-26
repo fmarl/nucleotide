@@ -18,3 +18,4 @@
 *.wx32fsl
 
 /nucleotide
+.envrc
