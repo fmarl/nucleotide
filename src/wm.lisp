@@ -5,12 +5,14 @@
 (defvar *wm* nil
   "This is a window manager. Look at me in the REPL. :-)")
 
+(defconstant +window-capabilities+ 4)
+
 (defstruct (output-state (:conc-name output-))
   proxy layer-shell (x 0) (y 0) (width 0) (height 0)
   (usable-x 0) (usable-y 0) (usable-width 0) (usable-height 0))
 
 (defstruct (win (:conc-name win-))
-  proxy node title app-id workspace (x 0) (y 0))
+  proxy node title app-id workspace (x 0) (y 0) fullscreen)
 
 (defstruct (workspace (:conc-name ws-))
   name
@@ -35,6 +37,7 @@
   (pending-bindings '())
   (pending-closes '())
   (pending-submap-ops '())
+  (pending-fullscreens '())
   active-workspace
   active-submap
   highlight
@@ -135,7 +138,8 @@
       (setf (ws-focused ws) (first (ws-windows ws)))))
   (when (eq (wm-highlight wm) win)
     (setf (wm-highlight wm) nil))
-  (setf (wm-pending-closes wm) (remove win (wm-pending-closes wm)))
+  (setf (wm-pending-closes wm) (remove win (wm-pending-closes wm))
+	(wm-pending-fullscreens wm) (remove win (wm-pending-fullscreens wm) :key #'car))
   (river-node-v1.destroy (win-node win))
   (river-window-v1.destroy (win-proxy win)))
 
@@ -143,7 +147,11 @@
   (case event
     (:closed (detach-window wm win))
     (:title (setf (win-title win) (first args)))
-    (:app-id (setf (win-app-id win) (first args)))))
+    (:app-id (setf (win-app-id win) (first args)))
+    (:fullscreen-requested
+     (push (cons win (first args)) (wm-pending-fullscreens wm)))
+    (:exit-fullscreen-requested
+     (push (cons win :exit) (wm-pending-fullscreens wm)))))
 
 (defun attach-output (wm proxy)
   (let ((output (make-output-state :proxy proxy)))
@@ -225,6 +233,23 @@
   (setf (wm-active-layout wm) layout)
   (river-window-manager-v1.manage-dirty (wm-river wm)))
 
+(defun manage-fullscreens (wm)
+  (dolist (entry (nreverse (wm-pending-fullscreens wm)))
+    (destructuring-bind (win . request) entry
+      (if (eq request :exit)
+	  (when (win-fullscreen win)
+	    (river-window-v1.exit-fullscreen (win-proxy win))
+	    (river-window-v1.inform-not-fullscreen (win-proxy win))
+	    (setf (win-fullscreen win) nil))
+	  (let ((output (or request
+			    (let ((o (first (wm-outputs wm))))
+			      (and o (output-proxy o))))))
+	    (when output
+	      (river-window-v1.fullscreen (win-proxy win) output)
+	      (river-window-v1.inform-fullscreen (win-proxy win))
+	      (setf (win-fullscreen win) output))))))
+  (setf (wm-pending-fullscreens wm) '()))
+
 (defun manage-bindings (wm)
   (dolist (binding (wm-pending-bindings wm))
     (river-xkb-binding-v1.enable binding))
@@ -239,18 +264,21 @@
   (manage-bindings wm)
   (manage-closes wm)
   (manage-submap wm)
+  (manage-fullscreens wm)
   (let ((output (first (wm-outputs wm))))
     (dolist (win (wm-windows wm))
       (river-window-v1.set-tiled (win-proxy win) #b1111)
-      (river-window-v1.use-ssd (win-proxy win)))
+      (river-window-v1.use-ssd (win-proxy win))
+      (river-window-v1.set-capabilities (win-proxy win) +window-capabilities+))
     (when (and output (plusp (output-width output)))
       (multiple-value-bind (usable-x usable-y usable-width usable-height) (get-usable-output output)
-	(loop for win in (wm-windows wm)
-	      for (x y width height) in (funcall (wm-active-layout wm) (length (wm-windows wm))
-						 usable-x usable-y usable-width usable-height)
-	      do (setf (win-x win) x
-		       (win-y win) y)
-		 (river-window-v1.propose-dimensions (win-proxy win) width height))))
+	(let ((tiled (remove-if #'win-fullscreen (wm-windows wm))))
+	  (loop for win in tiled
+		for (x y width height) in (funcall (wm-active-layout wm) (length tiled)
+						   usable-x usable-y usable-width usable-height)
+		do (setf (win-x win) x
+			 (win-y win) y)
+		   (river-window-v1.propose-dimensions (win-proxy win) width height)))))
     (when (and output (output-layer-shell output))
       (river-layer-shell-output-v1.set-default (output-layer-shell output)))
     (let ((focused (wm-focused wm)))
@@ -276,7 +304,10 @@
 	(river-window-v1.hide (win-proxy win))))
   (let ((focused (wm-focused wm)))
     (when (and focused (window-visible-p wm focused))
-      (river-node-v1.place-top (win-node focused)))))
+      (river-node-v1.place-top (win-node focused))))
+  (dolist (win (wm-windows wm))
+    (when (and (win-fullscreen win) (window-visible-p wm win))
+      (river-node-v1.place-top (win-node win)))))
 
 (defun make-wm (display)
   (let* ((workspaces (make-workspaces))

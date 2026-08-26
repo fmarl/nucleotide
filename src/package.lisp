@@ -62,6 +62,7 @@
    #:send-to-workspace
    #:close-focused
    #:toggle-highlight
+   #:toggle-fullscreen
    #:exit
    ;; keybinds
    #:spawn
