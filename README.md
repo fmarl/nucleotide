@@ -1,7 +1,7 @@
 # Nucleotide: a hackable Wayland window manager
 
 Nucleotide is a hackable Wayland window manager, written in Common Lisp and running
-on top of the (river)[https://github.com/riverwm/river] compositor.
+on top of the [river](https://github.com/riverwm/river) compositor.
 
 It is very eary WIP for now and alpha software.
 
