@@ -1,10 +1,10 @@
-;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
 (in-package #:nucleotide)
 
-(defvar *interface-info* (make-hash-table))
-(defvar *interface-by-wire-name* (make-hash-table :test #'equal))
-(defvar *event-defs* (make-hash-table :test #'equal))
+(defvar *interface-wire-names* (make-hash-table))
+(defvar *event-definitions* (make-hash-table :test #'equal))
 
 (defclass wl-proxy ()
   ((id :initarg :id :reader proxy-id)
@@ -29,18 +29,8 @@
 (defmethod proxy-display ((display wl-display))
   display)
 
-(define-condition wl-server-error (error)
-  ((object :initarg :object :reader wl-error-object)
-   (code :initarg :code :reader wl-error-code)
-   (text :initarg :text :reader wl-error-text))
-  (:report (lambda (c stream)
-             (format stream "Wayland server error on ~S (code ~D): ~A"
-                     (wl-error-object c)
-                     (wl-error-code c)
-                     (wl-error-text c)))))
-
 (defun interface-wire-name (class-name)
-  (car (gethash class-name *interface-info*)))
+  (gethash class-name *interface-wire-names*))
 
 (defun allocate-id (display)
   (or (pop (display-free-ids display))
@@ -55,141 +45,135 @@
     (setf (gethash id (display-proxies display)) proxy)
     proxy))
 
+
+(defun encode-arg (buf off type value)
+  (ecase type
+    (:uint (setf (u32ref buf off) value) (+ off 4))
+    (:int (setf (i32ref buf off) value) (+ off 4))
+    (:fixed (setf (i32ref buf off) (round (* value 256))) (+ off 4))
+    (:object (setf (u32ref buf off) (if value (proxy-id value) 0)) (+ off 4))
+    (:string (put-wl-string buf off value))
+    (:array (put-wl-array buf off value))
+    (:fd off)))
+
 (defun send-request (proxy opcode signature args)
   (when (proxy-destroyed-p proxy)
-    (error "request (opcode ~D) -> destroyed proxy ~S" opcode proxy))
+    (nucleotide-error "request (opcode ~D) -> destroyed proxy ~S" opcode proxy))
   (let* ((conn (display-connection (proxy-display proxy)))
          (buf (connection-wbuf conn))
-         (off 8))
-    (loop for type in signature
-          for value in args
-          do (setf off
-                   (ecase type
-                     (:uint (setf (u32ref buf off) value) (+ off 4))
-                     (:int (setf (i32ref buf off) value) (+ off 4))
-                     (:fixed (setf (i32ref buf off) (round (* value 256)))
-		      (+ off 4))
-                     (:object (setf (u32ref buf off)
-                                    (if value (proxy-id value) 0))
-		      (+ off 4))
-                     (:string (put-wl-string buf off value))
-                     (:array (put-wl-array buf off value))
-                     (:fd (error "fd arguments are not implemented yet")))))
+         (end (reduce (lambda (off type-and-value)
+                        (encode-arg buf off (car type-and-value) (cdr type-and-value)))
+                      (mapcar #'cons signature args)
+                      :initial-value 8)))
     (setf (u32ref buf 0) (proxy-id proxy)
-          (u32ref buf 4) (logior (ash off 16) opcode))
-    (send-raw conn off)))
+          (u32ref buf 4) (logior (ash end 16) opcode))
+    (send-raw conn end (loop for type in signature
+                             for value in args
+                             when (eq type :fd) collect value))))
 
 (defun decode-arg (display parent buf off spec)
-  (cond
-    ((eq spec :uint) (values (u32ref buf off) (+ off 4)))
-    ((eq spec :int) (values (i32ref buf off) (+ off 4)))
-    ((eq spec :fixed) (values (/ (i32ref buf off) 256) (+ off 4)))
-    ((eq spec :string) (get-wl-string buf off))
-    ((eq spec :array) (get-wl-array buf off))
-    ((and (consp spec) (eq (first spec) :object))
-     (let ((id (u32ref buf off)))
-       (values (cond ((zerop id) nil)
-                     ((gethash id (display-proxies display)))
-                     (t id))
-               (+ off 4))))
-    ((and (consp spec) (eq (first spec) :new-id))
-     (values (make-proxy display (second spec)
-                         :id (u32ref buf off)
-                         :version (proxy-version parent))
-             (+ off 4)))
-    (t (error "unsupported event arg spec ~S" spec))))
+  (if (consp spec)
+      (ecase (first spec)
+        (:object
+         (values (gethash (u32ref buf off) (display-proxies display))
+                 (+ off 4)))
+        (:new-id
+         (values (make-proxy display (second spec)
+                             :id (u32ref buf off)
+                             :version (proxy-version parent))
+                 (+ off 4))))
+      (ecase spec
+        (:uint (values (u32ref buf off) (+ off 4)))
+        (:int (values (i32ref buf off) (+ off 4)))
+        (:fixed (values (/ (i32ref buf off) 256) (+ off 4)))
+        (:string (get-wl-string buf off))
+        (:array (get-wl-array buf off)))))
+
+(defun decode-args (display parent buf off specs)
+  (when specs
+    (multiple-value-bind (value next) (decode-arg display parent buf off (first specs))
+      (cons value (decode-args display parent buf next (rest specs))))))
+
+(defun event-definition (proxy opcode)
+  (and proxy
+       (gethash (cons (class-name (class-of proxy)) opcode) *event-definitions*)))
+
+(defun decode-event (display proxy definition body-offset)
+  (when definition
+    (cons (car definition)
+          (decode-args display proxy (connection-rbuf (display-connection display))
+                       body-offset (cdr definition)))))
+
+(defun run-hooks (proxy event)
+  (unless (proxy-destroyed-p proxy)
+    (dolist (hook (proxy-hooks proxy))
+      (apply hook event))))
 
 (defun dispatch-event (display)
   (let ((conn (display-connection display)))
-    (multiple-value-bind (sender opcode body-off body-size) (peek-message conn)
+    (multiple-value-bind (sender opcode body-offset body-size) (peek-message conn)
       (let* ((proxy (gethash sender (display-proxies display)))
-             (def (and proxy
-                       (gethash (cons (class-name (class-of proxy)) opcode)
-                                *event-defs*)))
-             (event nil))
-        (when def
-          (let ((buf (connection-rbuf conn))
-                (off body-off)
-                (args '()))
-            (dolist (spec (cdr def))
-              (multiple-value-bind (value next)
-                  (decode-arg display proxy buf off spec)
-                (push value args)
-                (setf off next)))
-            (setf event (cons (car def) (nreverse args)))))
-        (consume-message conn (+ 8 body-size))
-        (when (and proxy (null def))
-          (warn "no event definition for opcode ~D on ~S" opcode proxy))
-        (when event
-          (dolist (hook (proxy-hooks proxy))
-            (apply hook event)))
+             (definition (event-definition proxy opcode))
+             ;; Consume the message even if decoding fails, otherwise the
+             ;; same broken message would be dispatched again and again.
+             (event (unwind-protect (decode-event display proxy definition body-offset)
+                      (consume-message conn (+ 8 body-size)))))
+        (cond (event (run-hooks proxy event))
+              (proxy (warn "no event definition for opcode ~D on ~S" opcode proxy)))
         (values)))))
 
-(defun dispatch-pending (display)
-  (let ((conn (display-connection display)))
-    (%fill-read-buffer conn)
-    (loop while (buffered-message-size conn)
-          do (dispatch-event display))
-    (values)))
-
-(defmacro define-interface (name wire-name version)
+(defmacro define-interface (name wire-name)
   `(progn
      (defclass ,name (wl-proxy) ())
-     (setf (gethash ',name *interface-info*) (cons ,wire-name ,version)
-           (gethash ,wire-name *interface-by-wire-name*) ',name)
+     (setf (gethash ',name *interface-wire-names*) ,wire-name)
      ',name))
 
 (defmacro define-event ((interface event-name opcode) &body arg-specs)
-  `(setf (gethash (cons ',interface ,opcode) *event-defs*)
+  `(setf (gethash (cons ',interface ,opcode) *event-definitions*)
          (cons ,event-name ',(mapcar #'second arg-specs))))
 
-(defmacro define-request ((interface name opcode &key destructor) &body arg-specs)
-  (let ((fname (intern (concatenate 'string
-                                    (symbol-name interface) "."
-                                    (symbol-name name))))
-        (new-var (gensym "NEW-PROXY"))
-        (lambda-args '())
-        (sig '())
-        (vals '())
-        (new-proxy-form nil))
-    (dolist (spec arg-specs)
-      (destructuring-bind (arg-name type) spec
-        (declare (ignorable arg-name))
-        (cond
-          ((eq type :new-id)
-           (when new-proxy-form (error "only one new_id arg is supported"))
-           (setf new-proxy-form
-                 '(make-proxy (proxy-display proxy) interface-class
-		   :version version))
-           (setf lambda-args (append lambda-args '(interface-class version))
-                 sig (append sig '(:string :uint :uint))
-                 vals (append vals `((interface-wire-name interface-class)
-                                     version
-                                     (proxy-id ,new-var)))))
-          ((and (consp type) (eq (first type) :new-id))
-           (when new-proxy-form (error "only one new_id arg is supported"))
-           (setf new-proxy-form
-                 `(make-proxy (proxy-display proxy) ',(second type)
-                              :version (proxy-version proxy)))
-           (setf sig (append sig '(:uint))
-                 vals (append vals `((proxy-id ,new-var)))))
-          ((or (eq type :object)
-               (and (consp type) (eq (first type) :object)))
-           (setf lambda-args (append lambda-args (list arg-name))
-                 sig (append sig '(:object))
-                 vals (append vals (list arg-name))))
-          (t
-           (setf lambda-args (append lambda-args (list arg-name))
-                 sig (append sig (list type))
-                 vals (append vals (list arg-name)))))))
-    `(defun ,fname (proxy ,@lambda-args)
-       (let ((,new-var ,new-proxy-form))
-         (declare (ignorable ,new-var))
-         (send-request proxy ,opcode ',sig (list ,@vals))
-         ,@(when destructor
-             '((setf (proxy-destroyed-p proxy) t)))
-         ,new-var))))
+(defun mappend (function list)
+  (loop for x in list append (funcall function x)))
 
+(defun request-arg-parts (spec proxy new-var interface-class version)
+  "Parameters, wire types, values and new-proxy form for one request arg."
+  (destructuring-bind (name type) spec
+    (cond ((eq type :new-id)
+           (list (list interface-class version)
+                 '(:string :uint :uint)
+                 `((interface-wire-name ,interface-class) ,version (proxy-id ,new-var))
+                 `(make-proxy (proxy-display ,proxy) ,interface-class :version ,version)))
+          ((and (consp type) (eq (first type) :new-id))
+           (list '()
+                 '(:uint)
+                 `((proxy-id ,new-var))
+                 `(make-proxy (proxy-display ,proxy) ',(second type)
+                              :version (proxy-version ,proxy))))
+          ((or (eq type :object) (and (consp type) (eq (first type) :object)))
+           (list (list name) '(:object) (list name) nil))
+          (t
+           (list (list name) (list type) (list name) nil)))))
+
+(defmacro define-request ((interface name opcode &key destructor) &body arg-specs)
+  (let* ((proxy (gensym "PROXY"))
+         (new-var (gensym "NEW-PROXY"))
+         (interface-class (gensym "INTERFACE-CLASS"))
+         (version (gensym "VERSION"))
+         (parts (mapcar (lambda (spec)
+                          (request-arg-parts spec proxy new-var interface-class version))
+                        arg-specs))
+         (new-proxy-forms (remove nil (mapcar #'fourth parts))))
+    (when (rest new-proxy-forms)
+      (nucleotide-error "only one new_id arg is supported"))
+    `(defun ,(intern (concatenate 'string (symbol-name interface) "." (symbol-name name)))
+         (,proxy ,@(mappend #'first parts))
+       (let ((,new-var ,(first new-proxy-forms)))
+         (declare (ignorable ,new-var))
+         (send-request ,proxy ,opcode ',(mappend #'second parts)
+                       (list ,@(mappend #'third parts)))
+         ,@(when destructor
+             `((setf (proxy-destroyed-p ,proxy) t)))
+         ,new-var))))
 (defun handle-display-event (display event &rest args)
   (case event
     (:error
@@ -204,7 +188,7 @@
 (defun %display-from-socket (socket)
   (let* ((conn (make-wire-connection socket))
          (display (make-instance 'wl-display :id 1 :version 1
-                                             :connection conn)))
+                                 :connection conn)))
     (setf (gethash 1 (display-proxies display)) display)
     (push (lambda (&rest event) (apply #'handle-display-event display event))
           (proxy-hooks display))
@@ -215,7 +199,7 @@
     (if (char= #\/ (char name 0))
         name
         (let ((dir (or (sb-ext:posix-getenv "XDG_RUNTIME_DIR")
-                       (error "XDG_RUNTIME_DIR is not set"))))
+                       (nucleotide-error "XDG_RUNTIME_DIR is not set"))))
           (concatenate 'string dir "/" name)))))
 
 (defun wl-display-connect (&optional name)
@@ -243,3 +227,6 @@
           (proxy-hooks callback))
     (loop until done do (dispatch-event display))
     (values)))
+
+(defun supports-p (proxy version)
+  (>= (proxy-version proxy) version))
