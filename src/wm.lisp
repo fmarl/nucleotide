@@ -68,7 +68,7 @@
   (setf (ws-layout (wm-active-workspace wm)) layout))
 
 (defun make-workspaces ()
-  (loop for i from 1 to 9
+  (loop for i from 1 to *num-of-workspaces*
 	collect (make-workspace :name (princ-to-string i))))
 
 (defun exit (wm)
@@ -285,9 +285,18 @@
       (when (and (wm-seat wm) focused (not (wm-layer-shell-focus wm)))
 	(river-seat-v1.focus-window (wm-seat wm) (win-proxy focused))))))
 
-(defun render-show (win)
+(defun rgba->uint32 (rgba)
+  (mapcar (lambda (x)
+            (round (* x (/ #xffffffff 255))))
+          rgba))
+
+(defun render-show (win wm)
   (river-window-v1.show (win-proxy win))
-  (river-window-v1.set-borders (win-proxy win) #b1111 2 0 #xffffffff #xffffffff #xffffffff)
+  (let ((rgba (if (eq (wm-focused wm) win)
+		  *focused-border-rgba*
+		  *unfocused-border-rgba*)))
+    (destructuring-bind (r g b a) (rgba->uint32 rgba)
+      (river-window-v1.set-borders (win-proxy win) #b1111 2 r g b a)))
   (river-node-v1.set-position (win-node win) (win-x win) (win-y win))
   (river-node-v1.place-top (win-node win)))
 
@@ -300,7 +309,7 @@
 (defun render (wm)
   (dolist (win (wm-windows-global wm))
     (if (window-visible-p wm win)
-	(render-show win)
+	(render-show win wm)
 	(river-window-v1.hide (win-proxy win))))
   (let ((focused (wm-focused wm)))
     (when (and focused (window-visible-p wm focused))
