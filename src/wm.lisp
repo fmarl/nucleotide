@@ -18,7 +18,7 @@
   name
   (windows '())
   focused
-  (layout 'tiling)
+  (layout *default-layout*)
   output)
 
 (defstruct (submap (:conc-name submap-))
@@ -207,7 +207,9 @@
 	    (push (lambda (&rest event)
 		    (apply #'handle-xkb-seat-event wm event))
 		  (proxy-hooks xkb-seat))))
-	(keybinds wm))))
+	(install-default-keybinds wm)
+	(install-keybinds wm)
+	(install-key-chords wm))))
 
 (defun handle-xkb-seat-event (wm event &rest args)
   (declare (ignore args))
