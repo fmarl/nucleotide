@@ -20,6 +20,7 @@
 	       (:file "keybinds")
 	       (:file "config")
 	       (:file "autostart")
+	       (:file "input")
 	       (:file "wm")
 	       (:file "windows")
 	       (:file "layouts")))

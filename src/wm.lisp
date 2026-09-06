@@ -43,6 +43,8 @@
   highlight
   xkb
   xkb-seat
+  input-manager
+  libinput-config
   loop
   thread)
 
@@ -344,7 +346,19 @@
 		      ((string= interface "river_xkb_bindings_v1")
 		       (setf (wm-xkb wm)
 			     (wl-registry.bind registry name
-					       'river-xkb-bindings-v1 (min 2 version))))))))
+					       'river-xkb-bindings-v1 (min 2 version))))
+		      ((string= interface "river_input_manager_v1")
+		       (let ((input-manager (wl-registry.bind registry name 'river-input-manager-v1 (min 1 version))))
+			 (setf (wm-input-manager wm) input-manager)
+			 (push (lambda (&rest event)
+				 (apply #'handle-input-manager-event wm event))
+			       (proxy-hooks input-manager))))
+		      ((string= interface "river_libinput_config_v1")
+		       (let ((libinput-config (wl-registry.bind registry name 'river-libinput-config-v1 (min 1 version))))
+			 (setf (wm-libinput-config wm) libinput-config)
+			 (push (lambda (&rest event)
+				 (apply #'handle-libinput-config-event wm event))
+			       (proxy-hooks libinput-config))))))))
 	  (proxy-hooks registry))
     wm))
 

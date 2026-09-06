@@ -14,9 +14,12 @@
 (defparameter *default-layout*
   'tiling)
 
+(defparameter *tap-enabled*
+  1)
+
 (define-keybinds
-    ((:shift +mod-super+) +xk-return+  (spawn "alacritty"))
-    (+mod-super+ #\p                   (spawn "bemenu-run"))
+  ((:shift +mod-super+) +xk-return+  (spawn "alacritty"))
+  (+mod-super+ #\p                   (spawn "bemenu-run"))
   (+mod-super+ #\k                   (cycle-focus wm :prev))
   (+mod-super+ #\l                   (cycle-focus wm :next))
   ((:shift +mod-super+) #\k          (move-window wm :prev))
@@ -26,7 +29,7 @@
   (+mod-super+ #\q                   (exit wm)))
 
 (define-key-chords
-    (+mod-super+ #\Space
-		 (#\t (set-active-layout wm 'tiling))
-		 (#\m (set-active-layout wm 'monocle))
-		 (#\e (toggle-highlight wm "emacs"))))
+  (+mod-super+ #\Space
+	       (#\t (set-active-layout wm 'tiling))
+	       (#\m (set-active-layout wm 'monocle))
+	       (#\e (toggle-highlight wm "emacs"))))
