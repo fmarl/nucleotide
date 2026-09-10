@@ -1,19 +1,11 @@
-;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
 (in-package #:nucleotide)
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *river-protocol-files*
-    '("river-window-management-v1.xml"
-      "river-xkb-bindings-v1.xml"
-      "river-layer-shell-v1.xml"
-      "river-input-management-v1.xml"
-      "river-libinput-config-v1.xml"
-      "river-xkb-config-v1.xml"))
-
-  (defun load-river-protocols ()
-    (dolist (file *river-protocol-files*)
-      (load-protocol (asdf:system-relative-pathname
-                      "nucleotide" (concatenate 'string "protocol/" file)))))
-
-  (load-river-protocols))
+(define-protocol "river-window-management-v1.xml")
+(define-protocol "river-xkb-bindings-v1.xml")
+(define-protocol "river-layer-shell-v1.xml")
+(define-protocol "river-input-management-v1.xml")
+(define-protocol "river-libinput-config-v1.xml")
+(define-protocol "river-xkb-config-v1.xml")

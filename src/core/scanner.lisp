@@ -1,81 +1,110 @@
-;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
 (in-package #:nucleotide)
 
+(defun lisp-name (wire-name)
+  (substitute #\- #\_ (string-upcase wire-name)))
+
 (defun lispify (wire-name)
-  (intern (substitute #\- #\_ (string-upcase wire-name)) '#:nucleotide))
+  (intern (lisp-name wire-name) '#:nucleotide))
 
 (defun lispify-keyword (wire-name)
-  (intern (substitute #\- #\_ (string-upcase wire-name)) '#:keyword))
+  (intern (lisp-name wire-name) '#:keyword))
+
+(defun enum-constant-name (interface enum entry)
+  (intern (format nil "+~A-~A-~A+"
+                  (lisp-name interface) (lisp-name enum) (lisp-name entry))
+          '#:nucleotide))
+
+(defun parse-enum-value (string)
+  (if (and (> (length string) 2) (string-equal "0x" string :end2 2))
+      (parse-integer string :start 2 :radix 16)
+      (parse-integer string)))
+
+(defparameter *wire-types*
+  '(("uint" . :uint) ("int" . :int) ("fixed" . :fixed)
+    ("string" . :string) ("array" . :array) ("fd" . :fd)))
+
+(defun wire-type (type)
+  (or (cdr (assoc type *wire-types* :test #'string=))
+      (nucleotide-error "unknown arg type ~S" type)))
 
 (defun request-arg-spec (arg)
-  (let ((name (lispify (xml:attr arg "name")))
-        (type (xml:attr arg "type"))
-        (interface (xml:attr arg "interface")))
-    (list name
+  (let ((type (xml:attribute arg "type"))
+        (interface (xml:attribute arg "interface")))
+    (list (lispify (xml:attribute arg "name"))
           (cond ((string= type "new_id")
                  (if interface (list :new-id (lispify interface)) :new-id))
                 ((string= type "object") :object)
-                ((string= type "uint") :uint)
-                ((string= type "int") :int)
-                ((string= type "fixed") :fixed)
-                ((string= type "string") :string)
-                ((string= type "array") :array)
-                ((string= type "fd") :fd)
-                (t (error "unknown request arg type ~S" type))))))
+                (t (wire-type type))))))
 
 (defun event-arg-spec (arg)
-  (let ((name (lispify (xml:attr arg "name")))
-        (type (xml:attr arg "type"))
-        (interface (xml:attr arg "interface")))
-    (list name
+  (let ((type (xml:attribute arg "type"))
+        (interface (xml:attribute arg "interface")))
+    (list (lispify (xml:attribute arg "name"))
           (cond ((string= type "new_id") (list :new-id (lispify interface)))
                 ((string= type "object") '(:object))
-                ((string= type "uint") :uint)
-                ((string= type "int") :int)
-                ((string= type "fixed") :fixed)
-                ((string= type "string") :string)
-                ((string= type "array") :array)
-                (t (error "unsupported event arg type ~S" type))))))
+                ((string= type "fd")
+                 (nucleotide-error "fd arguments in events are not supported"))
+                (t (wire-type type))))))
+
+(defun enum-forms (interface-name enum)
+  (loop for entry in (xml:children-named enum "entry")
+        collect `(defconstant ,(enum-constant-name interface-name
+                                                   (xml:attribute enum "name")
+                                                   (xml:attribute entry "name"))
+                   ,(parse-enum-value (xml:attribute entry "value")))))
+
+(defun request-form (class request opcode)
+  (let ((header (list* class (lispify (xml:attribute request "name")) opcode
+                       (when (equal (xml:attribute request "type") "destructor")
+                         '(:destructor t)))))
+    `(define-request ,header
+       ,@(mapcar #'request-arg-spec (xml:children-named request "arg")))))
+
+(defun event-form (class event opcode)
+  `(define-event (,class ,(lispify-keyword (xml:attribute event "name")) ,opcode)
+     ,@(mapcar #'event-arg-spec (xml:children-named event "arg"))))
 
 (defun interface-forms (interface)
-  (let ((class (lispify (xml:attr interface "name")))
-        (request-opcode -1)
-        (event-opcode -1)
-        (forms '()))
-    (dolist (child (xml:node-children interface))
-      (let ((kind (xml:node-name child))
-            (name (xml:attr child "name"))
-            (args (xml:children-named child "arg")))
-        (cond
-          ((string= kind "request")
-           (push `(define-request
-                      (,class ,(lispify name) ,(incf request-opcode)
-                       ,@(when (equal (xml:attr child "type") "destructor")
-                           '(:destructor t)))
-                    ,@(mapcar #'request-arg-spec args))
-                 forms))
-          ((string= kind "event")
-           (push `(define-event
-                      (,class ,(lispify-keyword name) ,(incf event-opcode))
-                    ,@(mapcar #'event-arg-spec args))
-                 forms)))))
-    (nreverse forms)))
+  (let* ((wire-name (xml:attribute interface "name"))
+         (class (lispify wire-name)))
+    (append
+     (loop for request in (xml:children-named interface "request")
+           for opcode from 0
+           collect (request-form class request opcode))
+     (loop for event in (xml:children-named interface "event")
+           for opcode from 0
+           collect (event-form class event opcode))
+     (mappend (lambda (enum) (enum-forms wire-name enum))
+              (xml:children-named interface "enum")))))
 
 (defun protocol-forms (root)
+  (unless (string= "protocol" (xml:node-name root))
+    (nucleotide-error "not a Wayland protocol: root element is <~A>"
+                      (xml:node-name root)))
   (let ((interfaces (xml:children-named root "interface")))
     (append
      (mapcar (lambda (interface)
-               `(define-interface ,(lispify (xml:attr interface "name"))
-                    ,(xml:attr interface "name")
-		  ,(parse-integer (xml:attr interface "version"))))
+               `(define-interface ,(lispify (xml:attribute interface "name"))
+                    ,(xml:attribute interface "name")))
              interfaces)
-     (mapcan #'interface-forms interfaces))))
+     (mappend #'interface-forms interfaces))))
+
+(defun protocol-file-forms (pathname)
+  (protocol-forms (xml:parse (uiop:read-file-string pathname))))
+
+(defmacro define-protocol (file)
+  "Define proxy classes, requests, events and enum constants for the Wayland
+protocol in FILE at compile time. A relative FILE is looked up in the
+protocol/ directory of the nucleotide system."
+  `(progn
+     ,@(protocol-file-forms
+        (merge-pathnames file (asdf:system-relative-pathname
+                               "nucleotide" "protocol/")))))
 
 (defun load-protocol (pathname)
-  (let ((root (xml:parse (uiop:read-file-string pathname))))
-    (unless (string= "protocol" (xml:node-name root))
-      (error "~A does not look like a Wayland protocol file" pathname))
-    (dolist (form (protocol-forms root))
-      (eval form))
-    (values)))
+  "Like DEFINE-PROTOCOL, but at runtime, e.g. from the REPL."
+  (eval `(progn ,@(protocol-file-forms pathname)))
+  (values))
