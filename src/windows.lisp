@@ -1,63 +1,92 @@
-;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
 (in-package #:nucleotide)
 
-(defun calc-new-pos (windows pos direction)
-  (mod (+ pos (ecase direction (:next 1) (:prev -1)))
-       (length windows)))
-
 (defun focus-window (wm win)
-  (setf (wm-focused wm) win))
+  (show-workspace wm (window-workspace win))
+  (setf (workspace-focused (window-workspace win)) win))
+
+(defun effective-focus (wm)
+  "While a highlight is active, the highlighted window is the only visible one."
+  (or (wm-highlight wm) (wm-focused-window wm)))
 
 (defun cycle-focus (wm &optional (direction :next))
-  (let ((windows (wm-windows wm)))
-    (when windows
-      (let ((pos (or (position (wm-focused wm) windows) 0)))
-	(setf (wm-focused wm)
-	      (nth (calc-new-pos windows pos direction) windows)))
-      (river-window-manager-v1.manage-dirty (wm-river wm)))))
+  "Focus the window in DIRECTION: :PREV and :NEXT, or :UP and :DOWN."
+  (let* ((ws (wm-active-workspace wm))
+         (focused (wm-focused-window wm))
+         (target (if focused
+                     (layout-neighbor (workspace-layout ws) ws focused direction)
+                     (first (workspace-windows ws)))))
+    (when (member target (workspace-windows ws))
+      (focus-window wm target)
+      (mark-dirty wm))))
 
 (defun move-window (wm &optional (direction :next))
-  (let* ((windows (wm-windows wm))
-	 (pos (position (wm-focused wm) windows)))
-    (when (and pos (> (length windows) 1))
-      (let ((other (calc-new-pos windows pos direction)))
-	(rotatef (nth pos (wm-windows wm))
-		 (nth other (wm-windows wm))))
-      (river-window-manager-v1.manage-dirty (wm-river wm)))))
+  (let ((ws (wm-active-workspace wm))
+        (focused (wm-focused-window wm)))
+    (when focused
+      (layout-move (workspace-layout ws) ws focused direction)
+      (mark-dirty wm))))
+
+(defun focus-successor (ws win remaining)
+  (let ((candidate (or (window-parent win)
+                       (layout-successor (workspace-layout ws) ws win))))
+    (if (member candidate remaining)
+        candidate
+        (first remaining))))
+
+(defun remove-window (ws win)
+  (let ((remaining (remove win (workspace-windows ws))))
+    (when (eq (workspace-focused ws) win)
+      (setf (workspace-focused ws) (focus-successor ws win remaining)))
+    (setf (workspace-windows ws) remaining)))
+
+(defun move-to-workspace (win ws)
+  (remove-window (window-workspace win) win)
+  (setf (window-workspace win) ws
+        (window-home win) nil
+        (workspace-focused ws) win)
+  (push win (workspace-windows ws)))
 
 (defun close-focused (wm)
-  (let ((win (wm-focused wm)))
+  (let ((win (effective-focus wm)))
     (when win
       (push win (wm-pending-closes wm))
-      (river-window-manager-v1.manage-dirty (wm-river wm)))))
-
-(defun switch-workspace (wm ws)
-  (unless (eq ws (wm-active-workspace wm))
-    (setf (wm-active-workspace wm) ws)
-    (river-window-manager-v1.manage-dirty (wm-river wm))))
+      (mark-dirty wm))))
 
 (defun send-to-workspace (wm ws)
-  (let ((win (wm-focused wm)))
-    (when (and win (not (eq ws (win-workspace win))))
-      (setf (wm-windows wm) (remove win (wm-windows wm))
-	    (wm-focused wm) (first (wm-windows wm))
-	    (win-workspace win) ws
-	    (ws-focused ws) win)
-      (push win (ws-windows ws))
-      (river-window-manager-v1.manage-dirty (wm-river wm)))))
+  (let ((win (wm-focused-window wm)))
+    (when (and win ws (not (eq ws (window-workspace win))))
+      (move-to-workspace win ws)
+      (mark-dirty wm))))
+
+(defun set-active-layout (wm layout)
+  "LAYOUT is a function like TILING or the name of a layout class like
+SCROLLING. Choosing the class the workspace already uses keeps its state."
+  (unless (and (symbolp layout)
+               (find-class layout nil)
+               (typep (wm-active-layout wm) layout))
+    (setf (wm-active-layout wm) (make-layout layout)))
+  (mark-dirty wm))
 
 (defun toggle-highlight (wm app-id)
   (setf (wm-highlight wm)
-	(unless (wm-highlight wm)
-	  (find app-id (wm-windows-global wm)
-		:key #'win-app-id
-		:test #'equal)))
-  (river-window-manager-v1.manage-dirty (wm-river wm)))
+        (unless (wm-highlight wm)
+          (find app-id (all-windows wm)
+                :key #'window-app-id
+                :test #'equal)))
+  (mark-dirty wm))
 
 (defun toggle-fullscreen (wm)
-  (let ((win (wm-focused wm)))
+  (let ((win (effective-focus wm)))
     (when win
-      (push (cons win (if (win-fullscreen win) :exit nil))
-	    (wm-pending-fullscreens wm))
-      (river-window-manager-v1.manage-dirty (wm-river wm)))))
+      ;; Fullscreen state only changes in the next manage sequence, so a
+      ;; second toggle before that cancels the pending one.
+      (let ((pending (assoc win (wm-pending-fullscreens wm))))
+        (if pending
+            (setf (wm-pending-fullscreens wm)
+                  (remove pending (wm-pending-fullscreens wm)))
+            (push (cons win (if (window-fullscreen win) :exit nil))
+                  (wm-pending-fullscreens wm))))
+      (mark-dirty wm))))
