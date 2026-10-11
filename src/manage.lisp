@@ -131,9 +131,12 @@
       (apply #'river-seat-v1.pointer-warp seat target))))
 
 (defun manage-focus (wm)
-  (let ((focused (effective-focus wm)))
-    (when (and (wm-seat wm) focused (not (wm-layer-shell-focus wm)))
-      (river-seat-v1.focus-window (wm-seat wm) (window-proxy focused)))))
+  (let ((focused (effective-focus wm))
+        (seat (wm-seat wm)))
+    (when (and seat (not (wm-layer-shell-focus wm)))
+      (if focused
+          (river-seat-v1.focus-window seat (window-proxy focused))
+          (river-seat-v1.clear-focus seat)))))
 
 (defun manage-layer-shell (wm)
   (let ((output (wm-focused-output wm)))

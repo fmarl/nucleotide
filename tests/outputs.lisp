@@ -143,3 +143,25 @@
     (is (equal '(0 0 0 0) (n::clip-request win)))
     (setf (n::window-clip win) '(-504 0 1000 800))
     (is (equal '(-504 0 1000 800) (n::clip-request win)))))
+
+(test empty-workspaces-clear-the-focus
+  (let* ((wm (make-test-wm))
+         (win (make-instance 'n:window :workspace (ws wm 1) :proxy :window))
+         (calls '())
+         (focus (fdefinition 'n::river-seat-v1.focus-window))
+         (clear (fdefinition 'n::river-seat-v1.clear-focus)))
+    (push win (n:workspace-windows (ws wm 1)))
+    (setf (n::workspace-focused (ws wm 1)) win
+          (n::wm-seat wm) :seat)
+    (unwind-protect
+         (progn
+           (setf (fdefinition 'n::river-seat-v1.focus-window)
+                 (lambda (seat window) (declare (ignore seat)) (push (list :focus window) calls))
+                 (fdefinition 'n::river-seat-v1.clear-focus)
+                 (lambda (seat) (declare (ignore seat)) (push (list :clear) calls)))
+           (n::manage-focus wm)
+           (n::show-workspace wm (ws wm 2))
+           (n::manage-focus wm))
+      (setf (fdefinition 'n::river-seat-v1.focus-window) focus
+            (fdefinition 'n::river-seat-v1.clear-focus) clear))
+    (is (equal '((:focus :window) (:clear)) (reverse calls)))))
