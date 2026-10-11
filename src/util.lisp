@@ -30,9 +30,11 @@ Skip the failing event instead, or else end only the failing thread."
                 (previous
                  (funcall previous condition hook))))))))
 
-(defun check-file-permissions (path forbidden-bits)
-  (let ((stat (sb-posix:stat (sb-ext:native-namestring path))))
-    (unless (= (sb-posix:stat-uid stat) (sb-posix:getuid))
+(defun check-file-permissions (path forbidden-bits &key allow-root)
+  (let* ((stat (sb-posix:stat (sb-ext:native-namestring path)))
+         (uid (sb-posix:stat-uid stat)))
+    (unless (or (= uid (sb-posix:getuid))
+                (and allow-root (zerop uid)))
       (nucleotide-error "~A is not owned by you" path))
     (unless (zerop (logand (sb-posix:stat-mode stat) forbidden-bits))
       (nucleotide-error "~A has unsafe permissions ~3,'0O"

@@ -13,7 +13,7 @@ none, and :ERROR when loading failed (the error is reported)."
     (when (probe-file file)
       (handler-case
           (progn
-            (check-file-permissions file #o022)
+            (check-file-permissions file #o022 :allow-root t)
             (let ((*package* (find-package '#:nucleotide)))
               (handler-bind ((sb-kernel:redefinition-warning #'muffle-warning))
                 (load file)))

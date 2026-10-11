@@ -81,3 +81,9 @@
       (sb-bsd-sockets:socket-close client)
       (sb-bsd-sockets:socket-close server)
       (ignore-errors (delete-file path)))))
+
+(test init-files-may-belong-to-root
+  (signals n:nucleotide-error (n::check-file-permissions "/etc/passwd" #o022))
+  (finishes (n::check-file-permissions "/etc/passwd" #o022 :allow-root t))
+  (signals n:nucleotide-error
+           (n::check-file-permissions "/etc/passwd" #o044 :allow-root t)))
