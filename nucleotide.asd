@@ -13,8 +13,7 @@
                                      (:static-file "river-xkb-bindings-v1.xml")
                                      (:static-file "river-layer-shell-v1.xml")
                                      (:static-file "river-input-management-v1.xml")
-                                     (:static-file "river-libinput-config-v1.xml")
-                                     (:static-file "river-xkb-config-v1.xml")))
+                                     (:static-file "river-libinput-config-v1.xml")))
                (:file "package")
                (:module "core"
                         :serial t
@@ -35,7 +34,6 @@
                (:file "events")
                (:file "autostart")
                (:file "libinput")
-               (:file "keyboard")
                (:file "wm")
                (:file "outputs")
                (:file "floating")

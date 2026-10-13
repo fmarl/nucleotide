@@ -12,7 +12,7 @@ It is very early WIP for now and alpha software.
 - Multiple monitors, with workspaces that can be pinned to outputs by name
 - Floating dialogs, moved and resized with Super and the mouse
 - Window rules
-- Keyboard layout and libinput settings
+- libinput settings
 - Window switcher
 - Keybinds & Keychord support
 - Autostart support
@@ -25,8 +25,8 @@ It is very early WIP for now and alpha software.
 - UI for Keychords: Show available commands when a keychord is pressed with a little overlay in a corner
 
 ### How to build
-You must have `sbcl` and `sbcl-slynk` installed. Setting the keyboard layout
-needs `xkbcli` from libxkbcommon, the window switcher `bemenu`.
+You must have `sbcl` and `sbcl-slynk` installed; the window switcher needs
+`bemenu`.
 Just run `make` in the root directory, which creates a `nucleotide` executable.
 
 `make no-repl` builds an executable without any REPL support.
@@ -97,15 +97,14 @@ Patterns are strings or predicates; actions are `:float`, `:workspace`,
 
 ### Input
 ```lisp
-(defparameter *keyboard-layout* "de")
-(defparameter *keyboard-options* "caps:escape")
 (defparameter *libinput-settings*
   '(:tap t :natural-scroll t :accel-profile :flat :disable-while-typing t))
 ```
 
-The keymap is compiled with `xkbcli compile-keymap` and applied to every
-keyboard. `*libinput-settings*` also takes `:left-handed`, `:middle-emulation`,
-`:click-method`, `:scroll-method` and `:accel-speed`.
+`*libinput-settings*` also takes `:left-handed`, `:middle-emulation`,
+`:click-method`, `:scroll-method` and `:accel-speed`. The keyboard layout is
+river's, which follows `XKB_DEFAULT_LAYOUT` and the other `XKB_DEFAULT_*`
+variables.
 
 ### Configuration
 On start nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp`

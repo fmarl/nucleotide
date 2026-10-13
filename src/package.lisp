@@ -144,11 +144,6 @@
    #:*column-widths*
    #:*default-column-width*
    #:*libinput-settings*
-   #:*keyboard-layout*
-   #:*keyboard-variant*
-   #:*keyboard-options*
-   #:*keyboard-model*
-   #:*numlock*
    #:*warp-pointer*
    #:*pointer-modifiers*
    #:*move-button*

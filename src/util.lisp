@@ -61,12 +61,3 @@ contain arguments (\"alacritty -e htop\"); a list is used as argv directly."
 
 (defun alist-set (key value alist)
   (acons key value (alist-remove key alist)))
-
-(defun write-all (fd octets)
-  (sb-sys:with-pinned-objects (octets)
-    (loop with written = 0
-          while (< written (length octets))
-          do (incf written (sb-posix:write fd
-                                           (sb-sys:sap+ (sb-sys:vector-sap octets)
-                                                        written)
-                                           (- (length octets) written))))))

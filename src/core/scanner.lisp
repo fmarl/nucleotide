@@ -24,7 +24,7 @@
 
 (defparameter *wire-types*
   '(("uint" . :uint) ("int" . :int) ("fixed" . :fixed)
-    ("string" . :string) ("array" . :array) ("fd" . :fd)))
+    ("string" . :string) ("array" . :array)))
 
 (defun wire-type (type)
   (or (cdr (assoc type *wire-types* :test #'string=))
@@ -45,8 +45,6 @@
     (list (lispify (xml:attribute arg "name"))
           (cond ((string= type "new_id") (list :new-id (lispify interface)))
                 ((string= type "object") '(:object))
-                ((string= type "fd")
-                 (nucleotide-error "fd arguments in events are not supported"))
                 (t (wire-type type))))))
 
 (defun enum-forms (interface-name enum)

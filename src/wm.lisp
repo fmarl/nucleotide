@@ -11,8 +11,7 @@
     (river-layer-shell-v1 1 wm-layer-shell)
     (river-xkb-bindings-v1 2 wm-xkb)
     (river-input-manager-v1 1 wm-input-manager)
-    (river-libinput-config-v1 1 wm-libinput-config)
-    (river-xkb-config-v1 1 wm-xkb-config))
+    (river-libinput-config-v1 1 wm-libinput-config))
   "The globals we bind: proxy class, highest version we support, and the WM
 accessor that holds the proxy.")
 
@@ -240,7 +239,6 @@ accessor that holds the proxy.")
     (unless (wm-river wm)
       (wl-display-disconnect display)
       (nucleotide-error "no river_window_manager_v1 global, is WAYLAND_DISPLAY river?"))
-    (configure-keyboards wm)
     (setf (wm-loop wm) (make-event-loop display)
           (wm-thread wm) (sb-thread:make-thread
                           (lambda () (run-event-loop (wm-loop wm)))

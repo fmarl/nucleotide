@@ -45,7 +45,6 @@
     (setf (gethash id (display-proxies display)) proxy)
     proxy))
 
-
 (defun encode-arg (buf off type value)
   (ecase type
     (:uint (setf (u32ref buf off) value) (+ off 4))
@@ -53,8 +52,7 @@
     (:fixed (setf (i32ref buf off) (round (* value 256))) (+ off 4))
     (:object (setf (u32ref buf off) (if value (proxy-id value) 0)) (+ off 4))
     (:string (put-wl-string buf off value))
-    (:array (put-wl-array buf off value))
-    (:fd off)))
+    (:array (put-wl-array buf off value))))
 
 (defun send-request (proxy opcode signature args)
   (when (proxy-destroyed-p proxy)
@@ -67,9 +65,7 @@
                       :initial-value 8)))
     (setf (u32ref buf 0) (proxy-id proxy)
           (u32ref buf 4) (logior (ash end 16) opcode))
-    (send-raw conn end (loop for type in signature
-                             for value in args
-                             when (eq type :fd) collect value))))
+    (send-raw conn end)))
 
 (defun decode-arg (display parent buf off spec)
   (if (consp spec)

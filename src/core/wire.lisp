@@ -134,74 +134,10 @@
         (when (or (>= avail size) (< size 8) (> size +max-message-size+))
           size)))))
 
-(sb-alien:define-alien-type nil
-    (sb-alien:struct iovec
-                     (base sb-alien:system-area-pointer)
-                     (len sb-alien:unsigned-long)))
-
-(sb-alien:define-alien-type nil
-    (sb-alien:struct msghdr
-                     (name sb-alien:system-area-pointer)
-                     (namelen sb-alien:unsigned-int)
-                     (iov (* (sb-alien:struct iovec)))
-                     (iovlen sb-alien:unsigned-long)
-                     (control sb-alien:system-area-pointer)
-                     (controllen sb-alien:unsigned-long)
-                     (flags sb-alien:int)))
-
-(defconstant +sol-socket+ 1)
-(defconstant +scm-rights+ 1)
-(defconstant +msg-nosignal+ #x4000)
-
-(defun fd-control-message (fds)
-  "A cmsghdr carrying FDS with SCM_RIGHTS, padded to 8 bytes (64-bit Linux)."
-  (let* ((length (+ 16 (* 4 (length fds))))
-         (message (make-array (* 8 (ceiling length 8))
-                              :element-type '(unsigned-byte 8)
-                              :initial-element 0)))
-    (setf (u32ref message 0) length
-          (u32ref message 8) +sol-socket+
-          (u32ref message 12) +scm-rights+)
-    (loop for fd in fds
-          for off from 16 by 4
-          do (setf (u32ref message off) fd))
-    message))
-
-(defun %sendmsg (socket-fd message)
-  (let ((sent (sb-alien:alien-funcall
-               (sb-alien:extern-alien "sendmsg"
-                                      (function sb-alien:long sb-alien:int
-                                                (* (sb-alien:struct msghdr))
-                                                sb-alien:int))
-               socket-fd message +msg-nosignal+)))
-    (when (minusp sent)
-      (error 'wl-disconnected))
-    sent))
-
-(defun send-with-fds (socket-fd buffer end fds)
-  "sendmsg END bytes of BUFFER with FDS attached; returns the bytes sent."
-  (let ((control (fd-control-message fds)))
-    (sb-alien:with-alien ((iov (sb-alien:struct iovec))
-                          (message (sb-alien:struct msghdr)))
-      (sb-sys:with-pinned-objects (buffer control)
-        (setf (sb-alien:slot iov 'base) (sb-sys:vector-sap buffer)
-              (sb-alien:slot iov 'len) end
-              (sb-alien:slot message 'name) (sb-sys:int-sap 0)
-              (sb-alien:slot message 'namelen) 0
-              (sb-alien:slot message 'iov) (sb-alien:addr iov)
-              (sb-alien:slot message 'iovlen) 1
-              (sb-alien:slot message 'control) (sb-sys:vector-sap control)
-              (sb-alien:slot message 'controllen) (length control)
-              (sb-alien:slot message 'flags) 0)
-        (%sendmsg socket-fd (sb-alien:addr message))))))
-
-(defun send-raw (connection end &optional fds)
-  (let* ((socket (connection-socket connection))
-         (buffer (connection-wbuf connection))
-         (sent (if fds
-                   (send-with-fds (sb-bsd-sockets:socket-file-descriptor socket)
-                                  buffer end fds)
-                   0)))
+(defun send-raw (connection end)
+  (let ((socket (connection-socket connection))
+        (buffer (connection-wbuf connection))
+        (sent 0))
     (loop while (< sent end)
           do (incf sent (sb-bsd-sockets:socket-send
                          socket

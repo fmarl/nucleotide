@@ -28,6 +28,5 @@ none, and :ERROR when loading failed (the error is reported)."
     (when (wm-seat wm)
       (uninstall-all-keybinds wm)
       (install-all-keybinds wm))
-    (configure-keyboards wm)
     (mark-dirty wm)
     (notify "configuration reloaded")))

@@ -8,4 +8,3 @@
 (define-protocol "river-layer-shell-v1.xml")
 (define-protocol "river-input-management-v1.xml")
 (define-protocol "river-libinput-config-v1.xml")
-(define-protocol "river-xkb-config-v1.xml")
