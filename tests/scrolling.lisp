@@ -135,3 +135,16 @@
     (is (eq a (n::workspace-focused ws)))
     (arrange ws)
     (is (equal (list (list a)) (columns ws)))))
+
+(test floating-windows-lead-back-to-the-last-column
+  (let* ((ws (make-scrolling-workspace))
+         (a (open-window ws))
+         (b (open-window ws))
+         (dialog (make-instance 'n:window :workspace ws)))
+    (declare (ignore b))
+    (focus ws a)
+    (setf (n:window-floating dialog) t)
+    (push dialog (n:workspace-windows ws))
+    (focus ws dialog)
+    (dolist (direction '(:prev :next :up :down))
+      (is (eq a (n:layout-neighbor (n:workspace-layout ws) ws dialog direction))))))

@@ -28,7 +28,7 @@
   ((columns :initform '() :accessor scrolling-columns)
    (offset :initform 0 :accessor scrolling-offset)
    (anchor :initform nil :accessor scrolling-anchor
-           :documentation "The focused window as of the last arrangement.")
+           :documentation "The focused tiled window as of the last arrangement.")
    (center :initform nil :accessor scrolling-center)
    (gap :initarg :gap :initform 8 :reader scrolling-gap)))
 
@@ -104,7 +104,7 @@ widths of the columns."
     (setf (scrolling-offset layout) (target-offset layout (and i (nth i lefts))
                                                    (and i (nth i widths)) view)
           (scrolling-columns layout) columns
-          (scrolling-anchor layout) focus
+          (scrolling-anchor layout) (if i focus (scrolling-anchor layout))
           (scrolling-center layout) nil)
     (values lefts widths)))
 
@@ -136,11 +136,14 @@ widths of the columns."
   (declare (ignore workspace))
   (let* ((columns (scrolling-columns layout))
          (column (column-containing columns win)))
-    (when column
-      (if (horizontal-p direction)
-          (let ((next (adjacent column columns direction)))
-            (and next (column-focus next)))
-          (adjacent win (column-windows column) direction)))))
+    (cond ((null column)
+           (let ((last (or (column-containing columns (scrolling-anchor layout))
+                           (first columns))))
+             (and last (column-focus last))))
+          ((horizontal-p direction)
+           (let ((next (adjacent column columns direction)))
+             (and next (column-focus next))))
+          (t (adjacent win (column-windows column) direction)))))
 
 (defun move-in-columns (columns win direction)
   (let* ((column (column-containing columns win))
