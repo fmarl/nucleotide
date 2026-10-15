@@ -208,11 +208,6 @@
   (clrhash (display-proxies display))
   (values))
 
-(defmacro with-open-display ((var &rest connect-args) &body body)
-  `(let ((,var (wl-display-connect ,@connect-args)))
-     (unwind-protect (progn ,@body)
-       (wl-display-disconnect ,var))))
-
 (defun wl-display-roundtrip (display)
   (let ((done nil)
         (callback (wl-display.sync display)))

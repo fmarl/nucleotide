@@ -101,8 +101,3 @@ protocol/ directory of the nucleotide system."
      ,@(protocol-file-forms
         (merge-pathnames file (asdf:system-relative-pathname
                                "nucleotide" "protocol/")))))
-
-(defun load-protocol (pathname)
-  "Like DEFINE-PROTOCOL, but at runtime, e.g. from the REPL."
-  (eval `(progn ,@(protocol-file-forms pathname)))
-  (values))

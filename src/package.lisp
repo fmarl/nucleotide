@@ -20,7 +20,6 @@
    #:wl-display-connect
    #:wl-display-disconnect
    #:wl-display-roundtrip
-   #:with-open-display
    #:dispatch-event
    ;; proxy
    #:wl-proxy
@@ -44,7 +43,6 @@
    #:define-request
    #:define-event
    #:define-protocol
-   #:load-protocol
    ;; core protocol
    #:wl-display
    #:wl-registry
@@ -155,6 +153,4 @@
    #:*repl-idle-timeout*
    #:start-repl-server
    #:stop-repl-server
-   #:toggle-repl-server
-   ;; debug
-   #:wl-debug-info))
+   #:toggle-repl-server))
