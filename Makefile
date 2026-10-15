@@ -5,13 +5,10 @@ SBCL := sbcl --non-interactive
 EMACS := emacs --batch -Q
 LISP_FILES := $(wildcard *.lisp *.asd src/*.lisp src/core/*.lisp tests/*.lisp scripts/*.lisp)
 
-.PHONY: all no-repl check lint fmt fmt-check clean
+.PHONY: all check lint fmt fmt-check clean
 
 all:
 	$(SBCL) --load build.lisp
-
-no-repl:
-	NUCLEOTIDE_NO_REPL=1 $(SBCL) --load build.lisp
 
 check:
 	$(SBCL) --eval '(require :asdf)' \

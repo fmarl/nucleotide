@@ -150,7 +150,6 @@
    #:*autostart-programs*
    ;; repl
    #:*repl-port*
-   #:*repl-idle-timeout*
    #:start-repl-server
    #:stop-repl-server
    #:toggle-repl-server))

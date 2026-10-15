@@ -29,7 +29,6 @@ You must have `sbcl` and `sbcl-slynk` installed; the window switcher needs
 `bemenu`.
 Just run `make` in the root directory, which creates a `nucleotide` executable.
 
-`make no-repl` builds an executable without any REPL support.
 `make check` runs the tests (needs `sbcl-fiveam`), `make lint` compiles everything
 and fails on any warning, `make fmt` formats the code and `make fmt-check` only
 checks it.
@@ -150,15 +149,14 @@ immediately, e.g.
 
 ### REPL
 The REPL port is closed by default. `Super+Space r` opens a Slynk listener on
-`localhost:4005` that accepts a single connection and closes itself again if
-nobody connects within 5 minutes (`*repl-idle-timeout*`). Press it again to
-close the listener early; an established SLY session stays open.
+`localhost:4005` that stops listening after the first connection. Press it
+again to close the listener early; an established SLY session stays open.
 
 Slynk only accepts clients that know the secret in `~/.sly-secret`. Nucleotide
 creates that file on first use (mode 600) and refuses to open the port if it is
 readable by others. SLY reads the same file, so `M-x sly-connect` needs no
 further setup.
 
-Start nucleotide with `NUCLEOTIDE_REPL=1` to keep a listener open the whole
-time, e.g. while developing. From the REPL, wrap everything that touches the
+For developing, `sbcl --load dev.lisp` starts nucleotide from the sources with
+a listener that stays open. From the REPL, wrap everything that touches the
 window manager in `in-wm`, e.g. `(in-wm (reload-config *wm*))`.
