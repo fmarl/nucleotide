@@ -44,7 +44,7 @@ Skip the failing event instead, or else end only the failing thread."
   "PLACE's list, leaving PLACE empty."
   `(prog1 ,place (setf ,place '())))
 
-(defun spawn (command)
+(defun spawn-program (command)
   "Start COMMAND detached from nucleotide. A string is run by sh, so it may
 contain arguments (\"alacritty -e htop\"); a list is used as argv directly."
   (uiop:launch-program

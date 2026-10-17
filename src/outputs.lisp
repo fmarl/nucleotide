@@ -7,8 +7,8 @@
 ;;; of a removed output are kept under its name; their windows move to another
 ;;; output and return when the output is connected again.
 
-(defparameter *warp-pointer* t
-  "Move the pointer to an output when the focus moves there.")
+(define-setting *warp-pointer* t
+  :documentation "Move the pointer to an output when the focus moves there.")
 
 (defun usable-area (output)
   (if (plusp (output-usable-width output))
@@ -18,8 +18,8 @@
               (output-width output) (output-height output))))
 
 (defun clip-box (x y width height output)
-  "NIL if the window at X Y of WIDTH HEIGHT lies within OUTPUT, :HIDDEN if
-it lies outside, else the visible part relative to the window."
+  "NIL if the window at X Y of WIDTH HEIGHT lies within OUTPUT, :HIDDEN if it
+lies outside, else the box of OUTPUT relative to the window to clip it to."
   (let ((left (output-x output))
         (top (output-y output))
         (right (+ (output-x output) (output-width output)))
@@ -137,7 +137,7 @@ keep OUTPUT's workspaces so the windows can return to them."
       (setf (wm-pending-warp wm) (output-center output)))
     (mark-dirty wm)))
 
-(defun switch-workspace (wm ws)
+(defun switch-to-workspace (wm ws)
   (when (and ws (not (eq ws (wm-active-workspace wm))))
     (let ((previous (wm-focused-output wm)))
       (show-workspace wm ws)
@@ -156,19 +156,19 @@ keep OUTPUT's workspaces so the windows can return to them."
     (when (and pos (rest outputs))
       (nth (mod (+ pos (step-direction direction)) (length outputs)) outputs))))
 
-(defun focus-output (wm &optional (direction :next))
+(define-command focus-output (wm &optional (direction :next))
   (let ((target (neighbor-output wm direction))
         (previous (wm-focused-output wm)))
     (when target
       (setf (wm-active-workspace wm) (output-workspace target))
       (follow-focus wm previous))))
 
-(defun send-to-output (wm &optional (direction :next))
+(define-command send-to-output (wm &optional (direction :next))
   (let ((target (neighbor-output wm direction)))
     (when target
-      (send-to-workspace wm (output-workspace target)))))
+      (send-focused-to wm (output-workspace target)))))
 
-(defun move-workspace-to-output (wm &optional (direction :next))
+(define-command move-workspace-to-output (wm &optional (direction :next))
   "Exchange the windows and layout of the active workspace with those of the
 workspace shown on the neighboring output, and follow them there."
   (let ((target (neighbor-output wm direction))
@@ -177,3 +177,6 @@ workspace shown on the neighboring output, and follow them there."
       (swap-workspace-contents (wm-active-workspace wm) (output-workspace target))
       (setf (wm-active-workspace wm) (output-workspace target))
       (follow-focus wm previous))))
+
+(define-command switch-workspace (wm number)
+  (switch-to-workspace wm (nth-workspace wm (1- number))))

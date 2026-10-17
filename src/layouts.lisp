@@ -3,17 +3,31 @@
 
 (in-package #:nucleotide)
 
+(define-setting *gap* 8
+  :documentation "Pixels between windows and around them.")
+
+(defclass layout () ()
+  (:documentation "Layouts are subclasses that implement LAYOUT-ARRANGE."))
+
+(defclass tiling (layout)
+  ((ratio :initarg :ratio :initform 3/5 :reader tiling-ratio
+          :documentation "The part of the width the master window takes.")))
+
+(defclass monocle (layout) ())
+
 (defun make-layout (spec)
-  "A fresh instance if SPEC names a layout class, else SPEC itself, a function
-of (n x y width height)."
-  (if (and (symbolp spec) (find-class spec nil))
-      (make-instance spec)
-      spec))
+  "A layout from SPEC, the name of a layout class or a list of one and its
+initargs like (TILING :RATIO 1/2)."
+  (destructuring-bind (name &rest initargs) (if (listp spec) spec (list spec))
+    (let ((class (and (symbolp name) (find-class name nil))))
+      (unless (and class (subtypep class 'layout))
+        (nucleotide-error "~S is not a layout" name))
+      (apply #'make-instance class initargs))))
 
 (defun step-direction (direction)
   (ecase direction
-    ((:next :down) 1)
-    ((:prev :up) -1)))
+    ((:next :down :right) 1)
+    ((:prev :up :left) -1)))
 
 (defun swap (list a b)
   (mapcar (lambda (x)
@@ -29,14 +43,11 @@ of (n x y width height)."
 
 (defgeneric layout-arrange (layout workspace windows x y width height)
   (:documentation "An (x y width height) list for each of WINDOWS, the tiled
-windows of WORKSPACE.")
-  (:method (layout workspace windows x y width height)
-    (declare (ignore workspace))
-    (funcall layout (length windows) x y width height)))
+windows of WORKSPACE."))
 
 (defgeneric layout-neighbor (layout workspace win direction)
-  (:documentation "The window next to WIN in DIRECTION, one of :PREV, :NEXT,
-:UP and :DOWN, or NIL.")
+  (:documentation "The window next to WIN in DIRECTION, one of :LEFT, :RIGHT,
+:UP and :DOWN (or :PREV and :NEXT), or NIL.")
   (:method (layout workspace win direction)
     (declare (ignore layout))
     (let* ((windows (workspace-windows workspace))
@@ -68,7 +79,7 @@ windows of WORKSPACE.")
                                         (- (+ y height) top)
                                         each)))))
 
-(defun tiling (n x y width height &key (ratio 12/20) (gap 8))
+(defun tiling-rects (n x y width height ratio gap)
   (multiple-value-bind (x y width height) (inset x y width height gap)
     (if (< n 2)
         (loop repeat n collect (list x y width height))
@@ -77,6 +88,14 @@ windows of WORKSPACE.")
                 (stack-rects (1- n) (+ x master-width gap) y
                              (- width master-width gap) height gap))))))
 
-(defun monocle (n x y width height &key (gap 8))
+(defun monocle-rects (n x y width height gap)
   (multiple-value-bind (x y width height) (inset x y width height gap)
     (loop repeat n collect (list x y width height))))
+
+(defmethod layout-arrange ((layout tiling) workspace windows x y width height)
+  (declare (ignore workspace))
+  (tiling-rects (length windows) x y width height (tiling-ratio layout) *gap*))
+
+(defmethod layout-arrange ((layout monocle) workspace windows x y width height)
+  (declare (ignore workspace))
+  (monocle-rects (length windows) x y width height *gap*))

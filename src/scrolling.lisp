@@ -6,10 +6,10 @@
 ;;; niri's scrollable tiling: windows live in columns on an endless
 ;;; horizontal strip, and the view scrolls to keep the focused column visible.
 
-(defparameter *column-widths* '(1/3 1/2 2/3)
-  "Fractions of the output width that CYCLE-COLUMN-WIDTH steps through.")
+(define-setting *column-widths* '(1/3 1/2 2/3)
+  :documentation "Fractions of the output width that CYCLE-COLUMN-WIDTH steps through.")
 
-(defparameter *default-column-width* 1/2)
+(define-setting *default-column-width* 1/2)
 
 (defclass column ()
   ((windows :initarg :windows :reader column-windows)
@@ -24,13 +24,12 @@
                                (active (column-active column)))
   (make-column windows width active))
 
-(defclass scrolling ()
+(defclass scrolling (layout)
   ((columns :initform '() :accessor scrolling-columns)
    (offset :initform 0 :accessor scrolling-offset)
    (anchor :initform nil :accessor scrolling-anchor
            :documentation "The focused tiled window as of the last arrangement.")
-   (center :initform nil :accessor scrolling-center)
-   (gap :initarg :gap :initform 8 :reader scrolling-gap)))
+   (center :initform nil :accessor scrolling-center)))
 
 (defun column-containing (columns win)
   (find-if (lambda (column) (member win (column-windows column))) columns))
@@ -81,7 +80,6 @@ column right of ANCHOR's."
   (- (+ left (floor width 2)) (floor view 2)))
 
 (defun target-offset (layout left width view)
-  "The offset that shows the focused column at LEFT of WIDTH, if any."
   (cond ((null left) (scrolling-offset layout))
         ((scrolling-center layout) (centering-scroll-offset left width view))
         (t (scroll-into-view (scrolling-offset layout) left width view))))
@@ -95,7 +93,7 @@ column right of ANCHOR's."
 (defun update-scroll (layout workspace view)
   "Update LAYOUT's columns and offset for WORKSPACE; return the left edges and
 widths of the columns."
-  (let* ((gap (scrolling-gap layout))
+  (let* ((gap *gap*)
          (focus (workspace-focused workspace))
          (columns (arranged-columns layout workspace))
          (widths (mapcar (lambda (column) (column-pixel-width column view gap)) columns))
@@ -116,7 +114,7 @@ widths of the columns."
       (mapcar #'cons tiled (stack-rects (length tiled) x y width height gap)))))
 
 (defmethod layout-arrange ((layout scrolling) workspace windows x y width height)
-  (let ((gap (scrolling-gap layout)))
+  (let ((gap *gap*))
     (multiple-value-bind (x y view height) (inset x y width height gap)
       (multiple-value-bind (lefts widths) (update-scroll layout workspace view)
         (let ((rects (mapcan (lambda (column left column-width)
@@ -127,7 +125,7 @@ widths of the columns."
           (mapcar (lambda (win) (cdr (assoc win rects))) windows))))))
 
 (defun horizontal-p (direction)
-  (member direction '(:prev :next)))
+  (member direction '(:prev :next :left :right)))
 
 (defun column-focus (column)
   (or (column-active column) (first (column-windows column))))
@@ -165,14 +163,14 @@ widths of the columns."
 
 (defmethod layout-successor ((layout scrolling) workspace win)
   (some (lambda (direction) (layout-neighbor layout workspace win direction))
-        '(:up :down :prev :next)))
+        '(:up :down :left :right)))
 
 (defun expel (columns column win direction)
   (let ((rest (change-column column :windows (remove win (column-windows column))))
         (alone (change-column column :windows (list win) :active win))
         (index (position column columns)))
     (append (subseq columns 0 index)
-            (if (eq direction :prev) (list alone rest) (list rest alone))
+            (if (minusp (step-direction direction)) (list alone rest) (list rest alone))
             (subseq columns (1+ index)))))
 
 (defun consume (columns column win target)
@@ -182,7 +180,7 @@ widths of the columns."
               target
               (remove column columns)))
 
-(defun consume-or-expel (columns win direction)
+(defun consume-or-expel-in (columns win direction)
   "Expel WIN from its column into a new one in DIRECTION, or if it is alone,
 move it into the neighboring column in DIRECTION."
   (let* ((column (column-containing columns win))
@@ -217,24 +215,24 @@ move it into the neighboring column in DIRECTION."
                        (let ((column (column-containing columns win)))
                          (substitute (funcall function column) column columns)))))
 
-(defun consume-or-expel-window (wm direction)
+(define-command consume-or-expel (wm direction)
   (update-columns wm (lambda (columns win)
-                       (consume-or-expel columns win direction))))
+                       (consume-or-expel-in columns win direction))))
 
-(defun cycle-column-width (wm)
+(define-command cycle-column-width (wm)
   (update-focused-column wm (lambda (column)
                               (change-column column
                                              :width (next-column-width
                                                      (column-width column))))))
 
-(defun toggle-full-width (wm)
+(define-command toggle-full-width (wm)
   (update-focused-column wm (lambda (column)
                               (change-column column
                                              :width (if (= 1 (column-width column))
                                                         *default-column-width*
                                                         1)))))
 
-(defun center-column (wm)
+(define-command center-column (wm)
   (let ((layout (scrolling-focus wm)))
     (when layout
       (setf (scrolling-center layout) t)

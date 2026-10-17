@@ -3,7 +3,7 @@
 
 (in-package #:nucleotide)
 
-(defparameter *repl-port* 4005)
+(define-setting *repl-port* 4005)
 
 (defun repl-secret-file ()
   (merge-pathnames ".sly-secret" (user-homedir-pathname)))
@@ -59,7 +59,8 @@ DONT-CLOSE, it stops listening after the first connection."
   (when (repl-listening-p port)
     (uiop:symbol-call '#:slynk '#:stop-server port)))
 
-(defun toggle-repl-server ()
+(define-command toggle-repl (wm)
+  (declare (ignore wm))
   (if (repl-listening-p)
       (progn
         (stop-repl-server)

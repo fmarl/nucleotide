@@ -11,7 +11,7 @@
         (append (remove match *window-rules* :key #'car :test #'equal)
                 (list (cons match actions)))))
 
-(defmacro define-window-rule ((&rest match) &rest actions)
+(defmacro rule ((&rest match) &rest actions)
   "Apply ACTIONS to new windows whose properties match MATCH, a plist of
 :APP-ID and :TITLE patterns: a string to compare with, or a predicate.
 ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."

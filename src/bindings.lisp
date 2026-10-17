@@ -51,24 +51,27 @@
     (push binding (submap-bindings submap))
     binding))
 
-(defun install-submap (wm keysym modifiers chords)
-  (let ((submap (make-submap)))
-    (dolist (chord (reverse chords))
-      (destructuring-bind ((chord-keysym . chord-modifiers) . function) chord
-        (bind-key-chord wm submap chord-keysym chord-modifiers
-                        (lambda () (funcall function wm)))))
-    (bind-key wm keysym modifiers (lambda () (enter-submap wm submap)))))
+(defun submap-for (wm submaps prefix)
+  "The submap of PREFIX in the box SUBMAPS, an alist in a cons, made and bound
+if new."
+  (let ((submap (alist-get prefix (car submaps))))
+    (or submap
+        (let ((submap (make-submap)))
+          (push (cons prefix submap) (car submaps))
+          (bind-key wm (car prefix) (cdr prefix) (lambda () (enter-submap wm submap)))
+          submap))))
 
 (defun install-all-keybinds (wm)
-  (unless (wm-xkb wm)
-    (warn "river_xkb_bindings_v1 is not available, no keybindings installed")
-    (return-from install-all-keybinds))
-  (dolist (entry (reverse *keybinds*))
-    (destructuring-bind ((keysym . modifiers) . function) entry
-      (bind-key wm keysym modifiers (lambda () (funcall function wm)))))
-  (dolist (entry (reverse *key-chords*))
-    (destructuring-bind ((keysym . modifiers) . chords) entry
-      (install-submap wm keysym modifiers chords)))
+  (if (wm-xkb wm)
+      (let ((submaps (list '())))
+        (dolist (entry *bindings*)
+          (destructuring-bind ((first &optional second) . action) entry
+            (let ((run (lambda () (run-command wm action))))
+              (if second
+                  (bind-key-chord wm (submap-for wm submaps first)
+                                  (car second) (cdr second) run)
+                  (bind-key wm (car first) (cdr first) run))))))
+      (warn "river_xkb_bindings_v1 is not available, no keybindings installed"))
   (install-pointer-bindings wm))
 
 (defun uninstall-all-keybinds (wm)

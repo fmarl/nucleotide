@@ -3,11 +3,13 @@
 
 (in-package #:nucleotide)
 
-(defparameter *border-width* 2)
+(define-setting *border-width* 2)
 
-(defparameter *focused-border-rgba* '(111 140 171 255))
+(define-setting *border-focused* "#6f8cab"
+  :check #'parse-color)
 
-(defparameter *unfocused-border-rgba* '(171 171 171 255))
+(define-setting *border-unfocused* "#ababab"
+  :check #'parse-color)
 
 (defconstant +all-edges+
   (logior +river-window-v1-edges-top+ +river-window-v1-edges-bottom+
@@ -85,7 +87,8 @@
 (defun manage-new-windows (wm)
   (dolist (win (all-windows wm))
     (unless (window-rules-applied win)
-      (initialize-window wm win))
+      (initialize-window wm win)
+      (run-event-hooks :window-opened win))
     (unless (window-configured win)
       (configure-window win))))
 
@@ -103,7 +106,6 @@
              (workspace-windows ws)))
 
 (defun place-window (win rect output)
-  "Move WIN to RECT, clipped to OUTPUT if given."
   (destructuring-bind (x y width height) rect
     (setf (window-x win) x
           (window-y win) y
@@ -122,7 +124,7 @@
         (output (wm-focused-output wm)))
     (when (and win output (not (window-floating win)) (not (window-fullscreen win)))
       (multiple-value-bind (x y width height) (usable-area output)
-        (place-window win (first (monocle 1 x y width height)) nil)))))
+        (place-window win (first (monocle-rects 1 x y width height *gap*)) nil)))))
 
 (defun manage-warp (wm)
   (let ((target (drain (wm-pending-warp wm)))
@@ -130,13 +132,25 @@
     (when (and target seat (supports-p seat 3))
       (apply #'river-seat-v1.pointer-warp seat target))))
 
+(defun note-focus (wm focused)
+  (unless (eq focused (wm-last-focus wm))
+    (setf (wm-last-focus wm) focused)
+    (when focused
+      (setf (wm-focus-history wm) (cons focused (remove focused (wm-focus-history wm)))))
+    (run-event-hooks :focus-changed focused))
+  (let ((ws (wm-active-workspace wm)))
+    (unless (eq ws (wm-last-workspace wm))
+      (setf (wm-last-workspace wm) ws)
+      (run-event-hooks :workspace-changed ws))))
+
 (defun manage-focus (wm)
   (let ((focused (effective-focus wm))
         (seat (wm-seat wm)))
     (when (and seat (not (wm-layer-shell-focus wm)))
       (if focused
           (river-seat-v1.focus-window seat (window-proxy focused))
-          (river-seat-v1.clear-focus seat)))))
+          (river-seat-v1.clear-focus seat)))
+    (note-focus wm focused)))
 
 (defun manage-layer-shell (wm)
   (let ((output (wm-focused-output wm)))
@@ -185,9 +199,9 @@
   (if (consp (window-clip win)) (window-clip win) '(0 0 0 0)))
 
 (defun border-color (wm win)
-  (rgba->uint32 (if (eq (effective-focus wm) win)
-                    *focused-border-rgba*
-                    *unfocused-border-rgba*)))
+  (rgba->uint32 (parse-color (if (eq (effective-focus wm) win)
+                                 *border-focused*
+                                 *border-unfocused*))))
 
 (defun render-show (wm win)
   (when (and (window-floating win) (plusp (window-width win)))

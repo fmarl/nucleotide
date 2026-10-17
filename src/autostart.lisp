@@ -3,9 +3,9 @@
 
 (in-package #:nucleotide)
 
-(defparameter *autostart-programs*
-  '(("waybar"))
-  "Commands started once, in the format SPAWN takes.")
+(define-setting *autostart-programs*
+    '(("waybar"))
+  :documentation "Commands started once at startup, in the format SPAWN takes.")
 
 (defvar *autostarted* nil)
 
@@ -13,4 +13,9 @@
   (unless *autostarted*
     (setf *autostarted* t)
     (dolist (program *autostart-programs*)
-      (spawn program))))
+      (spawn-program program))))
+
+(define-command spawn (wm &rest command)
+  "Start COMMAND, a shell command line or a program and its arguments."
+  (declare (ignore wm))
+  (spawn-program (if (rest command) command (first command))))

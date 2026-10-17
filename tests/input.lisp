@@ -16,9 +16,3 @@
 (test accel-speed-is-a-little-endian-double
   (is (equalp (octets 0 0 0 0 0 0 #xe0 #x3f) (n::double-octets 0.5)))
   (is (equalp (octets 0 0 0 0 0 0 #xf0 #xbf) (n::double-octets -1))))
-
-(test init-files-may-belong-to-root
-  (signals n:nucleotide-error (n::check-file-permissions "/etc/passwd" #o022))
-  (finishes (n::check-file-permissions "/etc/passwd" #o022 :allow-root t))
-  (signals n:nucleotide-error
-           (n::check-file-permissions "/etc/passwd" #o044 :allow-root t)))

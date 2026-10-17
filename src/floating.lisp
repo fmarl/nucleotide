@@ -3,13 +3,14 @@
 
 (in-package #:nucleotide)
 
-(defparameter *pointer-modifiers* :super)
+(define-setting *pointer-modifiers* "Super"
+  :documentation "The modifiers that move and resize windows with the pointer.")
 
-(defparameter *move-button* 272
-  "Linux input event code of the button that moves windows (BTN_LEFT).")
+(define-setting *move-button* 272
+  :documentation "Linux input event code of the button that moves windows (BTN_LEFT).")
 
-(defparameter *resize-button* 273
-  "Linux input event code of the button that resizes windows (BTN_RIGHT).")
+(define-setting *resize-button* 273
+  :documentation "Linux input event code of the button that resizes windows (BTN_RIGHT).")
 
 (defun fixed-size-p (win)
   (and (plusp (window-min-width win))
@@ -65,7 +66,7 @@
         (window-pending-dimensions win) nil
         (window-configured win) nil))
 
-(defun toggle-floating (wm)
+(define-command toggle-floating (wm)
   (let ((win (effective-focus wm)))
     (when (and win (not (window-fullscreen win)))
       (if (window-floating win)

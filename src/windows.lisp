@@ -11,8 +11,8 @@
   "While a highlight is active, the highlighted window is the only visible one."
   (or (wm-highlight wm) (wm-focused-window wm)))
 
-(defun cycle-focus (wm &optional (direction :next))
-  "Focus the window in DIRECTION: :PREV and :NEXT, or :UP and :DOWN."
+(define-command focus (wm &optional (direction :next))
+  "Focus the window in DIRECTION: :LEFT, :RIGHT, :UP or :DOWN."
   (let* ((ws (wm-active-workspace wm))
          (focused (wm-focused-window wm))
          (target (if focused
@@ -22,7 +22,7 @@
       (focus-window wm target)
       (mark-dirty wm))))
 
-(defun move-window (wm &optional (direction :next))
+(define-command move (wm &optional (direction :next))
   (let ((ws (wm-active-workspace wm))
         (focused (wm-focused-window wm)))
     (when focused
@@ -49,36 +49,38 @@
         (workspace-focused ws) win)
   (push win (workspace-windows ws)))
 
-(defun close-focused (wm)
+(define-command close-window (wm)
   (let ((win (effective-focus wm)))
     (when win
       (push win (wm-pending-closes wm))
       (mark-dirty wm))))
 
-(defun send-to-workspace (wm ws)
+(defun send-focused-to (wm ws)
   (let ((win (wm-focused-window wm)))
     (when (and win ws (not (eq ws (window-workspace win))))
       (move-to-workspace win ws)
       (mark-dirty wm))))
 
-(defun set-active-layout (wm layout)
-  "LAYOUT is a function like TILING or the name of a layout class like
-SCROLLING. Choosing the class the workspace already uses keeps its state."
-  (unless (and (symbolp layout)
-               (find-class layout nil)
-               (typep (wm-active-layout wm) layout))
-    (setf (wm-active-layout wm) (make-layout layout)))
+(define-command set-layout (wm spec)
+  "SPEC is in the format MAKE-LAYOUT takes. The bare name of the class the
+workspace already uses keeps its state."
+  (unless (and (symbolp spec)
+               (find-class spec nil)
+               (typep (wm-active-layout wm) spec))
+    (setf (wm-active-layout wm) (make-layout spec)))
   (mark-dirty wm))
 
-(defun toggle-highlight (wm app-id)
+(define-command toggle-highlight (wm &rest match)
+  "Show the most recently focused window that matches MATCH, a plist like the
+one of RULE, alone on the focused output; again to stop."
   (setf (wm-highlight wm)
         (unless (wm-highlight wm)
-          (find app-id (all-windows wm)
-                :key #'window-app-id
-                :test #'equal)))
+          (find-if (lambda (win) (rule-matches-p match win))
+                   (remove-duplicates (append (wm-focus-history wm) (all-windows wm))
+                                      :from-end t))))
   (mark-dirty wm))
 
-(defun toggle-fullscreen (wm)
+(define-command toggle-fullscreen (wm)
   (let ((win (effective-focus wm)))
     (when win
       ;; Fullscreen state only changes in the next manage sequence, so a
@@ -90,3 +92,6 @@ SCROLLING. Choosing the class the workspace already uses keeps its state."
             (push (cons win (if (window-fullscreen win) :exit nil))
                   (wm-pending-fullscreens wm))))
       (mark-dirty wm))))
+
+(define-command send-to-workspace (wm number)
+  (send-focused-to wm (nth-workspace wm (1- number))))

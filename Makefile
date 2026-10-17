@@ -5,6 +5,10 @@ SBCL := sbcl --non-interactive
 EMACS := emacs --batch -Q
 LISP_FILES := $(wildcard *.lisp *.asd src/*.lisp src/core/*.lisp tests/*.lisp scripts/*.lisp)
 
+ifdef GUIX_ENVIRONMENT
+export LD_LIBRARY_PATH := $(GUIX_ENVIRONMENT)/lib$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
+endif
+
 .PHONY: all check lint fmt fmt-check clean
 
 all:

@@ -3,8 +3,8 @@
 
 (in-package #:nucleotide)
 
-(defparameter *menu-command* '("bemenu" "-i" "-l" "20" "-p" "window")
-  "A dmenu-like program: reads choices on stdin, prints the chosen one.")
+(define-setting *menu-command* '("bemenu" "-i" "-l" "20" "-p" "window")
+  :documentation "A dmenu-like program: reads choices on stdin, prints the chosen one.")
 
 (defun window-label (win number)
   (let* ((ws (window-workspace win))
@@ -37,8 +37,7 @@
       (focus-window wm win)
       (follow-focus wm previous))))
 
-(defun window-switcher (wm)
-  "Pick a window from all workspaces with *MENU-COMMAND* and focus it."
+(define-command switch-window (wm)
   (let ((windows (all-windows wm)))
     (when windows
       (sb-thread:make-thread

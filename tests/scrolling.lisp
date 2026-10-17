@@ -10,31 +10,31 @@
 ;;; half-width column is 496 pixels wide and two of them fill the view.
 
 (defun make-scrolling-workspace ()
-  (let ((ws (make-instance 'n:workspace :name "test")))
-    (setf (n:workspace-layout ws) (make-instance 'n:scrolling))
+  (let ((ws (make-instance 'n::workspace :name "test")))
+    (setf (n::workspace-layout ws) (make-instance 'n::scrolling))
     ws))
 
 (defun open-window (ws)
-  (let ((win (make-instance 'n:window :workspace ws)))
-    (push win (n:workspace-windows ws))
+  (let ((win (make-instance 'n::window :workspace ws)))
+    (push win (n::workspace-windows ws))
     (setf (n::workspace-focused ws) win)
     (arrange ws)
     win))
 
-(defun arrange (ws &optional (tiled (n:workspace-windows ws)))
-  (n:layout-arrange (n:workspace-layout ws) ws tiled 0 0 1016 816))
+(defun arrange (ws &optional (tiled (n::workspace-windows ws)))
+  (n::layout-arrange (n::workspace-layout ws) ws tiled 0 0 1016 816))
 
 (defun focus (ws win)
   (setf (n::workspace-focused ws) win)
   (arrange ws))
 
 (defun columns (ws)
-  (mapcar #'n::column-windows (n::scrolling-columns (n:workspace-layout ws))))
+  (mapcar #'n::column-windows (n::scrolling-columns (n::workspace-layout ws))))
 
 (defun rect (ws win)
-  (nth (position win (n:workspace-windows ws)) (arrange ws)))
+  (nth (position win (n::workspace-windows ws)) (arrange ws)))
 
-(test new-windows-open-right-of-the-focused-column
+(test (new-windows-open-right-of-the-focused-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
          (a (open-window ws))
          (b (open-window ws)))
@@ -43,14 +43,14 @@
     (let ((c (open-window ws)))
       (is (equal (list (list a) (list c) (list b)) (columns ws))))))
 
-(test half-width-columns-fill-the-view
+(test (half-width-columns-fill-the-view :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
          (a (open-window ws))
          (b (open-window ws)))
     (is (equal '(8 8 496 800) (rect ws a)))
     (is (equal '(512 8 496 800) (rect ws b)))))
 
-(test view-scrolls-just-enough
+(test (view-scrolls-just-enough :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
          (a (open-window ws))
          (b (open-window ws))
@@ -62,72 +62,72 @@
     (focus ws a)
     (is (equal '(8 8 496 800) (rect ws a)))))
 
-(test focus-and-move-between-columns
+(test (focus-and-move-between-columns :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
-         (layout (n:workspace-layout ws))
+         (layout (n::workspace-layout ws))
          (a (open-window ws))
          (b (open-window ws)))
-    (is (eq a (n:layout-neighbor layout ws b :prev)))
-    (is (null (n:layout-neighbor layout ws b :next)))
-    (n:layout-move layout ws b :prev)
+    (is (eq a (n::layout-neighbor layout ws b :prev)))
+    (is (null (n::layout-neighbor layout ws b :next)))
+    (n::layout-move layout ws b :prev)
     (is (equal (list (list b) (list a)) (columns ws)))))
 
-(test consume-and-expel
+(test (consume-and-expel :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
-         (layout (n:workspace-layout ws))
+         (layout (n::workspace-layout ws))
          (a (open-window ws))
          (b (open-window ws)))
     (setf (n::scrolling-columns layout)
-          (n::consume-or-expel (n::scrolling-columns layout) b :prev))
+          (n::consume-or-expel-in (n::scrolling-columns layout) b :prev))
     (is (equal (list (list a b)) (columns ws)))
-    (is (eq a (n:layout-neighbor layout ws b :up)))
+    (is (eq a (n::layout-neighbor layout ws b :up)))
     (is (equal '((8 8 496 396) (8 412 496 396))
                (list (rect ws a) (rect ws b))))
     (setf (n::scrolling-columns layout)
-          (n::consume-or-expel (n::scrolling-columns layout) b :next))
+          (n::consume-or-expel-in (n::scrolling-columns layout) b :next))
     (is (equal (list (list a) (list b)) (columns ws)))))
 
-(test successor-prefers-the-same-column
+(test (successor-prefers-the-same-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
-         (layout (n:workspace-layout ws))
+         (layout (n::workspace-layout ws))
          (a (open-window ws))
          (b (open-window ws))
          (c (open-window ws)))
     (declare (ignore a))
     (setf (n::scrolling-columns layout)
-          (n::consume-or-expel (n::scrolling-columns layout) c :prev))
-    (is (eq b (n:layout-successor layout ws c)))
-    (is (eq c (n:layout-successor layout ws b)))))
+          (n::consume-or-expel-in (n::scrolling-columns layout) c :prev))
+    (is (eq b (n::layout-successor layout ws c)))
+    (is (eq c (n::layout-successor layout ws b)))))
 
-(test successor-falls-back-to-the-left-column
+(test (successor-falls-back-to-the-left-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
-         (layout (n:workspace-layout ws))
+         (layout (n::workspace-layout ws))
          (a (open-window ws))
          (b (open-window ws)))
-    (is (eq a (n:layout-successor layout ws b)))))
+    (is (eq a (n::layout-successor layout ws b)))))
 
-(test column-widths
-  (let ((n:*column-widths* '(1/3 1/2 2/3)))
+(test (column-widths :fixture fresh-config)
+  (let ((n::*column-widths* '(1/3 1/2 2/3)))
     (is (= 2/3 (n::next-column-width 1/2)))
     (is (= 1/3 (n::next-column-width 2/3)))
     (is (= 1/3 (n::next-column-width 1)))))
 
-(test full-width-column
+(test (full-width-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
-         (layout (n:workspace-layout ws))
+         (layout (n::workspace-layout ws))
          (a (open-window ws)))
     (setf (n::scrolling-columns layout)
           (list (n::make-column (list a) 1)))
     (is (equal '(8 8 1000 800) (rect ws a)))))
 
-(test fullscreen-windows-keep-their-column
+(test (fullscreen-windows-keep-their-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
          (a (open-window ws))
          (b (open-window ws)))
     (is (equal '((512 8 496 800)) (arrange ws (list b))))
     (is (equal (list (list a) (list b)) (columns ws)))))
 
-(test closed-windows-leave-their-column
+(test (closed-windows-leave-their-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
          (a (open-window ws))
          (b (open-window ws)))
@@ -136,15 +136,15 @@
     (arrange ws)
     (is (equal (list (list a)) (columns ws)))))
 
-(test floating-windows-lead-back-to-the-last-column
+(test (floating-windows-lead-back-to-the-last-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
          (a (open-window ws))
          (b (open-window ws))
-         (dialog (make-instance 'n:window :workspace ws)))
+         (dialog (make-instance 'n::window :workspace ws)))
     (declare (ignore b))
     (focus ws a)
-    (setf (n:window-floating dialog) t)
-    (push dialog (n:workspace-windows ws))
+    (setf (n::window-floating dialog) t)
+    (push dialog (n::workspace-windows ws))
     (focus ws dialog)
     (dolist (direction '(:prev :next :up :down))
-      (is (eq a (n:layout-neighbor (n:workspace-layout ws) ws dialog direction))))))
+      (is (eq a (n::layout-neighbor (n::workspace-layout ws) ws dialog direction))))))

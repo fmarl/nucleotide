@@ -25,13 +25,15 @@ It is very early WIP for now and alpha software.
 - UI for Keychords: Show available commands when a keychord is pressed with a little overlay in a corner
 
 ### How to build
-You must have `sbcl` and `sbcl-slynk` installed; the window switcher needs
-`bemenu`.
-Just run `make` in the root directory, which creates a `nucleotide` executable.
+You must have `sbcl`, `sbcl-slynk` and libxkbcommon installed; nucleotide looks
+key names up in libxkbcommon, which it loads as `*libxkbcommon*`. The window
+switcher needs `bemenu`. Just run `make` in the root directory, which creates a
+`nucleotide` executable.
 
 `make check` runs the tests (needs `sbcl-fiveam`), `make lint` compiles everything
 and fails on any warning, `make fmt` formats the code and `make fmt-check` only
-checks it.
+checks it. Run `make` and these targets in `guix shell -m manifest.scm`, so that
+they find libxkbcommon.
 
 ### How to start
 ```
@@ -39,9 +41,9 @@ river -c ./nucleotide
 ```
 
 ### Layouts
-`Super+q` closes the focused window, `Super+Space q` quits the session.
+`Super+Q` closes the focused window, `Super+Space Q` quits the session.
 
-`Super+Space` followed by `t`, `m` or `s` switches the current workspace to
+`Super+Space` followed by `T`, `M` or `S` switches the current workspace to
 tiling, monocle or scrolling.
 
 The scrolling layout works like [niri](https://github.com/YaLTeR/niri): every
@@ -50,21 +52,23 @@ just far enough to show the focused column.
 
 | Keys | Action |
 |---|---|
-| `Super+h` / `Super+l` | Focus the column to the left / right |
-| `Super+k` / `Super+j` | Focus the window above / below in the column |
-| `Super+Shift+h/l/k/j` | Move the column, or the window within its column |
+| `Super+H` / `Super+L` | Focus the column to the left / right |
+| `Super+K` / `Super+J` | Focus the window above / below in the column |
+| `Super+Shift+H/L/K/J` | Move the column, or the window within its column |
 | `Super+[` / `Super+]` | Move the window into the column to the left / right, or out of its column |
-| `Super+r` | Cycle the column width through `*column-widths*` (1/3, 1/2, 2/3) |
-| `Super+Ctrl+f` | Toggle full width |
-| `Super+c` | Center the focused column |
+| `Super+R` | Cycle the column width through `*column-widths*` (1/3, 1/2, 2/3) |
+| `Super+Ctrl+F` | Toggle full width |
+| `Super+C` | Center the focused column |
 
-In tiling and monocle, `h`/`k` and `l`/`j` cycle through the windows.
-`(defparameter *default-layout* 'scrolling)` in the init file makes every
-workspace scroll.
+In tiling and monocle, `H`/`K` and `L`/`J` cycle through the windows.
+`(setf *default-layout* 'scrolling)` makes every workspace scroll, and
+`(setf *default-layout* '(tiling :ratio 1/2))` gives the master window half
+the width. `*gap*` sets the gaps of all layouts.
 
 ### Multiple monitors
 Every monitor has its own workspaces 1–9. `Super+1…9` switches the workspace of
-the focused monitor, `Super+Shift+1…9` sends the focused window to one of them.
+the focused monitor, `Super+Ctrl+1…9` sends the focused window to one of them.
+Both also work with Shift, for keyboards that send the digits shifted.
 
 | Keys | Action |
 |---|---|
@@ -83,21 +87,25 @@ floating. `Super` with the left mouse button moves a window, also onto another
 monitor; with the right one it resizes the window. Both make a tiled window
 float.
 
-### Window rules and switcher
+### Window rules, switcher and highlight
 ```lisp
-(define-window-rule (:app-id "pavucontrol") :float t)
-(define-window-rule (:app-id "firefox") :workspace 2)
-(define-window-rule (:title (contains "Picture-in-Picture")) :float t)
+(rule (:app-id "pavucontrol") :float t)
+(rule (:app-id "firefox") :workspace 2)
+(rule (:title (contains "Picture-in-Picture")) :float t)
 ```
 
 Patterns are strings or predicates; actions are `:float`, `:workspace`,
 `:output` (a monitor name) and `:fullscreen`. `Super+Tab` lists all windows in
 `*menu-command*` (bemenu) and focuses the chosen one.
 
+`Super+Space E` shows the most recently focused Emacs frame alone on the
+current monitor without moving it, and hides it again; the command
+`(toggle-highlight :app-id "emacs")` takes any patterns a rule takes.
+
 ### Input
 ```lisp
-(defparameter *libinput-settings*
-  '(:tap t :natural-scroll t :accel-profile :flat :disable-while-typing t))
+(setf *libinput-settings* '(:tap t :natural-scroll t :accel-profile :flat
+                            :disable-while-typing t))
 ```
 
 `*libinput-settings*` also takes `:left-handed`, `:middle-emulation`,
@@ -107,48 +115,57 @@ variables.
 
 ### Configuration
 On start nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp`
-(usually `~/.config/nucleotide/init.lisp`) in the `nucleotide` package.
-The default keybindings live in `src/defaults.lisp`, each setting next to the code
-that uses it; the init file adds to or overrides both.
-It must not be writable by other users, otherwise it is ignored.
+(usually `~/.config/nucleotide/init.lisp`) in the `nucleotide` package, or
+binds the default keys of `src/defaults.lisp` if there is none. It must not be
+writable by other users, otherwise it is ignored.
 
 ```lisp
-(defparameter *border-width* 3)
+(use-defaults)
 
-;; Adds keybinds, or replaces those on the same keys.
-(define-keybinds (wm)
-  ((:super :shift) :return (spawn "foot"))
-  (:super #\b              (spawn "firefox")))
+(setf *border-width* 3
+      *border-focused* "#00bcff"
+      *gap* 4)
 
-;; Super+Space, then a key.
-(define-key-chords (wm)
-  ((:super :space)
-   (#\w (spawn "firefox"))
-   ((:shift #\w) (spawn "firefox --private-window"))))
+(bind "Super+Shift+Return" (spawn "foot"))
+(bind "Super+B" (spawn "firefox"))
+(bind "Super+Space W" (spawn "firefox --private-window"))
+(bind "XF86AudioPlay" (spawn "playerctl" "play-pause"))
+(unbind "Super+P")
 
-(remove-keybind :super #\p)
+(define-command focus-firefox (wm)
+  (let ((win (find "firefox" (all-windows wm) :key #'window-app-id :test #'equal)))
+    (when win
+      (focus-window wm win))))
+
+(bind "Super+Space F" focus-firefox)
 ```
 
-Modifiers are `:shift`, `:ctrl`, `:alt`, `:super`, `:mod3` and `:mod5`, alone or
-as a list. Keys are characters or keywords like `:return`, `:space`, `:escape`,
-`:left` or `:f1`. `(clear-keybinds)` drops all defaults if you prefer to start
-from scratch.
+Keys are written like in niri: modifiers (`Shift`, `Ctrl`, `Alt`, `Super` or
+`Mod`, `Mod3`, `Mod5`) and a character or xkb key name like `Return`, `Comma`
+or `XF86AudioPlay`, joined with `+`. A prefix and a key separated by a space
+make a key chord. Bindings run commands: a command name, or a list of one and
+its arguments. `(command-names)` lists them; `define-command` adds more. A
+command is a function of the window manager and its arguments, so the REPL can
+call it too.
 
-`Super+Space c` reloads the init file and reinstalls all keybindings.
-Settings that only take effect at startup (like `*num-of-workspaces*`) need a restart.
+`Super+Space C` reloads the init file from scratch: bindings, rules and hooks
+it no longer has are gone and settings it no longer sets get their default
+again. If it fails to load, everything stays as it was. A few settings, like
+`*num-of-workspaces*`, are only read at startup.
 
-Window manager behaviour can be changed live too: events are dispatched to the
-generic function `handle-event`, so redefining a handler takes effect
-immediately, e.g.
+Hooks run functions on events, after nucleotide handled them:
 
 ```lisp
-(define-handler (wm (win window) :title) (title)
-  (setf (window-title win) title)
-  (format t "~&title: ~A~%" title))
+(on :focus-changed (lambda (win) (format t "~&focus: ~A~%" win)))
 ```
+
+The events are `:window-opened`, `:window-closed`, `:window-title`,
+`:focus-changed` and `:workspace-changed`. For deeper changes, events are
+dispatched to the generic function `handle-event`, and redefining a handler
+with `define-handler` takes effect immediately.
 
 ### REPL
-The REPL port is closed by default. `Super+Space r` opens a Slynk listener on
+The REPL port is closed by default. `Super+Space R` opens a Slynk listener on
 `localhost:4005` that stops listening after the first connection. Press it
 again to close the listener early; an established SLY session stays open.
 

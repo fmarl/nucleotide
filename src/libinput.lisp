@@ -3,13 +3,13 @@
 
 (in-package #:nucleotide)
 
-(defparameter *libinput-settings*
-  '(:tap t)
-  "Plist of settings applied to every device that supports them: :TAP,
+(define-setting *libinput-settings*
+    '(:tap t)
+  :documentation "Plist of settings applied to every device that supports them: :TAP,
 :NATURAL-SCROLL, :LEFT-HANDED, :MIDDLE-EMULATION and :DISABLE-WHILE-TYPING take
 T or NIL; :CLICK-METHOD takes :BUTTON-AREAS or :CLICKFINGER; :SCROLL-METHOD
 :NO-SCROLL, :TWO-FINGER, :EDGE or :ON-BUTTON-DOWN; :ACCEL-PROFILE :FLAT or
-:ADAPTIVE; :ACCEL-SPEED a number from -1 to 1.")
+:ADAPTIVE; :ACCEL-SPEED a number from -1 to 1. Devices get them when they appear.")
 
 (defparameter *libinput-requests*
   '((:tap :tap-support river-libinput-device-v1.set-tap "tap_state")

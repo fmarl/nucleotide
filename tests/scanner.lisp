@@ -51,4 +51,4 @@
   (is (= 15 n::+all-edges+)))
 
 (test rejects-other-documents
-  (signals n:nucleotide-error (n::protocol-forms (xml:parse "<html/>"))))
+  (signals n::nucleotide-error (n::protocol-forms (xml:parse "<html/>"))))

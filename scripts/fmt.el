@@ -11,14 +11,13 @@
 
 ;; What SLY derives from the &body parameters of these macros.
 (dolist (spec '((defsystem . (4 &body))
-                (define-keybinds . (4 &body))
-                (define-key-chords . (4 &body))
+                (define-command . (4 4 &body))
                 (define-handler . (4 4 &body))
                 (define-request . (4 &body))
                 (define-event . (4 &body))
                 (define-interface . (4 4 4))
                 (test . (4 &body))
-                (with-empty-keybinds . (&body))))
+                (with-fresh-config . (&body))))
   (put (car spec) 'common-lisp-indent-function (cdr spec)))
 
 (defun fmt-format-buffer ()

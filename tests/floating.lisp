@@ -7,8 +7,8 @@
 (in-suite floating)
 
 (defun make-win (&key parent (min '(0 0)) (max '(0 0)))
-  (let ((win (make-instance 'n:window :workspace nil)))
-    (setf (n:window-parent win) parent
+  (let ((win (make-instance 'n::window :workspace nil)))
+    (setf (n::window-parent win) parent
           (n::window-min-width win) (first min)
           (n::window-min-height win) (second min)
           (n::window-max-width win) (first max)
@@ -25,31 +25,38 @@
   (is (equal '(300 250) (n::center-in-area 400 300 1000 800))))
 
 (test floating-windows-stay-out-of-the-layout
-  (let* ((ws (make-instance 'n:workspace :name "test"))
-         (tiled (make-instance 'n:window :workspace ws))
-         (dialog (make-instance 'n:window :workspace ws)))
-    (setf (n:workspace-windows ws) (list dialog tiled)
-          (n:window-floating dialog) t)
+  (let* ((ws (make-instance 'n::workspace :name "test"))
+         (tiled (make-instance 'n::window :workspace ws))
+         (dialog (make-instance 'n::window :workspace ws)))
+    (setf (n::workspace-windows ws) (list dialog tiled)
+          (n::window-floating dialog) t)
     (is (equal (list tiled) (n::tiled-windows ws)))))
 
 (test closing-a-dialog-focuses-its-parent
-  (let* ((ws (make-instance 'n:workspace :name "test"))
-         (parent (make-instance 'n:window :workspace ws))
-         (other (make-instance 'n:window :workspace ws))
-         (dialog (make-instance 'n:window :workspace ws)))
-    (setf (n:window-parent dialog) parent
-          (n:workspace-windows ws) (list dialog other parent)
+  (let* ((ws (make-instance 'n::workspace :name "test"))
+         (parent (make-instance 'n::window :workspace ws))
+         (other (make-instance 'n::window :workspace ws))
+         (dialog (make-instance 'n::window :workspace ws)))
+    (setf (n::window-parent dialog) parent
+          (n::workspace-windows ws) (list dialog other parent)
           (n::workspace-focused ws) dialog)
     (n::remove-window ws dialog)
     (is (eq parent (n::workspace-focused ws)))))
 
 (test pending-dimensions-only-resize-floating-windows
   (let* ((wm (make-test-wm))
-         (win (make-instance 'n:window :workspace (ws wm 1))))
-    (setf (n:workspace-windows (ws wm 1)) (list win)
-          (n::window-pending-dimensions win) '(400 300))
-    (finishes (n::manage-pending-dimensions wm))
-    (is (null (n::window-pending-dimensions win)))))
+         (tiled (make-instance 'n::window :workspace (ws wm 1)))
+         (floating (make-instance 'n::window :workspace (ws wm 1)))
+         (proposed '()))
+    (setf (n::workspace-windows (ws wm 1)) (list tiled floating)
+          (n::window-floating floating) t
+          (n::window-pending-dimensions tiled) '(400 300)
+          (n::window-pending-dimensions floating) '(500 200))
+    (with-stubs ((n::propose-dimensions
+                  (lambda (win width height) (push (list win width height) proposed))))
+      (n::manage-pending-dimensions wm))
+    (is (equal (list (list floating 500 200)) proposed))
+    (is (null (n::window-pending-dimensions tiled)))))
 
 (test overlap-with-outputs
   (let* ((wm (make-test-wm))
@@ -65,13 +72,13 @@
   (let* ((wm (make-test-wm))
          (left (add-output wm 0))
          (right (add-output wm 1000))
-         (win (open-window-on (n:output-workspace left))))
-    (setf (n:window-floating win) t
+         (win (open-window-on (n::output-workspace left))))
+    (setf (n::window-floating win) t
           (n::window-x win) 1200
           (n::window-y win) 100
           (n::window-width win) 400
           (n::window-height win) 300)
     (n::settle-floating wm win)
-    (is (eq (n:output-workspace right) (n:window-workspace win)))
+    (is (eq (n::output-workspace right) (n::window-workspace win)))
     (is (equal '(200 100) (n::window-float-offset win)))
-    (is (eq right (n:wm-focused-output wm)))))
+    (is (eq right (n::wm-focused-output wm)))))

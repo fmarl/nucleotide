@@ -62,8 +62,9 @@ until a floating window is placed.")
   (print-unreadable-object (win stream :type t :identity t)
     (format stream "~@[~A~]~@[ ~S~]" (window-app-id win) (window-title win))))
 
-(defparameter *default-layout* 'tiling
-  "The layout of new workspaces: a layout function or the name of a layout class.")
+(define-setting *default-layout* 'tiling
+  :documentation "The layout of new workspaces, in the format MAKE-LAYOUT takes. Read at
+startup.")
 
 (defclass workspace ()
   ((name :initarg :name :accessor workspace-name)
@@ -104,6 +105,10 @@ until a floating window is placed.")
    (active-workspace :initarg :active-workspace :accessor wm-active-workspace)
    (active-submap :initform nil :accessor wm-active-submap)
    (highlight :initform nil :accessor wm-highlight)
+   (focus-history :initform '() :accessor wm-focus-history
+                  :documentation "Windows from the most recently focused on.")
+   (last-focus :initform nil :accessor wm-last-focus)
+   (last-workspace :initform nil :accessor wm-last-workspace)
    (pointer-window :initform nil :accessor wm-pointer-window)
    (op :initform nil :accessor wm-op)
    (pending-warp :initform nil :accessor wm-pending-warp)

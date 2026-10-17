@@ -43,3 +43,14 @@
       (multiple-value-bind (decoded next) (n::get-wl-array buf 0)
         (is (equalp bytes decoded))
         (is (= end next))))))
+
+(test strings-carry-their-length-with-the-nul-and-pad-with-zeros
+  (let ((buf (buffer 12)))
+    (fill buf #xff)
+    (is (= 12 (n::put-wl-string buf 0 "abcd")))
+    (is (equalp (octets 5 0 0 0 97 98 99 100 0 0 0 0) buf))))
+
+(test negative-ints-are-twos-complement
+  (let ((buf (buffer 4)))
+    (setf (n::i32ref buf 0) -2)
+    (is (equalp (octets #xfe #xff #xff #xff) buf))))

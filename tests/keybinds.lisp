@@ -6,63 +6,73 @@
 (def-suite keybinds :in :nucleotide)
 (in-suite keybinds)
 
-(defmacro with-empty-keybinds (&body body)
-  `(let ((n::*keybinds* '())
-         (n::*key-chords* '()))
-     ,@body))
-
 (test modifiers
-  (is (= 0 (n::parse-modifiers nil)))
-  (is (= 64 (n::parse-modifiers :super)))
-  (is (= 65 (n::parse-modifiers '(:super :shift))))
-  (signals n:nucleotide-error (n::parse-modifiers :hyper)))
+  (is (= 0 (n::parse-modifiers '())))
+  (is (= 64 (n::parse-modifiers "Super")))
+  (is (= 64 (n::parse-modifiers "Mod")))
+  (is (= 65 (n::parse-modifiers "super+Shift")))
+  (signals n::nucleotide-error (n::parse-modifiers "Hyper")))
 
-(test keysyms
-  (is (= #x61 (n::parse-keysym #\a)))
-  (is (= #xff0d (n::parse-keysym :return)))
-  (is (= #x10020ac (n::parse-keysym (code-char #x20ac))))
-  (is (= 42 (n::parse-keysym 42))))
+(test keys
+  (is (equal '(#x63 . 65) (n::parse-key "Super+Shift+C")))
+  (is (equal '(#x31 . 64) (n::parse-key "Mod+1")))
+  (is (equal '(#xff0d . 0) (n::parse-key "Return")))
+  (is (equal '(#x2c . 64) (n::parse-key "Super+Comma")))
+  (is (equal '(#x5b . 64) (n::parse-key "Super+BracketLeft")))
+  (is (equal '(#x1008ff14 . 0) (n::parse-key "XF86AudioPlay")))
+  (is (equal '(#x10020ac . 0) (n::parse-key (string (code-char #x20ac)))))
+  (signals n::nucleotide-error (n::parse-key "Super+NoSuchKey"))
+  (signals n::nucleotide-error (n::parse-key "")))
 
-(test define-keybinds-adds-and-replaces
-  (with-empty-keybinds
-    (n:define-keybinds (wm)
-      (:super #\a :first)
-      ((:super :shift) #\a :second))
-    (n:define-keybinds (wm)
-      (:super #\a :replaced))
-    (is (= 2 (length n::*keybinds*)))
-    (is (eq :replaced
-            (funcall (cdr (assoc (n::key-id :super #\a) n::*keybinds*
-                                 :test #'equal))
-                     nil)))))
+(test key-sequences
+  (is (equal '((#x20 . 64) (#x74 . 0)) (n::parse-key-sequence "Super+Space T")))
+  (signals n::nucleotide-error (n::parse-key-sequence "A B C")))
 
-(test keybind-bodies-see-the-wm
-  (with-empty-keybinds
-    (n:define-keybinds (the-wm)
-      (:super #\a the-wm))
-    (is (eq :wm (funcall (cdar n::*keybinds*) :wm)))))
+(test bindings-take-commands
+  (with-fresh-config
+    (n::bind "Super+Q" n::close-window)
+    (n::bind "Super+H" (n::focus :left))
+    (is (equal '(n::close-window) (action "Super+Q")))
+    (is (equal '(n::focus :left) (action "Super+H")))
+    (signals n::nucleotide-error (n::bind "Super+X" (n::no-such-command)))))
 
-(test chords-and-keybinds-exclude-each-other
-  (with-empty-keybinds
-    (n:define-keybinds (wm)
-      (:super :space :plain))
-    (n:define-key-chords (wm)
-      ((:super :space)
-       (#\t :t)
-       ((:shift #\t) :shift-t)))
-    (is (null n::*keybinds*))
-    (is (= 2 (length (cdar n::*key-chords*))))
-    (n:define-keybinds (wm)
-      (:super :space :plain))
-    (is (null n::*key-chords*))))
+(test bindings-replace-the-same-keys
+  (with-fresh-config
+    (n::bind "Super+Q" n::close-window)
+    (n::bind "Super+Q" n::exit-session)
+    (is (= 1 (length n::*bindings*)))
+    (is (equal '(n::exit-session) (action "Super+Q")))))
 
-(test remove-keybinds
-  (with-empty-keybinds
-    (n:define-keybinds (wm) (:super #\a nil))
-    (n:remove-keybind :super #\a)
-    (is (null n::*keybinds*))
-    (n:define-key-chords (wm) ((:super :space) (#\t nil) (#\m nil)))
-    (n:remove-key-chord '(:super :space) '(nil #\t))
-    (is (= 1 (length (cdar n::*key-chords*))))
-    (n:remove-key-chord '(:super :space))
-    (is (null n::*key-chords*))))
+(test chords-and-their-prefix-exclude-each-other
+  (with-fresh-config
+    (n::bind "Super+Space" n::toggle-floating)
+    (n::bind "Super+Space T" (n::set-layout n::tiling))
+    (n::bind "Super+Space M" (n::set-layout n::monocle))
+    (is (= 2 (length n::*bindings*)))
+    (n::bind "Super+Space" n::toggle-floating)
+    (is (equal '(n::toggle-floating) (action "Super+Space")))
+    (is (= 1 (length n::*bindings*)))))
+
+(test unbind
+  (with-fresh-config
+    (n::bind "Super+Q" n::close-window)
+    (n::unbind "Super+Q")
+    (is (null n::*bindings*))))
+
+(test commands-get-the-wm-and-their-arguments
+  (let ((n::*commands* '())
+        (wm (make-instance 'n::wm)))
+    (n::define-command test-command (wm a &optional (b 2))
+      (list wm a b))
+    (is (equal (list wm 1 2) (n::run-command wm '(test-command 1))))
+    (is (equal (list wm 1 3) (n::run-command wm '(test-command 1 3))))
+    (is (equal '(test-command) (n::command-names)))
+    (signals n::nucleotide-error (n::run-command wm 'missing))))
+
+(test the-defaults-bind-known-commands
+  (with-fresh-config
+    (n::use-defaults)
+    (is (equal '(n::switch-workspace 3) (action "Super+3")))
+    (is (equal '(n::switch-workspace 3) (action "Super+Shift+3")))
+    (is (equal '(n::send-to-workspace 3) (action "Super+Ctrl+Shift+3")))
+    (is (equal '(n::toggle-highlight :app-id "emacs") (action "Super+Space E")))))

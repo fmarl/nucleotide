@@ -15,14 +15,14 @@
   "The globals we bind: proxy class, highest version we support, and the WM
 accessor that holds the proxy.")
 
-(defparameter *num-of-workspaces* 9
-  "Read once at startup.")
+(define-setting *num-of-workspaces* 9
+  :documentation "Read at startup.")
 
 (defun make-workspaces ()
   (loop for i from 1 to *num-of-workspaces*
         collect (make-instance 'workspace :name (princ-to-string i))))
 
-(defun exit-session (wm)
+(define-command exit-session (wm)
   (river-window-manager-v1.exit-session (wm-river wm)))
 
 (defun enter-submap (wm submap)
@@ -79,15 +79,20 @@ accessor that holds the proxy.")
     (setf (op-state (wm-op wm)) :end))
   (setf (wm-pending-closes wm) (remove win (wm-pending-closes wm))
         (wm-pending-fullscreens wm) (remove win (wm-pending-fullscreens wm)
-                                            :key #'car))
+                                            :key #'car)
+        (wm-focus-history wm) (remove win (wm-focus-history wm)))
+  (when (eq (wm-last-focus wm) win)
+    (setf (wm-last-focus wm) nil))
   (river-node-v1.destroy (window-node win))
-  (river-window-v1.destroy (window-proxy win)))
+  (river-window-v1.destroy (window-proxy win))
+  (run-event-hooks :window-closed win))
 
 (define-handler (wm (win window) :closed) ()
   (detach-window wm win))
 
 (define-handler (wm (win window) :title) (title)
-  (setf (window-title win) title))
+  (setf (window-title win) title)
+  (run-event-hooks :window-title win title))
 
 (define-handler (wm (win window) :app-id) (app-id)
   (setf (window-app-id win) app-id))

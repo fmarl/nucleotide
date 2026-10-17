@@ -20,7 +20,7 @@
 
 (test tiling-fits-and-does-not-overlap
   (loop for n from 0 to 6
-        for rects = (n:tiling n 10 20 1000 800)
+        for rects = (n::tiling-rects n 10 20 1000 800 3/5 8)
         do (is (= n (length rects)))
         (dolist (rect rects)
           (is (inside-p rect 10 20 1000 800)))
@@ -29,14 +29,25 @@
                    (is (not (overlap-p a b)))))))
 
 (test tiling-stack-fills-the-height
-  (let* ((rects (n:tiling 4 0 0 1000 800 :gap 8))
+  (let* ((rects (n::tiling-rects 4 0 0 1000 800 3/5 8))
          (last (car (last rects))))
     (is (= (- 800 8) (+ (second last) (fourth last))))))
 
 (test single-window-gets-everything-but-the-gaps
-  (is (equal '((8 8 984 784)) (n:tiling 1 0 0 1000 800 :gap 8))))
+  (is (equal '((8 8 984 784)) (n::tiling-rects 1 0 0 1000 800 3/5 8))))
 
 (test monocle-stacks-identical-rects
-  (let ((rects (n:monocle 3 0 0 1000 800)))
-    (is (= 3 (length rects)))
-    (is (= 1 (length (remove-duplicates rects :test #'equal))))))
+  (let ((rects (n::monocle-rects 3 0 0 1000 800 8)))
+    (is (equal (make-list 3 :initial-element (list 8 8 984 784)) rects))))
+
+(test layouts-from-specs
+  (is (typep (n::make-layout 'n::monocle) 'n::monocle))
+  (is (= 1/2 (n::tiling-ratio (n::make-layout '(n::tiling :ratio 1/2)))))
+  (signals n::nucleotide-error (n::make-layout 'n::wm))
+  (signals n::nucleotide-error (n::make-layout 'no-such-layout)))
+
+(test tiling-uses-its-ratio-and-the-gap
+  (let ((n::*gap* 0))
+    (is (equal '((0 0 500 800) (500 0 500 800))
+               (n::layout-arrange (n::make-layout '(n::tiling :ratio 1/2)) nil '(a b)
+                                  0 0 1000 800)))))
