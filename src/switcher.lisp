@@ -24,12 +24,6 @@
     (let ((number (and output (parse-integer output :junk-allowed t))))
       (and number (<= 1 number (length choices)) (1- number)))))
 
-(defun pick-window (windows)
-  (let ((index (menu-choose (loop for win in windows
-                                  for number from 1
-                                  collect (window-label win number)))))
-    (and index (nth index windows))))
-
 (defun focus-from-switcher (wm win)
   (when (member win (all-windows wm))
     (let ((previous (wm-focused-output wm)))
@@ -38,11 +32,15 @@
       (follow-focus wm previous))))
 
 (define-command switch-window (wm)
-  (let ((windows (all-windows wm)))
+  (let* ((windows (all-windows wm))
+         (choices (loop for win in windows
+                        for number from 1
+                        collect (window-label win number))))
     (when windows
       (sb-thread:make-thread
        (lambda ()
-         (let ((win (pick-window windows)))
-           (when win
-             (event-loop-post (wm-loop wm) (lambda () (focus-from-switcher wm win))))))
+         (let ((index (menu-choose choices)))
+           (when index
+             (event-loop-post (wm-loop wm)
+                              (lambda () (focus-from-switcher wm (nth index windows)))))))
        :name "nucleotide window switcher"))))
