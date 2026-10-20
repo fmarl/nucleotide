@@ -100,7 +100,8 @@ Patterns are strings or predicates; actions are `:float`, `:workspace`,
 
 `Super+Space E` shows the most recently focused Emacs frame alone on the
 current monitor without moving it, and hides it again; the command
-`(toggle-highlight :app-id "emacs")` takes any patterns a rule takes.
+`(toggle-highlight :app-id "emacs")` takes any patterns a rule takes. Any
+other key binding ends the highlight before it runs.
 
 ### Input
 ```lisp

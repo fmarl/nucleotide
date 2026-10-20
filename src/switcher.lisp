@@ -27,7 +27,7 @@
 (defun focus-from-switcher (wm win)
   (when (member win (all-windows wm))
     (let ((previous (wm-focused-output wm)))
-      (setf (wm-highlight wm) nil)
+      (end-highlight wm)
       (focus-window wm win)
       (follow-focus wm previous))))
 

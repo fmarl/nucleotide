@@ -76,3 +76,14 @@
     (is (equal '(n::switch-workspace 3) (action "Super+Shift+3")))
     (is (equal '(n::send-to-workspace 3) (action "Super+Ctrl+Shift+3")))
     (is (equal '(n::toggle-highlight :app-id "emacs") (action "Super+Space E")))))
+
+(test every-command-but-toggle-highlight-ends-the-highlight
+  (let ((n::*commands* (list 'n::toggle-highlight))
+        (ended '()))
+    (n::define-command plain-test-command (wm)
+      (declare (ignore wm)))
+    (with-stubs ((n::end-highlight (lambda (wm) (push wm ended)))
+                 (n::toggle-highlight (lambda (wm &rest match) (declare (ignore wm match)))))
+      (n::run-command :wm 'plain-test-command)
+      (n::run-command :wm 'n::toggle-highlight))
+    (is (equal '(:wm) ended))))

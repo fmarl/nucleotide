@@ -23,6 +23,8 @@ bindings can run."
 
 (defun run-command (wm action)
   (destructuring-bind (name . arguments) (normalize-action action)
+    (unless (eq name 'toggle-highlight)
+      (end-highlight wm))
     (apply name wm arguments)))
 
 (defun command-names ()

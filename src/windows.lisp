@@ -80,6 +80,11 @@ one of RULE, alone on the focused output; again to stop."
                                       :from-end t))))
   (mark-dirty wm))
 
+(defun end-highlight (wm)
+  (when (wm-highlight wm)
+    (setf (wm-highlight wm) nil)
+    (mark-dirty wm)))
+
 (define-command toggle-fullscreen (wm)
   (let ((win (effective-focus wm)))
     (when win
