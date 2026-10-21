@@ -6,6 +6,8 @@
 (defvar *commands* '()
   "The functions that bindings may run.")
 
+(defvar *builtin-commands* '())
+
 (defmacro define-command (name (wm &rest lambda-list) &body body)
   "Define NAME as a function of the window manager WM and LAMBDA-LIST that
 bindings can run."

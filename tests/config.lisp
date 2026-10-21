@@ -116,3 +116,21 @@
         (finishes (n::check-file-permissions "/etc/passwd" #o022 :allow-root t))
         (signals n::nucleotide-error
                  (n::check-file-permissions "/etc/passwd" #o044 :allow-root t)))))
+
+(test reloading-forgets-the-commands-of-the-init-file
+  (unwind-protect
+       (with-config-home (file)
+         (write-config file
+                       '(n::define-command n::test-config-command (wm) (declare (ignore wm)))
+                       '(n::bind "Super+A" n::test-config-command))
+         (is (eq t (n::load-user-config)))
+         (is (member 'n::test-config-command n::*commands*))
+         (write-config file '(n::bind "Super+A" n::test-config-command))
+         (with-stubs ((n::notify (lambda (&rest args) (declare (ignore args)))))
+           (is (eq :error (let ((*error-output* (make-broadcast-stream)))
+                            (n::load-user-config)))))
+         (write-config file '(n::use-defaults))
+         (n::load-user-config)
+         (is (not (member 'n::test-config-command n::*commands*)))
+         (is (member 'n::close-window n::*commands*)))
+    (fmakunbound 'n::test-config-command)))

@@ -31,7 +31,7 @@
                  collect `(setf (fdefinition ',name) ,var))))))
 
 (defmacro with-fresh-config (&body body)
-  `(let ((n::*commands* (copy-list n::*commands*))
+  `(let ((n::*commands* (copy-list n::*builtin-commands*))
          (n::*bindings* '())
          (n::*window-rules* '())
          (n::*hooks* '())

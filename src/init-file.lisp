@@ -8,12 +8,14 @@
 
 (defun reset-config ()
   (reset-settings)
-  (setf *bindings* '()
+  (setf *commands* (copy-list *builtin-commands*)
+        *bindings* '()
         *window-rules* '()
         *hooks* '()))
 
 (defun save-config ()
-  (list* (cons '*bindings* *bindings*)
+  (list* (cons '*commands* *commands*)
+         (cons '*bindings* *bindings*)
          (cons '*window-rules* *window-rules*)
          (cons '*hooks* *hooks*)
          (loop for (name) in *settings*

@@ -149,9 +149,10 @@ its arguments. `(command-names)` lists them; `define-command` adds more. A
 command is a function of the window manager and its arguments, so the REPL can
 call it too.
 
-`Super+Space C` reloads the init file from scratch: bindings, rules and hooks
-it no longer has are gone and settings it no longer sets get their default
-again. If it fails to load, everything stays as it was. A few settings, like
+`Super+Space C` reloads the init file from scratch: bindings, rules, hooks and
+commands it no longer has are gone and settings it no longer sets get their
+default again. If it fails to load, everything stays as it was, except for
+functions and handlers it redefined before the error. A few settings, like
 `*num-of-workspaces*`, are only read at startup.
 
 Hooks run functions on events, after nucleotide handled them:

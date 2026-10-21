@@ -18,3 +18,5 @@
     (finish-output)
     (finish-output *error-output*)
     (sb-ext:exit :code code :abort t)))
+
+(setf *builtin-commands* (copy-list *commands*))
