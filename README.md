@@ -162,7 +162,9 @@ Hooks run functions on events, after nucleotide handled them:
 ```
 
 The events are `:window-opened`, `:window-closed`, `:window-title`,
-`:focus-changed` and `:workspace-changed`. For deeper changes, events are
+`:focus-changed` and `:workspace-changed`. `:window-title` only reports changes
+after `:window-opened`, which sees the first title as `(window-title win)`.
+For deeper changes, events are
 dispatched to the generic function `handle-event`, and redefining a handler
 with `define-handler` takes effect immediately.
 

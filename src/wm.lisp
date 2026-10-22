@@ -92,7 +92,8 @@ accessor that holds the proxy.")
 
 (define-handler (wm (win window) :title) (title)
   (setf (window-title win) title)
-  (run-event-hooks :window-title win title))
+  (when (window-rules-applied win)
+    (run-event-hooks :window-title win title)))
 
 (define-handler (wm (win window) :app-id) (app-id)
   (setf (window-app-id win) app-id))

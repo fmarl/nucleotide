@@ -134,3 +134,14 @@
          (is (not (member 'n::test-config-command n::*commands*)))
          (is (member 'n::close-window n::*commands*)))
     (fmakunbound 'n::test-config-command)))
+
+(test titles-reach-hooks-once-the-window-opened
+  (with-fresh-config
+    (let ((win (make-instance 'n::window :workspace nil))
+          (seen '()))
+      (n::on :window-title (lambda (win title) (declare (ignore win)) (push title seen)))
+      (n::handle-event nil win :title "first")
+      (setf (n::window-rules-applied win) t)
+      (n::handle-event nil win :title "second")
+      (is (equal "second" (n::window-title win)))
+      (is (equal '("second") seen)))))
