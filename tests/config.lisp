@@ -145,3 +145,11 @@
       (n::handle-event nil win :title "second")
       (is (equal "second" (n::window-title win)))
       (is (equal '("second") seen)))))
+
+(test an-init-file-in-a-writable-directory-is-ignored
+  (with-config-home (file)
+    (write-config file '(n::bind "Super+A" n::close-window))
+    (sb-posix:chmod (namestring (uiop:pathname-directory-pathname file)) #o775)
+    (with-stubs ((n::notify (lambda (&rest args) (declare (ignore args)))))
+      (is (eq :error (n::load-user-config))))
+    (is (null (action "Super+A")))))

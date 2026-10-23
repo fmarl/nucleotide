@@ -117,8 +117,8 @@ variables.
 ### Configuration
 On start nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp`
 (usually `~/.config/nucleotide/init.lisp`) in the `nucleotide` package, or
-binds the default keys of `src/defaults.lisp` if there is none. It must not be
-writable by other users, otherwise it is ignored.
+binds the default keys of `src/defaults.lisp` if there is none. The file and its
+directory must not be writable by other users, otherwise it is ignored.
 
 ```lisp
 (use-defaults)

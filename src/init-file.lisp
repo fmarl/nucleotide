@@ -41,6 +41,8 @@ the configuration stays as it was, or is the defaults at startup."
     (cond ((probe-file file)
            (handler-case
                (progn
+                 (check-file-permissions (uiop:pathname-directory-pathname file) #o022
+                                         :allow-root t)
                  (check-file-permissions file #o022 :allow-root t)
                  (load-config-file file)
                  t)
