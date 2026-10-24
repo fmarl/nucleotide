@@ -74,8 +74,6 @@
           (float-window wm win))
       (mark-dirty wm))))
 
-;;; Interactive move and resize with the pointer
-
 (defclass pointer-op ()
   ((kind :initarg :kind :reader op-kind)
    (win :initarg :win :reader op-win)

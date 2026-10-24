@@ -3,8 +3,7 @@
 
 (in-package #:nucleotide)
 
-(defvar *wm* nil
-  "This is a window manager. Look at me in the REPL. :-)")
+(defvar *wm* nil)
 
 (defparameter *bound-globals*
   '((river-window-manager-v1 4 wm-river)
@@ -37,8 +36,6 @@ accessor that holds the proxy.")
       (push (cons :leave submap) (wm-pending-submap-ops wm))
       (mark-dirty wm))))
 
-;;; river_window_manager_v1
-
 (define-handler (wm (river river-window-manager-v1) :window) (proxy)
   (attach-window wm proxy))
 
@@ -58,8 +55,6 @@ accessor that holds the proxy.")
 
 (define-handler (wm (river river-window-manager-v1) :unavailable) ()
   (warn "river reports the WM role as unavailable (is another WM running?)"))
-
-;;; Windows
 
 (defun attach-window (wm proxy)
   (let ((win (make-instance 'window :proxy proxy
@@ -117,8 +112,6 @@ accessor that holds the proxy.")
 (define-handler (wm (win window) :exit-fullscreen-requested) ()
   (push (cons win :exit) (wm-pending-fullscreens wm)))
 
-;;; Outputs
-
 (defun attach-output (wm proxy)
   (let ((output (make-instance 'output :proxy proxy)))
     (setf (wm-outputs wm) (append (wm-outputs wm) (list output)))
@@ -168,8 +161,6 @@ accessor that holds the proxy.")
     (river-layer-shell-output-v1.destroy (output-layer-shell output)))
   (river-output-v1.destroy (output-proxy output)))
 
-;;; Seats
-
 (defun attach-seat (wm proxy)
   (when (wm-seat wm)
     (warn "multiple seats are not supported yet")
@@ -204,8 +195,6 @@ accessor that holds the proxy.")
 (define-handler (wm (seat river-layer-shell-seat-v1) :focus-none) ()
   (setf (wm-layer-shell-focus wm) nil))
 
-;;; Lifecycle
-
 (defun bind-global (wm registry name interface version)
   (let ((entry (find interface *bound-globals*
                      :key (lambda (entry) (interface-wire-name (first entry)))
@@ -234,7 +223,7 @@ accessor that holds the proxy.")
     wm))
 
 (defun start-wm (&key display-name)
-  "Connect to river, take the window manager role, and run in a new thread."
+  "Run the window manager in a new thread."
   (when (and *wm* (wm-thread *wm*)
              (sb-thread:thread-alive-p (wm-thread *wm*)))
     (nucleotide-error "a WM is already running; call (stop-wm) first"))

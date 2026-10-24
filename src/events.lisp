@@ -12,8 +12,6 @@ method are ignored.")
     nil))
 
 (defmacro define-handler ((wm (object class) event) lambda-list &body body)
-  "Define how WM handles EVENT on OBJECT of CLASS. LAMBDA-LIST receives the
-event's arguments."
   (let ((event-var (gensym "EVENT"))
         (args (gensym "ARGS")))
     `(defmethod handle-event (,wm (,object ,class) (,event-var (eql ,event))

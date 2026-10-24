@@ -98,7 +98,6 @@ keep OUTPUT's workspaces so the windows can return to them."
       (setf (workspace-focused home) win))))
 
 (defun restore-output (wm output)
-  "Give a reconnected OUTPUT its old workspaces and bring their windows back."
   (let ((stashed (alist-get (output-name output) (wm-stash wm))))
     (when stashed
       (let ((current (output-workspaces output))

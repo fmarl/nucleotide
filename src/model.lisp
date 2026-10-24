@@ -70,8 +70,7 @@ startup.")
   ((name :initarg :name :accessor workspace-name)
    (windows :initform '() :accessor workspace-windows)
    (focused :initform nil :accessor workspace-focused)
-   (output :initform nil :accessor workspace-output
-           :documentation "The output the workspace belongs to.")
+   (output :initform nil :accessor workspace-output)
    (layout :initform (make-layout *default-layout*) :accessor workspace-layout)))
 
 (defmethod print-object ((ws workspace) stream)

@@ -6,8 +6,7 @@
 (defparameter *hook-events*
   '(:window-opened :window-closed :window-title :focus-changed :workspace-changed))
 
-(defvar *hooks* '()
-  "Alist from events to the functions called on them.")
+(defvar *hooks* '())
 
 (defun on (event function)
   "Call FUNCTION on EVENT: :WINDOW-OPENED and :WINDOW-CLOSED with the window,

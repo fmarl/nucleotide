@@ -57,8 +57,6 @@ the configuration stays as it was, or is the defaults at startup."
            nil))))
 
 (define-command reload-config (wm)
-  "Load the init file from scratch and reinstall all keybindings, in the WM
-thread."
   (unless (eq (load-user-config) :error)
     (when (wm-seat wm)
       (uninstall-all-keybinds wm)

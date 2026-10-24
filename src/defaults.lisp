@@ -4,7 +4,7 @@
 (in-package #:nucleotide)
 
 (defun use-defaults ()
-  "Bind the default keys. Without an init file nucleotide calls it itself."
+  "Without an init file nucleotide calls it itself."
   (bind "Super+Shift+Return" (spawn "alacritty"))
   (bind "Super+P" (spawn "bemenu-run"))
   (bind "Super+H" (focus :left))

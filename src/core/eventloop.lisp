@@ -4,9 +4,8 @@
 (in-package #:nucleotide)
 
 (defvar *debug-on-error* nil
-  "When true, errors in the event loop invoke the debugger (useful with SLY
-connected). Otherwise they are logged and the loop keeps running, so a bug
-in policy code can never freeze the session.")
+  "When true, errors in the event loop invoke the debugger, else the failing
+event is logged and skipped.")
 
 (defstruct (event-loop (:constructor %make-event-loop)
                        (:conc-name loop-))

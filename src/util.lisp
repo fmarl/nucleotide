@@ -41,7 +41,6 @@ Skip the failing event instead, or else end only the failing thread."
                         path (logand (sb-posix:stat-mode stat) #o777)))))
 
 (defmacro drain (place)
-  "PLACE's list, leaving PLACE empty."
   `(prog1 ,place (setf ,place '())))
 
 (defun spawn-program (command)

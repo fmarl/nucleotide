@@ -3,8 +3,7 @@
 
 (in-package #:nucleotide)
 
-(defvar *commands* '()
-  "The functions that bindings may run.")
+(defvar *commands* '())
 
 (defvar *builtin-commands* '())
 
@@ -17,7 +16,6 @@ bindings can run."
      ',name))
 
 (defun normalize-action (action)
-  "ACTION, a command name or a list of one and its arguments, as a list."
   (let ((action (if (listp action) action (list action))))
     (unless (member (first action) *commands*)
       (nucleotide-error "unknown command ~S" (first action)))

@@ -2,7 +2,6 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
-;; Usage: emacs --batch -Q -l scripts/fmt.el FILE...
 ;; With FMT_CHECK set, files are only checked, not changed.
 
 (require 'cl-indent)
