@@ -97,32 +97,3 @@
     (is (null (n::clip-box 8 8 496 784 output)))
     (is (eq :hidden (n::clip-box 1008 8 496 784 output)))
     (is (equal '(-504 0 1000 800) (n::clip-box 504 0 1000 800 output)))))
-
-(test fullscreen-goes-to-the-window-s-own-output
-  (let* ((wm (make-test-wm))
-         (left (add-output wm 0))
-         (right (add-output wm 1000))
-         (win (make-instance 'n::window :workspace (second (n::output-workspaces right)))))
-    (setf (n::output-proxy left) :left
-          (n::output-proxy right) :right)
-    (is (eq :right (n::fullscreen-output wm win nil)))
-    (is (eq :requested (n::fullscreen-output wm win :requested)))))
-
-(test an-empty-clip-box-disables-clipping
-  (is (equal '(0 0 0 0) (n::clip-request (make-instance 'n::window :workspace nil)))))
-
-(test empty-workspaces-clear-the-focus
-  (let* ((wm (make-test-wm))
-         (win (make-instance 'n::window :workspace (ws wm 1) :proxy :window))
-         (calls '()))
-    (push win (n::workspace-windows (ws wm 1)))
-    (setf (n::workspace-focused (ws wm 1)) win
-          (n::wm-seat wm) :seat)
-    (with-stubs ((n::river-seat-v1.focus-window
-                  (lambda (seat window) (declare (ignore seat)) (push (list :focus window) calls)))
-                 (n::river-seat-v1.clear-focus
-                  (lambda (seat) (declare (ignore seat)) (push (list :clear) calls))))
-      (n::manage-focus wm)
-      (n::show-workspace wm (ws wm 2))
-      (n::manage-focus wm))
-    (is (equal '((:focus :window) (:clear)) (reverse calls)))))

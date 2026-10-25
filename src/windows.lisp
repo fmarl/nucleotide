@@ -7,10 +7,6 @@
   (show-workspace wm (window-workspace win))
   (setf (workspace-focused (window-workspace win)) win))
 
-(defun effective-focus (wm)
-  "While a highlight is active, the highlighted window is the only visible one."
-  (or (wm-highlight wm) (wm-focused-window wm)))
-
 (define-command focus (wm &optional (direction :next))
   "Focus the window in DIRECTION: :LEFT, :RIGHT, :UP or :DOWN."
   (let* ((ws (wm-active-workspace wm))
@@ -70,21 +66,6 @@ workspace already uses keeps its state."
     (setf (wm-active-layout wm) (make-layout spec)))
   (mark-dirty wm))
 
-(define-command toggle-highlight (wm &rest match)
-  "Show the most recently focused window that matches MATCH, a plist like the
-one of RULE, alone on the focused output; again to stop."
-  (setf (wm-highlight wm)
-        (unless (wm-highlight wm)
-          (find-if (lambda (win) (rule-matches-p match win))
-                   (remove-duplicates (append (wm-focus-history wm) (all-windows wm))
-                                      :from-end t))))
-  (mark-dirty wm))
-
-(defun end-highlight (wm)
-  (when (wm-highlight wm)
-    (setf (wm-highlight wm) nil)
-    (mark-dirty wm)))
-
 (define-command toggle-fullscreen (wm)
   (let ((win (effective-focus wm)))
     (when win
@@ -100,3 +81,59 @@ one of RULE, alone on the focused output; again to stop."
 
 (define-command send-to-workspace (wm number)
   (send-focused-to wm (nth-workspace wm (1- number))))
+
+(defun attach-window (wm proxy)
+  (let ((win (make-instance 'window :proxy proxy
+                            :node (river-window-v1.get-node proxy)
+                            :workspace (wm-active-workspace wm))))
+    (push win (active-windows wm))
+    (focus-window wm win)
+    (forward-events wm proxy win)))
+
+(defun detach-window (wm win)
+  (remove-window (window-workspace win) win)
+  (when (eq (wm-highlight wm) win)
+    (setf (wm-highlight wm) nil))
+  (when (eq (wm-pointer-window wm) win)
+    (setf (wm-pointer-window wm) nil))
+  (when (and (wm-op wm) (eq (op-win (wm-op wm)) win))
+    (setf (op-state (wm-op wm)) :end))
+  (setf (wm-pending-closes wm) (remove win (wm-pending-closes wm))
+        (wm-pending-fullscreens wm) (remove win (wm-pending-fullscreens wm)
+                                            :key #'car)
+        (wm-focus-history wm) (remove win (wm-focus-history wm)))
+  (when (eq (wm-last-focus wm) win)
+    (setf (wm-last-focus wm) nil))
+  (river-node-v1.destroy (window-node win))
+  (river-window-v1.destroy (window-proxy win))
+  (run-event-hooks :window-closed win))
+
+(define-handler (wm (win window) :closed) ()
+  (detach-window wm win))
+
+(define-handler (wm (win window) :title) (title)
+  (setf (window-title win) title)
+  (when (window-rules-applied win)
+    (run-event-hooks :window-title win title)))
+
+(define-handler (wm (win window) :app-id) (app-id)
+  (setf (window-app-id win) app-id))
+
+(define-handler (wm (win window) :parent) (parent)
+  (setf (window-parent win) (and parent (find-window wm parent))))
+
+(define-handler (wm (win window) :dimensions) (width height)
+  (setf (window-width win) width
+        (window-height win) height))
+
+(define-handler (wm (win window) :dimensions-hint) (min-width min-height max-width max-height)
+  (setf (window-min-width win) min-width
+        (window-min-height win) min-height
+        (window-max-width win) max-width
+        (window-max-height win) max-height))
+
+(define-handler (wm (win window) :fullscreen-requested) (output)
+  (push (cons win output) (wm-pending-fullscreens wm)))
+
+(define-handler (wm (win window) :exit-fullscreen-requested) ()
+  (push (cons win :exit) (wm-pending-fullscreens wm)))

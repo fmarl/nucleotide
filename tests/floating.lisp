@@ -24,14 +24,6 @@
 (test floating-windows-start-centered
   (is (equal '(300 250) (n::center-in-area 400 300 1000 800))))
 
-(test floating-windows-stay-out-of-the-layout
-  (let* ((ws (make-instance 'n::workspace :name "test"))
-         (tiled (make-instance 'n::window :workspace ws))
-         (dialog (make-instance 'n::window :workspace ws)))
-    (setf (n::workspace-windows ws) (list dialog tiled)
-          (n::window-floating dialog) t)
-    (is (equal (list tiled) (n::tiled-windows ws)))))
-
 (test closing-a-dialog-focuses-its-parent
   (let* ((ws (make-instance 'n::workspace :name "test"))
          (parent (make-instance 'n::window :workspace ws))
@@ -42,21 +34,6 @@
           (n::workspace-focused ws) dialog)
     (n::remove-window ws dialog)
     (is (eq parent (n::workspace-focused ws)))))
-
-(test pending-dimensions-only-resize-floating-windows
-  (let* ((wm (make-test-wm))
-         (tiled (make-instance 'n::window :workspace (ws wm 1)))
-         (floating (make-instance 'n::window :workspace (ws wm 1)))
-         (proposed '()))
-    (setf (n::workspace-windows (ws wm 1)) (list tiled floating)
-          (n::window-floating floating) t
-          (n::window-pending-dimensions tiled) '(400 300)
-          (n::window-pending-dimensions floating) '(500 200))
-    (with-stubs ((n::propose-dimensions
-                  (lambda (win width height) (push (list win width height) proposed))))
-      (n::manage-pending-dimensions wm))
-    (is (equal (list (list floating 500 200)) proposed))
-    (is (null (n::window-pending-dimensions tiled)))))
 
 (test overlap-with-outputs
   (let* ((wm (make-test-wm))

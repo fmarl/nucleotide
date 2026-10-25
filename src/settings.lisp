@@ -29,12 +29,3 @@ called with its value after the init file loaded."
         do (handler-case (funcall check (symbol-value name))
              (error (c)
                (nucleotide-error "~(~A~): ~A" name c)))))
-
-(defun parse-color (color-code)
-  (unless (and (stringp color-code)
-               (member (length color-code) '(7 9))
-               (char= #\# (char color-code 0)))
-    (nucleotide-error "~S is not a color like \"#6f8cab\"" color-code))
-  (append (loop for start from 1 below (length color-code) by 2
-                collect (parse-integer color-code :start start :end (+ start 2) :radix 16))
-          (and (= 7 (length color-code)) '(255))))

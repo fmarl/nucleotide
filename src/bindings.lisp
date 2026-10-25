@@ -73,3 +73,15 @@
         (wm-pending-submap-ops wm) '()
         (wm-pending-bindings wm) '())
   (mapc #'destroy-binding (drain (wm-bindings wm))))
+
+(defun enter-submap (wm submap)
+  (setf (wm-active-submap wm) submap)
+  (push (cons :enter submap) (wm-pending-submap-ops wm))
+  (mark-dirty wm))
+
+(defun leave-submap (wm)
+  (let ((submap (wm-active-submap wm)))
+    (when submap
+      (setf (wm-active-submap wm) nil)
+      (push (cons :leave submap) (wm-pending-submap-ops wm))
+      (mark-dirty wm))))

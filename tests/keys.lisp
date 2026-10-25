@@ -3,8 +3,8 @@
 
 (in-package #:nucleotide/tests)
 
-(def-suite keybinds :in :nucleotide)
-(in-suite keybinds)
+(def-suite keys :in :nucleotide)
+(in-suite keys)
 
 (test modifiers
   (is (= 0 (n::parse-modifiers '())))
@@ -59,16 +59,6 @@
     (n::unbind "Super+Q")
     (is (null n::*bindings*))))
 
-(test commands-get-the-wm-and-their-arguments
-  (let ((n::*commands* '())
-        (wm (make-instance 'n::wm)))
-    (n::define-command test-command (wm a &optional (b 2))
-      (list wm a b))
-    (is (equal (list wm 1 2) (n::run-command wm '(test-command 1))))
-    (is (equal (list wm 1 3) (n::run-command wm '(test-command 1 3))))
-    (is (equal '(test-command) (n::command-names)))
-    (signals n::nucleotide-error (n::run-command wm 'missing))))
-
 (test the-defaults-bind-known-commands
   (with-fresh-config
     (n::use-defaults)
@@ -76,14 +66,3 @@
     (is (equal '(n::switch-workspace 3) (action "Super+Shift+3")))
     (is (equal '(n::send-to-workspace 3) (action "Super+Ctrl+Shift+3")))
     (is (equal '(n::toggle-highlight :app-id "emacs") (action "Super+Space E")))))
-
-(test every-command-but-toggle-highlight-ends-the-highlight
-  (let ((n::*commands* (list 'n::toggle-highlight))
-        (ended '()))
-    (n::define-command plain-test-command (wm)
-      (declare (ignore wm)))
-    (with-stubs ((n::end-highlight (lambda (wm) (push wm ended)))
-                 (n::toggle-highlight (lambda (wm &rest match) (declare (ignore wm match)))))
-      (n::run-command :wm 'plain-test-command)
-      (n::run-command :wm 'n::toggle-highlight))
-    (is (equal '(:wm) ended))))

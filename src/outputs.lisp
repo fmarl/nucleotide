@@ -179,3 +179,52 @@ workspace shown on the neighboring output, and follow them there."
 
 (define-command switch-workspace (wm number)
   (switch-to-workspace wm (nth-workspace wm (1- number))))
+
+(defun attach-output (wm proxy)
+  (let ((output (make-instance 'output :proxy proxy)))
+    (setf (wm-outputs wm) (append (wm-outputs wm) (list output)))
+    (assign-output wm output)
+    (forward-events wm proxy output)
+    (when (wm-layer-shell wm)
+      (let ((layer-shell (river-layer-shell-v1.get-output (wm-layer-shell wm)
+                                                          proxy)))
+        (setf (output-layer-shell output) layer-shell)
+        (forward-events wm layer-shell output)))))
+
+(define-handler (wm (output output) :wl-output) (global-name)
+  (let ((version (gethash global-name (wm-wl-output-versions wm))))
+    (when (and version (>= version 4))
+      (let ((wl-output (wl-registry.bind (wm-registry wm) global-name 'wl-output 4)))
+        (setf (output-wl-output output) wl-output)
+        (forward-events wm wl-output output)))))
+
+(define-handler (wm (output output) :name) (name)
+  (setf (output-name output) name)
+  (restore-output wm output)
+  (mark-dirty wm))
+
+(define-handler (wm (output output) :position) (x y)
+  (setf (output-x output) x
+        (output-y output) y))
+
+(define-handler (wm (output output) :dimensions) (width height)
+  (setf (output-width output) width
+        (output-height output) height))
+
+(define-handler (wm (output output) :non-exclusive-area) (x y width height)
+  (setf (output-usable-x output) x
+        (output-usable-y output) y
+        (output-usable-width output) width
+        (output-usable-height output) height))
+
+(define-handler (wm (output output) :removed) ()
+  (unassign-output wm output)
+  (dolist (win (all-windows wm))
+    (when (eq (window-fullscreen win) (output-proxy output))
+      (push (cons win :exit) (wm-pending-fullscreens wm))))
+  (mark-dirty wm)
+  (when (output-wl-output output)
+    (wl-output.release (output-wl-output output)))
+  (when (output-layer-shell output)
+    (river-layer-shell-output-v1.destroy (output-layer-shell output)))
+  (river-output-v1.destroy (output-proxy output)))

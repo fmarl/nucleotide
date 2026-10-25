@@ -24,18 +24,6 @@ accessor that holds the proxy.")
 (define-command exit-session (wm)
   (river-window-manager-v1.exit-session (wm-river wm)))
 
-(defun enter-submap (wm submap)
-  (setf (wm-active-submap wm) submap)
-  (push (cons :enter submap) (wm-pending-submap-ops wm))
-  (mark-dirty wm))
-
-(defun leave-submap (wm)
-  (let ((submap (wm-active-submap wm)))
-    (when submap
-      (setf (wm-active-submap wm) nil)
-      (push (cons :leave submap) (wm-pending-submap-ops wm))
-      (mark-dirty wm))))
-
 (define-handler (wm (river river-window-manager-v1) :window) (proxy)
   (attach-window wm proxy))
 
@@ -55,111 +43,6 @@ accessor that holds the proxy.")
 
 (define-handler (wm (river river-window-manager-v1) :unavailable) ()
   (warn "river reports the WM role as unavailable (is another WM running?)"))
-
-(defun attach-window (wm proxy)
-  (let ((win (make-instance 'window :proxy proxy
-                            :node (river-window-v1.get-node proxy)
-                            :workspace (wm-active-workspace wm))))
-    (push win (active-windows wm))
-    (focus-window wm win)
-    (forward-events wm proxy win)))
-
-(defun detach-window (wm win)
-  (remove-window (window-workspace win) win)
-  (when (eq (wm-highlight wm) win)
-    (setf (wm-highlight wm) nil))
-  (when (eq (wm-pointer-window wm) win)
-    (setf (wm-pointer-window wm) nil))
-  (when (and (wm-op wm) (eq (op-win (wm-op wm)) win))
-    (setf (op-state (wm-op wm)) :end))
-  (setf (wm-pending-closes wm) (remove win (wm-pending-closes wm))
-        (wm-pending-fullscreens wm) (remove win (wm-pending-fullscreens wm)
-                                            :key #'car)
-        (wm-focus-history wm) (remove win (wm-focus-history wm)))
-  (when (eq (wm-last-focus wm) win)
-    (setf (wm-last-focus wm) nil))
-  (river-node-v1.destroy (window-node win))
-  (river-window-v1.destroy (window-proxy win))
-  (run-event-hooks :window-closed win))
-
-(define-handler (wm (win window) :closed) ()
-  (detach-window wm win))
-
-(define-handler (wm (win window) :title) (title)
-  (setf (window-title win) title)
-  (when (window-rules-applied win)
-    (run-event-hooks :window-title win title)))
-
-(define-handler (wm (win window) :app-id) (app-id)
-  (setf (window-app-id win) app-id))
-
-(define-handler (wm (win window) :parent) (parent)
-  (setf (window-parent win) (and parent (find-window wm parent))))
-
-(define-handler (wm (win window) :dimensions) (width height)
-  (setf (window-width win) width
-        (window-height win) height))
-
-(define-handler (wm (win window) :dimensions-hint) (min-width min-height max-width max-height)
-  (setf (window-min-width win) min-width
-        (window-min-height win) min-height
-        (window-max-width win) max-width
-        (window-max-height win) max-height))
-
-(define-handler (wm (win window) :fullscreen-requested) (output)
-  (push (cons win output) (wm-pending-fullscreens wm)))
-
-(define-handler (wm (win window) :exit-fullscreen-requested) ()
-  (push (cons win :exit) (wm-pending-fullscreens wm)))
-
-(defun attach-output (wm proxy)
-  (let ((output (make-instance 'output :proxy proxy)))
-    (setf (wm-outputs wm) (append (wm-outputs wm) (list output)))
-    (assign-output wm output)
-    (forward-events wm proxy output)
-    (when (wm-layer-shell wm)
-      (let ((layer-shell (river-layer-shell-v1.get-output (wm-layer-shell wm)
-                                                          proxy)))
-        (setf (output-layer-shell output) layer-shell)
-        (forward-events wm layer-shell output)))))
-
-(define-handler (wm (output output) :wl-output) (global-name)
-  (let ((version (gethash global-name (wm-wl-output-versions wm))))
-    (when (and version (>= version 4))
-      (let ((wl-output (wl-registry.bind (wm-registry wm) global-name 'wl-output 4)))
-        (setf (output-wl-output output) wl-output)
-        (forward-events wm wl-output output)))))
-
-(define-handler (wm (output output) :name) (name)
-  (setf (output-name output) name)
-  (restore-output wm output)
-  (mark-dirty wm))
-
-(define-handler (wm (output output) :position) (x y)
-  (setf (output-x output) x
-        (output-y output) y))
-
-(define-handler (wm (output output) :dimensions) (width height)
-  (setf (output-width output) width
-        (output-height output) height))
-
-(define-handler (wm (output output) :non-exclusive-area) (x y width height)
-  (setf (output-usable-x output) x
-        (output-usable-y output) y
-        (output-usable-width output) width
-        (output-usable-height output) height))
-
-(define-handler (wm (output output) :removed) ()
-  (unassign-output wm output)
-  (dolist (win (all-windows wm))
-    (when (eq (window-fullscreen win) (output-proxy output))
-      (push (cons win :exit) (wm-pending-fullscreens wm))))
-  (mark-dirty wm)
-  (when (output-wl-output output)
-    (wl-output.release (output-wl-output output)))
-  (when (output-layer-shell output)
-    (river-layer-shell-output-v1.destroy (output-layer-shell output)))
-  (river-output-v1.destroy (output-proxy output)))
 
 (defun attach-seat (wm proxy)
   (when (wm-seat wm)

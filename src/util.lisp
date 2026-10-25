@@ -10,26 +10,6 @@
       (uiop:launch-program (list "notify-send" "nucleotide" message)))
     (values)))
 
-(defun confine-thread-errors ()
-  "With the debugger disabled, an error in any thread quits the process.
-Skip the failing event instead, or else end only the failing thread."
-  (let ((previous sb-ext:*invoke-debugger-hook*))
-    (setf sb-ext:*invoke-debugger-hook*
-          (lambda (condition hook)
-            (let ((skip (find-restart 'skip condition))
-                  (thread sb-thread:*current-thread*))
-              (cond
-                (skip
-                 (format *error-output* "~&nucleotide: error in event loop: ~A~%"
-                         condition)
-                 (invoke-restart skip))
-                ((not (eq thread (sb-thread:main-thread)))
-                 (format *error-output* "~&nucleotide: thread ~S ended: ~A~%"
-                         (sb-thread:thread-name thread) condition)
-                 (sb-thread:abort-thread))
-                (previous
-                 (funcall previous condition hook))))))))
-
 (defun check-file-permissions (path forbidden-bits &key allow-root)
   (let* ((stat (sb-posix:stat (sb-ext:native-namestring path)))
          (uid (sb-posix:stat-uid stat)))

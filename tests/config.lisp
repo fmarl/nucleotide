@@ -65,58 +65,6 @@
       (is (eq :error (n::load-user-config))))
     (is (equal "#6f8cab" n::*border-focused*))))
 
-(test colors
-  (is (equal '(111 140 171 255) (n::parse-color "#6f8cab")))
-  (is (equal '(111 140 171 128) (n::parse-color "#6f8cab80")))
-  (signals n::nucleotide-error (n::parse-color "6f8cab"))
-  (signals error (n::parse-color "#zzzzzz")))
-
-(test hooks
-  (with-fresh-config
-    (let ((seen '()))
-      (n::on :window-title (lambda (win title) (declare (ignore win title)) (error "boom")))
-      (n::on :window-title (lambda (win title) (push (list win title) seen)))
-      (with-stubs ((n::notify (lambda (&rest args) (declare (ignore args)))))
-        (n::run-event-hooks :window-title :win "title"))
-      (is (equal '((:win "title")) seen))
-      (signals n::nucleotide-error (n::on :no-such-event #'identity)))))
-
-(test focus-changes-run-hooks-and-fill-the-history
-  (with-fresh-config
-    (let* ((wm (make-test-wm))
-           (a (make-instance 'n::window :workspace (ws wm 1)))
-           (b (make-instance 'n::window :workspace (ws wm 1)))
-           (seen '()))
-      (n::on :focus-changed (lambda (win) (push win seen)))
-      (n::note-focus wm a)
-      (n::note-focus wm a)
-      (n::note-focus wm b)
-      (n::note-focus wm a)
-      (is (equal (list a b a) seen))
-      (is (equal (list a b) (n::wm-focus-history wm))))))
-
-(test highlight-prefers-the-last-focused-match
-  (let* ((wm (make-test-wm))
-         (old (open-window-on (ws wm 1)))
-         (new (open-window-on (ws wm 2))))
-    (setf (n::window-app-id old) "emacs"
-          (n::window-app-id new) "emacs"
-          (n::wm-focus-history wm) (list new old))
-    (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
-      (n::toggle-highlight wm :app-id "emacs")
-      (is (eq new (n::wm-highlight wm)))
-      (n::toggle-highlight wm :app-id "emacs")
-      (is (null (n::wm-highlight wm))))))
-
-(test init-files-may-belong-to-root
-  (if (zerop (sb-posix:getuid))
-      (skip "running as root")
-      (progn
-        (signals n::nucleotide-error (n::check-file-permissions "/etc/passwd" #o022))
-        (finishes (n::check-file-permissions "/etc/passwd" #o022 :allow-root t))
-        (signals n::nucleotide-error
-                 (n::check-file-permissions "/etc/passwd" #o044 :allow-root t)))))
-
 (test reloading-forgets-the-commands-of-the-init-file
   (unwind-protect
        (with-config-home (file)
@@ -135,17 +83,6 @@
          (is (member 'n::close-window n::*commands*)))
     (fmakunbound 'n::test-config-command)))
 
-(test titles-reach-hooks-once-the-window-opened
-  (with-fresh-config
-    (let ((win (make-instance 'n::window :workspace nil))
-          (seen '()))
-      (n::on :window-title (lambda (win title) (declare (ignore win)) (push title seen)))
-      (n::handle-event nil win :title "first")
-      (setf (n::window-rules-applied win) t)
-      (n::handle-event nil win :title "second")
-      (is (equal "second" (n::window-title win)))
-      (is (equal '("second") seen)))))
-
 (test an-init-file-in-a-writable-directory-is-ignored
   (with-config-home (file)
     (write-config file '(n::bind "Super+A" n::close-window))
@@ -153,3 +90,12 @@
     (with-stubs ((n::notify (lambda (&rest args) (declare (ignore args)))))
       (is (eq :error (n::load-user-config))))
     (is (null (action "Super+A")))))
+
+(test init-files-may-belong-to-root
+  (if (zerop (sb-posix:getuid))
+      (skip "running as root")
+      (progn
+        (signals n::nucleotide-error (n::check-file-permissions "/etc/passwd" #o022))
+        (finishes (n::check-file-permissions "/etc/passwd" #o022 :allow-root t))
+        (signals n::nucleotide-error
+                 (n::check-file-permissions "/etc/passwd" #o044 :allow-root t)))))

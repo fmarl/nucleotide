@@ -3,8 +3,8 @@
 
 (in-package #:nucleotide/tests)
 
-(def-suite input :in :nucleotide)
-(in-suite input)
+(def-suite libinput :in :nucleotide)
+(in-suite libinput)
 
 (test libinput-values
   (is (= 1 (n::libinput-value "tap_state" t)))
