@@ -2,8 +2,6 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
-;; With FMT_CHECK set, files are only checked, not changed.
-
 (require 'cl-indent)
 
 (defvar fmt-max-line-length 100)
@@ -16,7 +14,8 @@
                 (define-event . (4 &body))
                 (define-interface . (4 4 4))
                 (test . (4 &body))
-                (with-fresh-config . (&body))))
+                (with-fresh-config . (&body))
+                (with-ipc-connection . (4 &body))))
   (put (car spec) 'common-lisp-indent-function (cdr spec)))
 
 (defun fmt-format-buffer ()
@@ -40,19 +39,15 @@
       (forward-line 1))
     (nreverse problems)))
 
-(let ((check-only (getenv "FMT_CHECK"))
-      (failed nil))
+(let ((failed nil))
   (dolist (file command-line-args-left)
     (with-temp-buffer
       (insert-file-contents file)
       (let ((original (buffer-string)))
         (fmt-format-buffer)
         (unless (equal original (buffer-string))
-          (if check-only
-              (progn (message "%s: not formatted, run make fmt" file)
-                     (setq failed t))
-            (write-region nil nil file nil 'silent)
-            (message "formatted %s" file)))
+          (write-region nil nil file nil 'silent)
+          (message "formatted %s" file))
         (dolist (problem (fmt-long-lines file))
           (message "%s" problem)
           (setq failed t)))))

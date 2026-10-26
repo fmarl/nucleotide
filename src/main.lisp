@@ -29,6 +29,7 @@ Skip the failing event instead, or else end only the failing thread."
       (format *error-output* "~&nucleotide: ~A~%" c)
       (return-from run 1)))
   (sb-thread:join-thread (wm-thread *wm*) :default nil)
+  (stop-ipc *wm*)
   0)
 
 (defun main ()

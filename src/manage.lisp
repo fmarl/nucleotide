@@ -157,4 +157,5 @@
   (manage-pending-dimensions wm)
   (manage-layer-shell wm)
   (manage-focus wm)
-  (manage-warp wm))
+  (manage-warp wm)
+  (ipc-update wm))

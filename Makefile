@@ -9,7 +9,7 @@ ifdef GUIX_ENVIRONMENT
 export LD_LIBRARY_PATH := $(GUIX_ENVIRONMENT)/lib$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
 endif
 
-.PHONY: all check lint fmt fmt-check clean
+.PHONY: all check lint fmt clean
 
 all:
 	$(SBCL) --load build.lisp
@@ -24,9 +24,6 @@ lint:
 
 fmt:
 	$(EMACS) -l scripts/fmt.el $(LISP_FILES)
-
-fmt-check:
-	FMT_CHECK=1 $(EMACS) -l scripts/fmt.el $(LISP_FILES)
 
 clean:
 	rm -rf ./nucleotide

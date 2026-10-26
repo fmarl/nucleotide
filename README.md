@@ -1,54 +1,28 @@
-# Nucleotide: a hackable Wayland window manager
+# Nucleotide
 
-Nucleotide is a hackable Wayland window manager, written in Common Lisp and running
-on top of the [river](https://github.com/riverwm/river) compositor.
+A hackable Wayland window manager in Common Lisp for the
+[river](https://github.com/riverwm/river) compositor.
 
-It is very early WIP for now and alpha software.
-
-### Features
-- Tiling layout with master and stacking area
-- Monocle layout
-- Scrolling layout like niri: columns on an endless strip that scrolls to the focused one
-- Multiple monitors, with workspaces that can be pinned to outputs by name
+## Features
+- Tiling (master and stack), monocle and niri-like scrolling layouts
+- Workspaces per monitor that come back when you plug the monitor in again
 - Floating dialogs, moved and resized with Super and the mouse
-- Window rules
-- libinput settings
-- Window switcher
-- Keybinds & Keychord support
-- Autostart support
-- Highlight support: Teleport a window temporarily to the current workspace without actually moving it
-- Fullscreen support
-- Live configuration via an init file that can be reloaded at runtime
-- Live REPL (slynk), opened on demand and protected by a secret
+- Window rules, a window switcher, and a highlight that shows a window on the
+  current workspace without moving it
+- Key bindings and chords, autostart, fullscreen, libinput settings
+- Workspaces and window title in waybar through its niri modules
+- An init file you can reload at runtime, and a Slynk REPL that opens on demand
+  and is protected by a secret
 
-### Currently WIP
-- UI for Keychords: Show available commands when a keychord is pressed with a little overlay in a corner
+## Build and start
+Inside `guix shell -m manifest.scm`, `make` builds `./nucleotide`, which you start with `river -c ./nucleotide`.
 
-### How to build
-You must have `sbcl`, `sbcl-slynk` and libxkbcommon installed; nucleotide looks
-key names up in libxkbcommon, which it loads as `*libxkbcommon*`. The window
-switcher needs `bemenu`. Just run `make` in the root directory, which creates a
-`nucleotide` executable.
-
-`make check` runs the tests (needs `sbcl-fiveam`), `make lint` compiles everything
-and fails on any warning, `make fmt` formats the code and `make fmt-check` only
-checks it. Run `make` and these targets in `guix shell -m manifest.scm`, so that
-they find libxkbcommon.
-
-### How to start
-```
-river -c ./nucleotide
-```
-
-### Layouts
-`Super+Q` closes the focused window, `Super+Space Q` quits the session.
-
-`Super+Space` followed by `T`, `M` or `S` switches the current workspace to
-tiling, monocle or scrolling.
-
-The scrolling layout works like [niri](https://github.com/YaLTeR/niri): every
-window opens as a new column right of the focused one, and the view scrolls
-just far enough to show the focused column.
+## Layouts
+`Super+Space` followed by `T`, `M` or `S` switches the workspace to tiling,
+monocle or scrolling. Scrolling works similar to
+[niri](https://github.com/YaLTeR/niri): every window opens as a new column to
+the right of the focused one, and the view scrolls just far enough to show the
+focused column.
 
 | Keys | Action |
 |---|---|
@@ -59,79 +33,46 @@ just far enough to show the focused column.
 | `Super+R` | Cycle the column width through `*column-widths*` (1/3, 1/2, 2/3) |
 | `Super+Ctrl+F` | Toggle full width |
 | `Super+C` | Center the focused column |
+| `Super+Q` | Close the focused window |
+| `Super+Space Q` | Quit the session |
 
-In tiling and monocle, `H`/`K` and `L`/`J` cycle through the windows.
-`(setf *default-layout* 'scrolling)` makes every workspace scroll, and
-`(setf *default-layout* '(tiling :ratio 1/2))` gives the master window half
-the width. `*gap*` sets the gaps of all layouts.
+In tiling and monocle, `H`/`K` and `L`/`J` step through the windows instead.
+Set `*default-layout*` to `'scrolling` or `'(tiling :ratio 1/2)` to change the
+layout of new workspaces, and `*gap*` for the gaps of all layouts.
 
-### Multiple monitors
-Every monitor has its own workspaces 1–9. `Super+1…9` switches the workspace of
-the focused monitor, `Super+Ctrl+1…9` sends the focused window to one of them.
-Both also work with Shift, for keyboards that send the digits shifted.
+## Monitors
+Every monitor has workspaces 1–9. `Super+1…9` switches the workspace on the
+focused monitor and `Super+Ctrl+1…9` sends the focused window there. Both also
+work with Shift held, for keyboards that send the digits shifted. `Super+,`
+and `Super+.` focus the monitor to the left or right; add Shift to send the
+window there, or Ctrl to swap the workspace with the one shown there.
 
-| Keys | Action |
-|---|---|
-| `Super+,` / `Super+.` | Focus the monitor to the left / right |
-| `Super+Shift+,` / `Super+Shift+.` | Send the focused window there |
-| `Super+Ctrl+,` / `Super+Ctrl+.` | Exchange the workspace with the one shown there |
+## Floating windows
+Dialogs and windows with a fixed size float, centered on their parent or on
+the monitor. `Super+Shift+Space` toggles floating. Drag a window with `Super`
+and the left mouse button, also onto another monitor, or resize it with the
+right one.
 
-When a monitor is unplugged, its windows move to the same workspaces of
-another monitor. Plugging it in again brings them back, unless they were moved
-in the meantime.
-
-### Floating windows
-Dialogs (windows with a parent) and windows with a fixed size float above the
-layout, centered on their parent or monitor. `Super+Shift+Space` toggles
-floating. `Super` with the left mouse button moves a window, also onto another
-monitor; with the right one it resizes the window. Both make a tiled window
-float.
-
-### Window rules, switcher and highlight
-```lisp
-(rule (:app-id "pavucontrol") :float t)
-(rule (:app-id "firefox") :workspace 2)
-(rule (:title (contains "Picture-in-Picture")) :float t)
-```
-
-Patterns are strings or predicates; actions are `:float`, `:workspace`,
-`:output` (a monitor name) and `:fullscreen`. `Super+Tab` lists all windows in
-`*menu-command*` (bemenu) and focuses the chosen one.
-
-`Super+Space E` shows the most recently focused Emacs frame alone on the
-current monitor without moving it, and hides it again; the command
-`(toggle-highlight :app-id "emacs")` takes any patterns a rule takes. Any
-other key binding ends the highlight before it runs.
-
-### Input
-```lisp
-(setf *libinput-settings* '(:tap t :natural-scroll t :accel-profile :flat
-                            :disable-while-typing t))
-```
-
-`*libinput-settings*` also takes `:left-handed`, `:middle-emulation`,
-`:click-method`, `:scroll-method` and `:accel-speed`. The keyboard layout is
-river's, which follows `XKB_DEFAULT_LAYOUT` and the other `XKB_DEFAULT_*`
-variables.
-
-### Configuration
-On start nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp`
-(usually `~/.config/nucleotide/init.lisp`) in the `nucleotide` package, or
-binds the default keys of `src/defaults.lisp` if there is none. The file and its
-directory must not be writable by other users, otherwise it is ignored.
+## Configuration
+At startup nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp` into the
+`nucleotide` package. Without it you get the default keys from
+`src/defaults.lisp`. The file is ignored if it or its directory is writable by
+others.
 
 ```lisp
 (use-defaults)
 
-(setf *border-width* 3
-      *border-focused* "#00bcff"
-      *gap* 4)
+(setf *border-focused* "#00bcff"
+      *gap* 4
+      *libinput-settings* '(:tap t :natural-scroll t))
 
 (bind "Super+Shift+Return" (spawn "foot"))
-(bind "Super+B" (spawn "firefox"))
 (bind "Super+Space W" (spawn "firefox --private-window"))
 (bind "XF86AudioPlay" (spawn "playerctl" "play-pause"))
 (unbind "Super+P")
+
+(rule (:app-id "pavucontrol") :float t)
+(rule (:title (contains "Picture-in-Picture")) :float t :workspace 2)
 
 (define-command focus-firefox (wm)
   (let ((win (find "firefox" (all-windows wm) :key #'window-app-id :test #'equal)))
@@ -139,45 +80,24 @@ directory must not be writable by other users, otherwise it is ignored.
       (focus-window wm win))))
 
 (bind "Super+Space F" focus-firefox)
-```
 
-Keys are written like in niri: modifiers (`Shift`, `Ctrl`, `Alt`, `Super` or
-`Mod`, `Mod3`, `Mod5`) and a character or xkb key name like `Return`, `Comma`
-or `XF86AudioPlay`, joined with `+`. A prefix and a key separated by a space
-make a key chord. Bindings run commands: a command name, or a list of one and
-its arguments. `(command-names)` lists them; `define-command` adds more. A
-command is a function of the window manager and its arguments, so the REPL can
-call it too.
-
-`Super+Space C` reloads the init file from scratch: bindings, rules, hooks and
-commands it no longer has are gone and settings it no longer sets get their
-default again. If it fails to load, everything stays as it was, except for
-functions and handlers it redefined before the error. A few settings, like
-`*num-of-workspaces*`, are only read at startup.
-
-Hooks run functions on events, after nucleotide handled them:
-
-```lisp
 (on :focus-changed (lambda (win) (format t "~&focus: ~A~%" win)))
 ```
 
-The events are `:window-opened`, `:window-closed`, `:window-title`,
-`:focus-changed` and `:workspace-changed`. `:window-title` only reports changes
-after `:window-opened`, which sees the first title as `(window-title win)`.
-For deeper changes, events are
-dispatched to the generic function `handle-event`, and redefining a handler
-with `define-handler` takes effect immediately.
+`Super+Space C` reloads the init file from scratch: whatever it no longer
+defines disappears, and settings it no longer sets return to their defaults.
+If loading fails, the old configuration stays, except for functions and
+handlers the file redefined before the error. A few settings, like
+`*num-of-workspaces*`, only take effect after a restart.
 
-### REPL
-The REPL port is closed by default. `Super+Space R` opens a Slynk listener on
-`localhost:4005` that stops listening after the first connection. Press it
-again to close the listener early; an established SLY session stays open.
+## REPL
+`Super+Space R` opens a Slynk listener on `localhost:4005`. It accepts one
+connection and then stops listening; pressing the key again closes it early
+without ending an open SLY session. Only clients that know the secret in
+`~/.sly-secret` get in. nucleotide creates that file with mode 600 and won't
+open the port if others can read it. SLY reads the same file, so
+`M-x sly-connect` works without further setup.
 
-Slynk only accepts clients that know the secret in `~/.sly-secret`. Nucleotide
-creates that file on first use (mode 600) and refuses to open the port if it is
-readable by others. SLY reads the same file, so `M-x sly-connect` needs no
-further setup.
-
-For developing, `sbcl --load dev.lisp` starts nucleotide from the sources with
-a listener that stays open. From the REPL, wrap everything that touches the
-window manager in `in-wm`, e.g. `(in-wm (reload-config *wm*))`.
+For development, `sbcl --load dev.lisp` runs nucleotide from source with a
+listener that stays open. REPL code that touches the window manager has to run
+in its thread, so wrap it in `in-wm`, e.g. `(in-wm (reload-config *wm*))`.
