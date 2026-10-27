@@ -78,6 +78,38 @@
       (is (search "Err" (first (n::ipc-replies wm client (n::parse-json "\"Version\"")))))
       (is (not (n::ipc-client-subscribed client))))))
 
+(test focus-workspace-requests-ignore-workspaces-without-output
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0 :name "eDP-1"))
+         (removed (add-output wm 1000 :name "HDMI-A-1"))
+         (stashed (first (n::output-workspaces removed)))
+         (client (n::make-ipc-client nil)))
+    (n::unassign-output wm removed)
+    (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
+      (is (search "Err" (first (n::ipc-replies wm client
+                                               (focus-request (n::workspace-id stashed))))))
+      (is (eq output (n::wm-focused-output wm))))))
+
+(test the-active-window-of-a-highlight-is-the-highlighted-one
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0 :name "eDP-1"))
+         (ws (n::output-workspace output))
+         (highlighted (open-window-on (ws wm 2))))
+    (open-window-on ws)
+    (setf (n::wm-highlight wm) highlighted)
+    (is (eql (n::window-id highlighted)
+             (n::json-get (n::niri-workspace wm output ws 1) "active_window_id")))))
+
+(test socket-paths-take-the-name-of-an-absolute-wayland-display
+  (let ((previous (uiop:getenv "WAYLAND_DISPLAY")))
+    (unwind-protect
+         (progn
+           (sb-posix:setenv "WAYLAND_DISPLAY" "/run/user/1000/wayland-1" 1)
+           (is (search "/nucleotide.wayland-1." (n::ipc-socket-path))))
+      (if previous
+          (sb-posix:setenv "WAYLAND_DISPLAY" previous 1)
+          (sb-posix:unsetenv "WAYLAND_DISPLAY")))))
+
 (test event-streams-start-with-ok-and-the-state
   (let* ((wm (make-test-wm))
          (client (n::make-ipc-client nil)))
@@ -228,3 +260,13 @@
              (is (= n::+ipc-max-clients+ (length (n::ipc-clients ipc)))))
         (mapc #'sb-bsd-sockets:socket-close sockets)))))
 
+(test highlighted-windows-appear-on-the-active-workspace
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0 :name "eDP-1"))
+         (active (n::output-workspace output))
+         (home (ws wm 2))
+         (highlighted (open-window-on home)))
+    (setf (n::wm-highlight wm) highlighted)
+    (is (eql (n::workspace-id active)
+             (n::json-get (first (n::niri-windows wm)) "workspace_id")))
+    (is (eq :null (n::json-get (n::niri-workspace wm output home 2) "active_window_id")))))

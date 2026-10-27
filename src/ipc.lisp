@@ -31,10 +31,20 @@
                  (nucleotide-error "XDG_RUNTIME_DIR is not set"))))
     (check-file-permissions dir #o077)
     (format nil "~A/nucleotide.~A.~D.sock"
-            dir (or (uiop:getenv "WAYLAND_DISPLAY") "wayland-0") (sb-posix:getpid))))
+            dir (file-namestring (or (uiop:getenv "WAYLAND_DISPLAY") "wayland-0"))
+            (sb-posix:getpid))))
+
+(defun shown-workspace (wm win)
+  "The workspace WIN appears on: the active one while it is highlighted."
+  (if (eq win (wm-highlight wm))
+      (wm-active-workspace wm)
+      (window-workspace win)))
 
 (defun niri-workspace (wm output ws index)
-  (let ((active (workspace-focus ws)))
+  (let* ((focus (if (eq ws (wm-active-workspace wm))
+                    (wm-focus wm)
+                    (workspace-focus ws)))
+         (active (and focus (eq ws (shown-workspace wm focus)) focus)))
     `(:object ("id" . ,(workspace-id ws))
               ("idx" . ,index)
               ("name" . :null)
@@ -53,11 +63,11 @@
                      when (or (workspace-windows ws) (eq ws (output-workspace output)))
                      collect (niri-workspace wm output ws index))))
 
-(defun niri-window (win ws focused)
+(defun niri-window (wm win focused)
   `(:object ("id" . ,(window-id win))
             ("title" . ,(or (window-title win) :null))
             ("app_id" . ,(or (window-app-id win) :null))
-            ("workspace_id" . ,(workspace-id ws))
+            ("workspace_id" . ,(workspace-id (shown-workspace wm win)))
             ("is_focused" . ,(json-bool (eq win focused)))))
 
 (defun niri-windows (wm)
@@ -65,7 +75,7 @@
     (loop for output in (wm-outputs wm)
           append (loop for ws in (output-workspaces output)
                        append (loop for win in (workspace-windows ws)
-                                    collect (niri-window win ws focused))))))
+                                    collect (niri-window wm win focused))))))
 
 (defun niri-events (wm)
   "Workspaces first: waybar's niri/window module redraws only on window events
@@ -97,7 +107,7 @@ and then shows the window that its workspace's active_window_id names."
 (defun referenced-workspace (wm reference)
   (let ((id (json-get reference "Id"))
         (index (json-get reference "Index")))
-    (cond (id (find id (wm-workspaces wm) :key #'workspace-id))
+    (cond (id (find id (mappend #'output-workspaces (wm-outputs wm)) :key #'workspace-id))
           ((typep index '(integer 1)) (nth-workspace wm (1- index))))))
 
 (defun ipc-replies (wm client request)
