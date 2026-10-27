@@ -13,8 +13,7 @@
                                      (:static-file "river-xkb-bindings-v1.xml")
                                      (:static-file "river-layer-shell-v1.xml")
                                      (:static-file "river-input-management-v1.xml")
-                                     (:static-file "river-libinput-config-v1.xml")
-                                     (:static-file "xkbcommon-keysyms.h")))
+                                     (:static-file "river-libinput-config-v1.xml")))
                (:file "package")
                (:module "core"
                         :serial t

@@ -4,6 +4,12 @@
 (in-package #:nucleotide)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun keysym-header-pathname ()
+    (or (loop for dir in (uiop:getenv-absolute-directories "PATH")
+              thereis (probe-file
+                       (merge-pathnames "../include/xkbcommon/xkbcommon-keysyms.h" dir)))
+        (error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
+
   (defun keysym-header-entries (pathname)
     (with-open-file (in pathname)
       (loop for line = (read-line in nil)
@@ -35,14 +41,13 @@ letters, like Greek_alpha, as in xkb_keysym_from_name."
                keysyms))
     table))
 
-(defmacro define-keysyms (file)
-  (let ((entries (keysym-header-entries
-                  (asdf:system-relative-pathname "nucleotide" (format nil "protocol/~A" file)))))
+(defmacro define-keysyms ()
+  (let ((entries (keysym-header-entries (keysym-header-pathname))))
     `(progn
        (defparameter *keysyms* (keysym-table ',entries))
        (defparameter *keysyms-ignoring-case* (keysym-table-ignoring-case *keysyms*)))))
 
-(define-keysyms "xkbcommon-keysyms.h")
+(define-keysyms)
 
 (defun char-keysym (char)
   (let ((code (char-code char)))
