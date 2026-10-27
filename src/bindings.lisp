@@ -31,13 +31,13 @@
   (let ((binding (add-binding wm (river-xkb-bindings-v1.get-xkb-binding
                                   (wm-xkb wm) (wm-seat wm) keysym modifiers)
                               action)))
-    (push binding (wm-pending-bindings wm))))
+    (request wm :enable-binding binding)))
 
 (defun bind-pointer (wm button modifiers action)
   (let ((binding (add-binding wm (river-seat-v1.get-pointer-binding
                                   (wm-seat wm) button modifiers)
                               action)))
-    (push binding (wm-pending-bindings wm))))
+    (request wm :enable-binding binding)))
 
 (defun bind-key-chord (wm submap keysym modifiers action)
   "Bindings of a submap are only enabled while the submap is active."
@@ -64,24 +64,23 @@
                   (bind-key-chord wm (prefix-submap wm submaps first)
                                   (car second) (cdr second) run)
                   (bind-key wm (car first) (cdr first) run))))))
-      (warn "river_xkb_bindings_v1 is not available, no keybindings installed"))
+      (log-message :warn "river_xkb_bindings_v1 is not available, no keybindings installed"))
   (install-pointer-bindings wm)
   (mark-dirty wm))
 
 (defun uninstall-all-keybinds (wm)
-  (setf (wm-active-submap wm) nil
-        (wm-pending-submap-ops wm) '()
-        (wm-pending-bindings wm) '())
+  (setf (wm-active-submap wm) nil)
+  (cancel-requests wm '(:enable-binding :enter-submap :leave-submap))
   (mapc #'destroy-binding (drain (wm-bindings wm))))
 
 (defun enter-submap (wm submap)
   (setf (wm-active-submap wm) submap)
-  (push (cons :enter submap) (wm-pending-submap-ops wm))
+  (request wm :enter-submap submap)
   (mark-dirty wm))
 
 (defun leave-submap (wm)
   (let ((submap (wm-active-submap wm)))
     (when submap
       (setf (wm-active-submap wm) nil)
-      (push (cons :leave submap) (wm-pending-submap-ops wm))
+      (request wm :leave-submap submap)
       (mark-dirty wm))))

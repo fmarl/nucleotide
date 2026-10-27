@@ -4,7 +4,8 @@
 (defpackage #:nucleotide/tests
   (:use #:cl #:fiveam)
   (:local-nicknames (#:n #:nucleotide)
-                    (#:xml #:nucleotide.xml)))
+                    (#:xml #:nucleotide.xml)
+                    (#:json #:nucleotide.json)))
 
 (in-package #:nucleotide/tests)
 
@@ -31,14 +32,8 @@
                  collect `(setf (fdefinition ',name) ,var))))))
 
 (defmacro with-fresh-config (&body body)
-  `(let ((n::*commands* (copy-list n::*builtin-commands*))
-         (n::*bindings* '())
-         (n::*window-rules* '())
-         (n::*hooks* '())
-         (n::*settings* n::*settings*))
-     (progv (mapcar #'car n::*settings*)
-         (mapcar (lambda (entry) (funcall (getf (cdr entry) :default))) n::*settings*)
-       ,@body)))
+  `(progv (n::config-variables) (n::default-config)
+     ,@body))
 
 (def-fixture fresh-config ()
   (with-fresh-config (&body)))
@@ -52,24 +47,24 @@
                    :orphans workspaces
                    :active-workspace (first workspaces))))
 
+(defun boxes (rects)
+  (mapcar (lambda (rect) (and rect (n::rect-list rect))) rects))
+
 (defun ws (wm number)
   (n::nth-workspace wm (1- number)))
 
 (defun add-output (wm x &key name)
   (let ((output (make-instance 'n::output :proxy nil))
         (n::*num-of-workspaces* 4))
-    (setf (n::output-x output) x
-          (n::output-width output) 1000
-          (n::output-height output) 800
+    (setf (n::output-rect output) (n::rect x 0 1000 800)
           (n::output-name output) name
           (n::wm-outputs wm) (append (n::wm-outputs wm) (list output)))
     (n::assign-output wm output)
     output))
 
 (defun open-window-on (ws)
-  (let ((win (make-instance 'n::window :workspace ws)))
-    (push win (n::workspace-windows ws))
-    (setf (n::workspace-focus ws) win)
+  (let ((win (make-instance 'n::window)))
+    (n::add-window ws win)
     win))
 
 (defun call-with-environment (variables thunk)
@@ -86,7 +81,6 @@
                    (sb-posix:unsetenv name))))))
 
 (defmacro with-environment ((&rest variables) &body body)
-  "Run BODY with the environment VARIABLES, (name value) lists, set."
   `(call-with-environment (list ,@(mapcar (lambda (variable) `(list ,@variable)) variables))
                           (lambda () ,@body)))
 
@@ -96,6 +90,4 @@
       (uiop:delete-directory-tree (uiop:ensure-directory-pathname directory) :validate t))))
 
 (defmacro with-private-directory ((directory) &body body)
-  "Run BODY with DIRECTORY bound to the name of a new directory only its owner
-may use."
   `(call-with-private-directory (lambda (,directory) ,@body)))

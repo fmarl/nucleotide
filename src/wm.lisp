@@ -15,13 +15,14 @@
 accessor that holds the proxy.")
 
 (define-setting *num-of-workspaces* 9
-  :documentation "Read at startup.")
+  :documentation "Workspaces per output. Read at startup.")
 
 (defun make-workspaces ()
   (loop for i from 1 to *num-of-workspaces*
         collect (make-instance 'workspace :name (princ-to-string i))))
 
 (define-command exit-session (wm)
+  "End the river session."
   (river-window-manager-v1.exit-session (wm-river wm)))
 
 (define-handler (wm (river river-window-manager-v1) :window) (proxy)
@@ -42,11 +43,11 @@ accessor that holds the proxy.")
     (river-window-manager-v1.render-finish river)))
 
 (define-handler (wm (river river-window-manager-v1) :unavailable) ()
-  (warn "river reports the WM role as unavailable (is another WM running?)"))
+  (log-message :error "river reports the WM role as unavailable (is another WM running?)"))
 
 (defun attach-seat (wm proxy)
   (when (wm-seat wm)
-    (warn "multiple seats are not supported yet")
+    (log-message :warn "multiple seats are not supported yet")
     (return-from attach-seat))
   (setf (wm-seat wm) proxy)
   (forward-events wm proxy)
@@ -109,7 +110,7 @@ accessor that holds the proxy.")
   "Run the window manager in a new thread."
   (when (and *wm* (wm-thread *wm*)
              (sb-thread:thread-alive-p (wm-thread *wm*)))
-    (nucleotide-error "a WM is already running; call (stop-wm) first"))
+    (nucleotide-error "a WM is already running, call (stop-wm) first"))
   (load-user-config)
   (let* ((display (wl-display-connect display-name))
          (wm (make-wm display)))
@@ -128,6 +129,7 @@ accessor that holds the proxy.")
     (run-autostart)))
 
 (defun stop-wm ()
+  "Stop the window manager that START-WM started."
   (when *wm*
     (let ((thread (wm-thread *wm*)))
       (when (sb-thread:thread-alive-p thread)
@@ -139,7 +141,7 @@ accessor that holds the proxy.")
 
 (defmacro in-wm (&body body)
   "Run BODY in the WM thread (asynchronously). REPL threads must never touch
-proxies directly; wrap all proxy access in this."
+proxies directly, so wrap all proxy access in this."
   `(progn
      (unless *wm*
        (nucleotide-error "nucleotide is not running"))

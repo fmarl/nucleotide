@@ -7,27 +7,19 @@
   :documentation "Move the pointer to an output when the focus moves there.")
 
 (defun usable-area (output)
-  (if (plusp (output-usable-width output))
-      (values (output-usable-x output) (output-usable-y output)
-              (output-usable-width output) (output-usable-height output))
-      (values (output-x output) (output-y output)
-              (output-width output) (output-height output))))
+  (let ((usable (output-usable output)))
+    (if (and usable (plusp (rect-width usable)))
+        usable
+        (output-rect output))))
 
-(defun clip-box (x y width height output)
-  "NIL if the window at X Y of WIDTH HEIGHT lies within OUTPUT, :HIDDEN if it
-lies outside, else the box of OUTPUT relative to the window to clip it to."
-  (let ((left (output-x output))
-        (top (output-y output))
-        (right (+ (output-x output) (output-width output)))
-        (bottom (+ (output-y output) (output-height output))))
-    (cond ((and (<= left x) (<= top y)
-                (<= (+ x width) right) (<= (+ y height) bottom))
-           nil)
-          ((or (<= right x) (<= (+ x width) left)
-               (<= bottom y) (<= (+ y height) top))
-           :hidden)
-          (t (list (- left x) (- top y)
-                   (output-width output) (output-height output))))))
+(defun clip-box (rect output)
+  "NIL if RECT lies within OUTPUT, :HIDDEN if it lies outside, else the box of
+OUTPUT relative to RECT to clip it to."
+  (let ((area (output-rect output)))
+    (cond ((rect-within-p rect area) nil)
+          ((zerop (overlap-area rect area)) :hidden)
+          (t (rect (- (rect-x area) (rect-x rect)) (- (rect-y area) (rect-y rect))
+                   (rect-width area) (rect-height area))))))
 
 (defun window-output (wm win)
   (or (workspace-output (window-workspace win)) (wm-focused-output wm)))
@@ -54,19 +46,8 @@ lies outside, else the box of OUTPUT relative to the window to clip it to."
     (when (member (wm-active-workspace wm) workspaces)
       (setf (output-workspace output) (wm-active-workspace wm)))))
 
-(defun migrate-windows (from to &key home)
-  "Windows that already have a home keep it, so that they return to an output
-removed earlier."
-  (dolist (win (workspace-windows from))
-    (setf (window-workspace win) to
-          (window-home win) (or (window-home win) home)))
-  (setf (workspace-windows to) (append (workspace-windows from) (workspace-windows to))
-        (workspace-focus to) (or (workspace-focus to) (workspace-focus from))
-        (workspace-windows from) '()
-        (workspace-focus from) nil))
-
 (defun evacuate-output (wm output target)
-  "Move the windows of OUTPUT to the same workspaces of TARGET; with a name,
+  "Move the windows of OUTPUT to the same workspaces of TARGET. With a name,
 keep OUTPUT's workspaces so the windows can return to them."
   (let ((workspaces (output-workspaces output))
         (name (output-name output)))
@@ -85,15 +66,6 @@ keep OUTPUT's workspaces so the windows can return to them."
     (if target
         (evacuate-output wm output target)
         (setf (wm-orphans wm) (output-workspaces output)))))
-
-(defun return-home (win)
-  (let ((home (window-home win)))
-    (remove-window (window-workspace win) win)
-    (setf (window-workspace win) home
-          (window-home win) nil)
-    (push win (workspace-windows home))
-    (unless (workspace-focus home)
-      (setf (workspace-focus home) win))))
 
 (defun restore-output (wm output)
   (let ((stashed (alist-get (output-name output) (wm-stash wm))))
@@ -115,26 +87,10 @@ keep OUTPUT's workspaces so the windows can return to them."
     (setf (output-workspace (workspace-output ws)) ws))
   (setf (wm-active-workspace wm) ws))
 
-(defun swap-workspace-contents (a b)
-  "Windows that are moved on purpose no longer return to a removed output."
-  (dolist (win (workspace-windows a))
-    (setf (window-workspace win) b
-          (window-home win) nil))
-  (dolist (win (workspace-windows b))
-    (setf (window-workspace win) a
-          (window-home win) nil))
-  (rotatef (workspace-windows a) (workspace-windows b))
-  (rotatef (workspace-focus a) (workspace-focus b))
-  (rotatef (workspace-layout a) (workspace-layout b)))
-
-(defun output-center (output)
-  (list (+ (output-x output) (floor (output-width output) 2))
-        (+ (output-y output) (floor (output-height output) 2))))
-
 (defun follow-focus (wm previous-output)
   (let ((output (wm-focused-output wm)))
     (when (and *warp-pointer* output (not (eq output previous-output)))
-      (setf (wm-pending-warp wm) (output-center output)))
+      (apply #'request wm :warp (rect-center (output-rect output))))
     (mark-dirty wm)))
 
 (defun switch-to-workspace (wm ws)
@@ -146,9 +102,11 @@ keep OUTPUT's workspaces so the windows can return to them."
 (defun sorted-outputs (wm)
   (sort (copy-list (wm-outputs wm))
         (lambda (a b)
-          (or (< (output-x a) (output-x b))
-              (and (= (output-x a) (output-x b))
-                   (< (output-y a) (output-y b)))))))
+          (let ((a (output-rect a))
+                (b (output-rect b)))
+            (or (< (rect-x a) (rect-x b))
+                (and (= (rect-x a) (rect-x b))
+                     (< (rect-y a) (rect-y b))))))))
 
 (defun neighbor-output (wm direction)
   (let* ((outputs (sorted-outputs wm))
@@ -157,6 +115,7 @@ keep OUTPUT's workspaces so the windows can return to them."
       (nth (mod (+ pos (step-direction direction)) (length outputs)) outputs))))
 
 (define-command focus-output (wm &optional (direction :next))
+  "Focus the output in DIRECTION: :LEFT, :RIGHT, :PREV or :NEXT."
   (let ((target (neighbor-output wm direction))
         (previous (wm-focused-output wm)))
     (when target
@@ -164,6 +123,7 @@ keep OUTPUT's workspaces so the windows can return to them."
       (follow-focus wm previous))))
 
 (define-command send-to-output (wm &optional (direction :next))
+  "Send the focused window to the output in DIRECTION."
   (let ((target (neighbor-output wm direction)))
     (when target
       (send-focused-to wm (output-workspace target)))))
@@ -179,6 +139,7 @@ workspace shown on the neighboring output, and follow them there."
       (follow-focus wm previous))))
 
 (define-command switch-workspace (wm number)
+  "Show workspace NUMBER of the focused output."
   (switch-to-workspace wm (nth-workspace wm (1- number))))
 
 (defun attach-output (wm proxy)
@@ -205,24 +166,21 @@ workspace shown on the neighboring output, and follow them there."
   (mark-dirty wm))
 
 (define-handler (wm (output output) :position) (x y)
-  (setf (output-x output) x
-        (output-y output) y))
+  (let ((rect (output-rect output)))
+    (setf (output-rect output) (rect x y (rect-width rect) (rect-height rect)))))
 
 (define-handler (wm (output output) :dimensions) (width height)
-  (setf (output-width output) width
-        (output-height output) height))
+  (let ((rect (output-rect output)))
+    (setf (output-rect output) (rect (rect-x rect) (rect-y rect) width height))))
 
 (define-handler (wm (output output) :non-exclusive-area) (x y width height)
-  (setf (output-usable-x output) x
-        (output-usable-y output) y
-        (output-usable-width output) width
-        (output-usable-height output) height))
+  (setf (output-usable output) (rect x y width height)))
 
 (define-handler (wm (output output) :removed) ()
   (unassign-output wm output)
   (dolist (win (all-windows wm))
     (when (eq (window-fullscreen win) (output-proxy output))
-      (push (cons win :exit) (wm-pending-fullscreens wm))))
+      (request wm :exit-fullscreen win)))
   (mark-dirty wm)
   (when (output-wl-output output)
     (wl-output.release (output-wl-output output)))

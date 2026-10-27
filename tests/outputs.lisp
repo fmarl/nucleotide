@@ -90,7 +90,7 @@
          (there (n::output-workspace right))
          (win (open-window-on here))
          (layout (n::workspace-layout here)))
-    (setf (n::window-home win) (ws wm 3))
+    (setf (n::%window-home win) (ws wm 3))
     (n::swap-workspace-contents here there)
     (is (eq there (n::window-workspace win)))
     (is (equal (list win) (n::workspace-windows there)))
@@ -110,8 +110,8 @@
 
 (test clip-boxes
   (let ((output (make-instance 'n::output :proxy nil)))
-    (setf (n::output-width output) 1000
-          (n::output-height output) 800)
-    (is (null (n::clip-box 8 8 496 784 output)))
-    (is (eq :hidden (n::clip-box 1008 8 496 784 output)))
-    (is (equal '(-504 0 1000 800) (n::clip-box 504 0 1000 800 output)))))
+    (setf (n::output-rect output) (n::rect 0 0 1000 800))
+    (is (null (n::clip-box (n::rect 8 8 496 784) output)))
+    (is (eq :hidden (n::clip-box (n::rect 1008 8 496 784) output)))
+    (is (equal '(-504 0 1000 800)
+               (n::rect-list (n::clip-box (n::rect 504 0 1000 800) output))))))

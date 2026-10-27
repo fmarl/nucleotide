@@ -18,6 +18,7 @@ ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
   `(add-window-rule (list ,@match) (list ,@actions)))
 
 (defun contains (substring)
+  "A pattern for RULE that matches strings containing SUBSTRING."
   (lambda (string) (search substring string)))
 
 (defun pattern-matches-p (pattern value)
@@ -32,7 +33,7 @@ ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
                                             (:title (window-title win))))))
 
 (defun window-actions (win)
-  "The actions of all matching rules; later rules come first and so win."
+  "The actions of all matching rules. Later rules come first and so win."
   (reduce (lambda (actions rule)
             (if (rule-matches-p (car rule) win)
                 (append (cdr rule) actions)
@@ -51,8 +52,9 @@ ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
 
 (defun apply-float-rule (win actions)
   (multiple-value-bind (present float) (get-properties actions '(:float))
-    (when present
-      (setf (window-floating win) (and float t)))))
+    (float-new-window win (if present
+                              (and float t)
+                              (and (auto-float-p win) t)))))
 
 (defun apply-workspace-rule (wm win actions)
   (let ((ws (rule-workspace wm actions)))
@@ -61,7 +63,7 @@ ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
 
 (defun apply-fullscreen-rule (wm win actions)
   (when (getf actions :fullscreen)
-    (push (cons win nil) (wm-pending-fullscreens wm))))
+    (request wm :fullscreen win nil)))
 
 (defun apply-window-rules (wm win)
   (let ((actions (window-actions win)))

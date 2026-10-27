@@ -27,50 +27,64 @@
 
 (defun initial-float-offset (wm win)
   "Centered on the parent if that is visible, else on the output."
-  (let ((parent (window-parent win)))
-    (multiple-value-bind (x y width height) (usable-area (window-output wm win))
-      (if (and parent (window-visible-p wm parent))
-          (destructuring-bind (dx dy)
-              (center-in-area (window-width win) (window-height win)
-                              (window-width parent) (window-height parent))
-            (list (- (+ (window-x parent) dx) x)
-                  (- (+ (window-y parent) dy) y)))
-          (center-in-area (window-width win) (window-height win) width height)))))
+  (let ((parent (window-parent win))
+        (area (usable-area (window-output wm win))))
+    (if (and parent (window-visible-p wm parent))
+        (destructuring-bind (dx dy)
+            (center-in-area (window-width win) (window-height win)
+                            (window-width parent) (window-height parent))
+          (list (- (+ (window-x parent) dx) (rect-x area))
+                (- (+ (window-y parent) dy) (rect-y area))))
+        (center-in-area (window-width win) (window-height win)
+                        (rect-width area) (rect-height area)))))
 
 (defun place-floating (wm win)
   (let ((output (window-output wm win)))
     (when output
       (unless (window-float-offset win)
-        (setf (window-float-offset win) (initial-float-offset wm win)))
-      (multiple-value-bind (x y) (usable-area output)
+        (setf (%window-float-offset win) (initial-float-offset wm win)))
+      (let ((area (usable-area output)))
         (destructuring-bind (dx dy) (window-float-offset win)
-          (setf (window-x win) (+ x dx)
-                (window-y win) (+ y dy)
-                (window-clip win) nil))))))
+          (position-window win (+ (rect-x area) dx) (+ (rect-y area) dy) nil))))))
 
 (defun offset-on (output win)
-  (multiple-value-bind (x y) (usable-area output)
-    (list (- (window-x win) x) (- (window-y win) y))))
+  (let ((area (usable-area output)))
+    (list (- (window-x win) (rect-x area)) (- (window-y win) (rect-y area)))))
+
+(defun float-new-window (win floating)
+  "A new floating window picks its own size."
+  (setf (%window-floating-p win) floating)
+  (when (and floating (not (window-float-offset win)))
+    (setf (%window-pending-dimensions win) '(0 0))))
 
 (defun float-window (wm win)
-  "Float WIN where it currently is, at its current size."
+  "Float WIN where it is, at its current size."
   (let ((output (window-output wm win)))
-    (setf (window-floating win) t
-          (window-float-offset win) (and output (offset-on output win))
-          (window-pending-dimensions win) (list (window-width win) (window-height win))
-          (window-configured win) nil)))
+    (setf (%window-floating-p win) t
+          (%window-float-offset win) (and output (offset-on output win))
+          (%window-pending-dimensions win) (list (window-width win) (window-height win)))
+    (request wm :configure win)))
 
-(defun tile-window (win)
-  (setf (window-floating win) nil
-        (window-float-offset win) nil
-        (window-pending-dimensions win) nil
-        (window-configured win) nil))
+(defun tile-window (wm win)
+  (setf (%window-floating-p win) nil
+        (%window-float-offset win) nil
+        (%window-pending-dimensions win) nil)
+  (request wm :configure win))
+
+(defun manage-pending-dimensions (wm)
+  (dolist (win (all-windows wm))
+    (let ((dimensions (window-pending-dimensions win)))
+      (when dimensions
+        (setf (%window-pending-dimensions win) nil)
+        (when (window-floating-p win)
+          (apply #'propose-dimensions win dimensions))))))
 
 (define-command toggle-floating (wm)
+  "Float the focused window, or tile it again."
   (let ((win (wm-focus wm)))
     (when (and win (not (window-fullscreen win)))
-      (if (window-floating win)
-          (tile-window win)
+      (if (window-floating-p win)
+          (tile-window wm win)
           (float-window wm win))
       (mark-dirty wm))))
 
@@ -89,7 +103,7 @@
 (defun start-pointer-op (wm kind)
   (let ((win (wm-pointer-window wm)))
     (when (and win (not (wm-op wm)) (not (window-fullscreen win)))
-      (unless (window-floating win)
+      (unless (window-floating-p win)
         (float-window wm win))
       (focus-window wm win)
       (setf (wm-op wm) (make-instance 'pointer-op :kind kind :win win
@@ -101,34 +115,26 @@
     (ecase (op-kind op)
       (:move
        (destructuring-bind (x y) (op-start op)
-         (setf (window-float-offset win) (list (+ x dx) (+ y dy)))))
+         (setf (%window-float-offset win) (list (+ x dx) (+ y dy)))))
       (:resize
        (destructuring-bind (width height) (op-start op)
-         (setf (window-pending-dimensions win)
+         (setf (%window-pending-dimensions win)
                (list (max 1 (+ width dx)) (max 1 (+ height dy)))))))))
 
-(defun overlap-area (x y width height output)
-  (flet ((span (start length other-start other-length)
-           (max 0 (- (min (+ start length) (+ other-start other-length))
-                     (max start other-start)))))
-    (* (span x width (output-x output) (output-width output))
-       (span y height (output-y output) (output-height output)))))
-
-(defun output-under (wm x y width height)
-  "The output the area at X Y of WIDTH HEIGHT mostly lies on."
-  (flet ((area (output) (overlap-area x y width height output)))
+(defun output-under (wm rect)
+  "The output RECT mostly lies on."
+  (flet ((area (output) (overlap-area rect (output-rect output))))
     (first (sort (remove-if-not (lambda (output) (plusp (area output)))
                                 (copy-list (wm-outputs wm)))
                  #'> :key #'area))))
 
 (defun settle-floating (wm win)
   "Hand a moved floating window to the output it now mostly lies on."
-  (let ((output (output-under wm (window-x win) (window-y win)
-                              (window-width win) (window-height win))))
+  (let ((output (output-under wm (window-rect win))))
     (when (and output
                (output-workspace output)
                (not (eq output (window-output wm win))))
-      (setf (window-float-offset win) (offset-on output win))
+      (setf (%window-float-offset win) (offset-on output win))
       (move-to-workspace win (output-workspace output))
       (focus-window wm win))))
 

@@ -11,66 +11,68 @@
    (workspaces :initform '() :accessor output-workspaces)
    (workspace :initform nil :accessor output-workspace
               :documentation "The one of its WORKSPACES the output shows.")
-   (x :initform 0 :accessor output-x)
-   (y :initform 0 :accessor output-y)
-   (width :initform 0 :accessor output-width)
-   (height :initform 0 :accessor output-height)
-   (usable-x :initform 0 :accessor output-usable-x)
-   (usable-y :initform 0 :accessor output-usable-y)
-   (usable-width :initform 0 :accessor output-usable-width)
-   (usable-height :initform 0 :accessor output-usable-height)))
+   (rect :initform (rect 0 0 0 0) :accessor output-rect)
+   (usable :initform nil :accessor output-usable
+           :documentation "The part of RECT that layer shell surfaces leave, once announced.")))
 
 (defmethod print-object ((output output) stream)
   (print-unreadable-object (output stream :type t)
-    (format stream "~@[~A ~]~Dx~D+~D+~D" (output-name output)
-            (output-width output) (output-height output)
-            (output-x output) (output-y output))))
+    (destructuring-bind (x y width height) (rect-list (output-rect output))
+      (format stream "~@[~A ~]~Dx~D+~D+~D" (output-name output) width height x y))))
 
 (defvar *next-id* 0)
 
-(defun next-id ()
+(defun new-id ()
   (incf *next-id*))
 
 (defclass window ()
-  ((id :initform (next-id) :reader window-id)
-   (proxy :initarg :proxy :accessor window-proxy)
-   (node :initarg :node :accessor window-node)
-   (title :initform nil :accessor window-title)
-   (app-id :initform nil :accessor window-app-id)
-   (workspace :initarg :workspace :accessor window-workspace)
-   (parent :initform nil :accessor window-parent)
-   (closed :initform nil :accessor window-closed)
-   (home :initform nil :accessor window-home
+  ((id :initform (new-id) :reader window-id)
+   (proxy :initarg :proxy :reader window-proxy :writer (setf %window-proxy))
+   (node :initarg :node :reader window-node :writer (setf %window-node))
+   (title :initform nil :reader window-title :writer (setf %window-title))
+   (app-id :initform nil :reader window-app-id :writer (setf %window-app-id))
+   (workspace :initform nil :reader window-workspace :writer (setf %window-workspace))
+   (parent :initform nil :reader window-parent :writer (setf %window-parent))
+   (closed :initform nil :reader window-closed-p :writer (setf %window-closed-p))
+   (home :initform nil :reader window-home :writer (setf %window-home)
          :documentation "The workspace of a removed output the window returns to.")
-   (x :initform 0 :accessor window-x)
-   (y :initform 0 :accessor window-y)
-   (width :initform 0 :accessor window-width)
-   (height :initform 0 :accessor window-height)
-   (min-width :initform 0 :accessor window-min-width)
-   (min-height :initform 0 :accessor window-min-height)
-   (max-width :initform 0 :accessor window-max-width)
-   (max-height :initform 0 :accessor window-max-height)
-   (clip :initform nil :accessor window-clip
-         :documentation "NIL, :HIDDEN, or the (x y width height) box to clip to.")
-   (floating :initform nil :accessor window-floating)
-   (float-offset :initform nil :accessor window-float-offset
+   (x :initform 0 :reader window-x :writer (setf %window-x))
+   (y :initform 0 :reader window-y :writer (setf %window-y))
+   (width :initform 0 :reader window-width :writer (setf %window-width))
+   (height :initform 0 :reader window-height :writer (setf %window-height))
+   (min-width :initform 0 :reader window-min-width :writer (setf %window-min-width))
+   (min-height :initform 0 :reader window-min-height :writer (setf %window-min-height))
+   (max-width :initform 0 :reader window-max-width :writer (setf %window-max-width))
+   (max-height :initform 0 :reader window-max-height :writer (setf %window-max-height))
+   (clip :initform nil :reader window-clip :writer (setf %window-clip)
+         :documentation "NIL, :HIDDEN, or the rect to clip to.")
+   (floating :initform nil :reader window-floating-p :writer (setf %window-floating-p))
+   (float-offset :initform nil :reader window-float-offset :writer (setf %window-float-offset)
                  :documentation "Position relative to the output's usable area, NIL
 until a floating window is placed.")
-   (fullscreen :initform nil :accessor window-fullscreen
+   (fullscreen :initform nil :reader window-fullscreen :writer (setf %window-fullscreen)
                :documentation "The output proxy while fullscreen, else NIL.")
-   (pending-dimensions :initform nil :accessor window-pending-dimensions)
-   (rules-applied :initform nil :accessor window-rules-applied)
-   (configured :initform nil :accessor window-configured)))
+   (pending-dimensions :initform nil :reader window-pending-dimensions
+                       :writer (setf %window-pending-dimensions))
+   (rules-applied :initform nil :reader window-rules-applied-p :writer (setf %window-rules-applied-p))))
 
 (defmethod print-object ((win window) stream)
   (print-unreadable-object (win stream :type t :identity t)
     (format stream "~@[~A~]~@[ ~S~]" (window-app-id win) (window-title win))))
 
 (defun live (win)
-  (and win (not (window-closed win)) win))
+  (and win (not (window-closed-p win)) win))
 
 (defun live-windows (windows &key (key #'identity))
-  (remove-if (lambda (item) (window-closed (funcall key item))) windows))
+  (remove-if (lambda (item) (window-closed-p (funcall key item))) windows))
+
+(defun window-rect (win)
+  (rect (window-x win) (window-y win) (window-width win) (window-height win)))
+
+(defun position-window (win x y clip)
+  (setf (%window-x win) x
+        (%window-y win) y
+        (%window-clip win) clip))
 
 (defmethod window-parent :around ((win window))
   (live (call-next-method)))
@@ -80,9 +82,9 @@ until a floating window is placed.")
 startup.")
 
 (defclass workspace ()
-  ((id :initform (next-id) :reader workspace-id)
+  ((id :initform (new-id) :reader workspace-id)
    (name :initarg :name :accessor workspace-name)
-   (windows :initform '() :accessor workspace-windows)
+   (windows :initform '() :reader workspace-windows :writer (setf %workspace-windows))
    (focus :initform nil :accessor workspace-focus
           :documentation "The window that has the focus while the workspace is active and
 nothing is highlighted.")
@@ -99,7 +101,7 @@ nothing is highlighted.")
 (defun make-submap ()
   (make-instance 'submap))
 
-(defclass wm ()
+(defclass proxies ()
   ((display :initarg :display :accessor wm-display)
    (registry :initform nil :accessor wm-registry)
    (wl-output-versions :initform (make-hash-table) :accessor wm-wl-output-versions)
@@ -107,18 +109,25 @@ nothing is highlighted.")
    (seat :initform nil :accessor wm-seat)
    (layer-shell :initform nil :accessor wm-layer-shell)
    (layer-shell-seat :initform nil :accessor wm-layer-shell-seat)
-   (layer-shell-focus :initform nil :accessor wm-layer-shell-focus)
    (xkb :initform nil :accessor wm-xkb)
    (xkb-seat :initform nil :accessor wm-xkb-seat)
    (input-manager :initform nil :accessor wm-input-manager)
-   (libinput-config :initform nil :accessor wm-libinput-config)
-   (outputs :initform '() :accessor wm-outputs)
+   (libinput-config :initform nil :accessor wm-libinput-config)))
+
+(defclass runtime ()
+  ((event-loop :initform nil :accessor wm-loop)
+   (thread :initform nil :accessor wm-thread)
+   (ipc :initform nil :accessor wm-ipc)))
+
+(defclass wm (proxies runtime)
+  ((outputs :initform '() :accessor wm-outputs)
    (orphans :initarg :orphans :accessor wm-orphans
             :documentation "Workspaces without an output, taken over by the next one.")
    (stash :initform '() :accessor wm-stash
           :documentation "Alist from the name of a removed output to its workspaces.")
    (active-workspace :initarg :active-workspace :accessor wm-active-workspace)
    (active-submap :initform nil :accessor wm-active-submap)
+   (layer-shell-focus :initform nil :accessor wm-layer-shell-focus)
    (highlight :initform nil :accessor wm-highlight)
    (focus-history :initform '() :accessor wm-focus-history
                   :documentation "Windows from the most recently focused on.")
@@ -127,20 +136,8 @@ nothing is highlighted.")
    (pointer-window :initform nil :accessor wm-pointer-window)
    (op :initform nil :accessor wm-op)
    (bindings :initform '() :accessor wm-bindings)
-   (pending-warp :initform nil :accessor wm-pending-warp)
-   (pending-bindings :initform '() :accessor wm-pending-bindings)
-   (pending-closes :initform '() :accessor wm-pending-closes)
-   (pending-submap-ops :initform '() :accessor wm-pending-submap-ops)
-   (pending-fullscreens :initform '() :accessor wm-pending-fullscreens)
-   (event-loop :initform nil :accessor wm-loop)
-   (thread :initform nil :accessor wm-thread)
-   (ipc :initform nil :accessor wm-ipc)))
-
-(defun active-windows (wm)
-  (workspace-windows (wm-active-workspace wm)))
-
-(defun (setf active-windows) (windows wm)
-  (setf (workspace-windows (wm-active-workspace wm)) windows))
+   (requests :initform '() :accessor wm-requests
+             :documentation "What the next manage sequence does, the newest first.")))
 
 (defun wm-workspaces (wm)
   (append (mappend #'output-workspaces (wm-outputs wm))
@@ -148,6 +145,7 @@ nothing is highlighted.")
           (mappend #'cdr (wm-stash wm))))
 
 (defun all-windows (wm)
+  "The windows of all workspaces."
   (loop for ws in (wm-workspaces wm) append (workspace-windows ws)))
 
 (defmethod wm-highlight :around ((wm wm))
@@ -162,11 +160,43 @@ nothing is highlighted.")
 (defmethod wm-pointer-window :around ((wm wm))
   (live (call-next-method)))
 
-(defmethod wm-pending-closes :around ((wm wm))
-  (live-windows (call-next-method)))
+(defun request (wm kind &rest args)
+  (push (cons kind args) (wm-requests wm)))
 
-(defmethod wm-pending-fullscreens :around ((wm wm))
-  (live-windows (call-next-method) :key #'car))
+(defun requests (wm kinds)
+  "The requests of KINDS, (kind . arguments), the oldest first."
+  (reverse (remove-if-not (lambda (request) (member (car request) kinds))
+                          (wm-requests wm))))
+
+(defun drop-requests (wm predicate)
+  (let* ((requests (wm-requests wm))
+         (kept (remove-if predicate requests)))
+    (setf (wm-requests wm) kept)
+    (/= (length kept) (length requests))))
+
+(defun cancel-requests (wm kinds &key about)
+  "Drop the requests of KINDS, only those about the window ABOUT if given.
+Returns whether there were any."
+  (drop-requests wm (lambda (request)
+                      (and (member (car request) kinds)
+                           (or (null about) (member about (cdr request)))))))
+
+(defun forget-window-requests (wm win)
+  (drop-requests wm (lambda (request) (member win (cdr request)))))
+
+(defun take-requests (wm kinds)
+  (prog1 (requests wm kinds)
+    (cancel-requests wm kinds)))
+
+(defmacro drain-requests ((wm) &body clauses)
+  "Take the requests of the kinds that CLAUSES, (kind lambda-list . body), name
+and run the clause of each with its arguments, the oldest first."
+  (let ((request (gensym "REQUEST")))
+    `(dolist (,request (take-requests ,wm ',(mapcar #'first clauses)))
+       (ecase (car ,request)
+         ,@(loop for (kind lambda-list . body) in clauses
+                 collect `(,kind (destructuring-bind ,lambda-list (cdr ,request)
+                                   ,@body)))))))
 
 (defun wm-focus (wm)
   "While a highlight is active, the highlighted window is the only visible one
@@ -186,4 +216,5 @@ and has the focus."
   (find proxy (all-windows wm) :key #'window-proxy))
 
 (defun mark-dirty (wm)
+  "Ask river for a manage sequence, in which changes take effect."
   (river-window-manager-v1.manage-dirty (wm-river wm)))
