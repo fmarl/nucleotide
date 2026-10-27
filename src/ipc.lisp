@@ -68,11 +68,11 @@
                                     collect (niri-window win ws focused))))))
 
 (defun niri-events (wm)
-  "The WindowsChanged and WorkspacesChanged events, windows first so that the
-workspaces' active windows are known."
-  (list (json-string `(:object ("WindowsChanged" :object ("windows" . ,(niri-windows wm)))))
-        (json-string `(:object ("WorkspacesChanged"
-                                :object ("workspaces" . ,(niri-workspaces wm)))))))
+  "Workspaces first: waybar's niri/window module redraws only on window events
+and then shows the window that its workspace's active_window_id names."
+  (list (json-string `(:object ("WorkspacesChanged"
+                                :object ("workspaces" . ,(niri-workspaces wm)))))
+        (json-string `(:object ("WindowsChanged" :object ("windows" . ,(niri-windows wm)))))))
 
 (defun ipc-error (message)
   (json-string `(:object ("Err" . ,message))))
@@ -189,14 +189,15 @@ IPC-LISTEN."
     (setf (wm-ipc wm) nil)))
 
 (defun ipc-update (wm)
-  "Send subscribers the events that changed since the last call."
+  "Send subscribers the events from the first one that changed since the last
+call on."
   (let ((ipc (wm-ipc wm)))
     (when ipc
       (let* ((events (niri-events wm))
-             (changed (loop for event in events
+             (changed (loop for tail on events
                             for last in (or (ipc-last-events ipc) '(nil nil))
-                            unless (equal event last)
-                            collect event)))
+                            unless (equal (first tail) last)
+                            return tail)))
         (setf (ipc-last-events ipc) events
               (ipc-clients ipc) (remove-if-not #'ipc-client-socket (ipc-clients ipc)))
         (dolist (client (ipc-clients ipc))
