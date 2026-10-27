@@ -14,7 +14,7 @@
   socket
   handler
   (input (make-array 0 :element-type '(unsigned-byte 8)) :type octets)
-  subscribed)
+  subscribed-p)
 
 (defconstant +ipc-max-request+ 65536)
 
@@ -45,8 +45,8 @@
               ("idx" . ,index)
               ("name" . :null)
               ("output" . ,(output-name output))
-              ("is_active" . ,(json-bool (eq ws (output-workspace output))))
-              ("is_focused" . ,(json-bool (eq ws (wm-active-workspace wm))))
+              ("is_active" . ,(json:bool (eq ws (output-workspace output))))
+              ("is_focused" . ,(json:bool (eq ws (wm-active-workspace wm))))
               ("is_urgent" . :false)
               ("active_window_id" . ,(if active (window-id active) :null)))))
 
@@ -64,7 +64,7 @@
             ("title" . ,(or (window-title win) :null))
             ("app_id" . ,(or (window-app-id win) :null))
             ("workspace_id" . ,(workspace-id (shown-workspace wm win)))
-            ("is_focused" . ,(json-bool (eq win focused)))))
+            ("is_focused" . ,(json:bool (eq win focused)))))
 
 (defun niri-windows (wm)
   (let ((focused (wm-focus wm)))
@@ -76,17 +76,21 @@
 (defun niri-events (wm)
   "Workspaces first: waybar's niri/window module redraws only on window events
 and then shows the window that its workspace's active_window_id names."
-  (list (json-string `(:object ("WorkspacesChanged"
+  (list (json:encode `(:object ("WorkspacesChanged"
                                 :object ("workspaces" . ,(niri-workspaces wm)))))
-        (json-string `(:object ("WindowsChanged" :object ("windows" . ,(niri-windows wm)))))))
+        (json:encode `(:object ("WindowsChanged" :object ("windows" . ,(niri-windows wm)))))))
 
 (defun ipc-error (message)
-  (json-string `(:object ("Err" . ,message))))
+  (json:encode `(:object ("Err" . ,message))))
+
+(defmacro without-socket-errors (&body body)
+  `(handler-case (progn ,@body)
+     (sb-bsd-sockets:socket-error () nil)))
 
 (defun close-client (client)
   (when (ipc-client-socket client)
     (sb-sys:remove-fd-handler (ipc-client-handler client))
-    (ignore-errors (sb-bsd-sockets:socket-close (ipc-client-socket client)))
+    (without-socket-errors (sb-bsd-sockets:socket-close (ipc-client-socket client)))
     (setf (ipc-client-socket client) nil)))
 
 (defun ipc-send (client line)
@@ -95,22 +99,24 @@ and then shows the window that its workspace's active_window_id names."
         (socket (ipc-client-socket client)))
     (when (and socket
                (not (eql (length octets)
-                         (ignore-errors
-                           (sb-bsd-sockets:socket-send socket octets (length octets)
-                                                       :nosignal t :dontwait t)))))
+                         (without-socket-errors
+                             (sb-bsd-sockets:socket-send socket octets (length octets)
+                                                         :nosignal t :dontwait t)))))
       (close-client client))))
 
 (defun referenced-workspace (wm reference)
-  (let ((id (json-get reference "Id"))
-        (index (json-get reference "Index")))
+  (let ((id (json:lookup reference "Id"))
+        (index (json:lookup reference "Index")))
     (cond (id (find id (mappend #'output-workspaces (wm-outputs wm)) :key #'workspace-id))
           ((typep index '(integer 1)) (nth-workspace wm (1- index))))))
 
-(defun ipc-replies (wm client request)
-  (let* ((reference (json-get request "Action" "FocusWorkspace" "reference"))
+(defun handle-ipc-request (wm client request)
+  "Act on REQUEST and return the reply lines. EventStream subscribes CLIENT,
+FocusWorkspace switches the workspace."
+  (let* ((reference (json:lookup request "Action" "FocusWorkspace" "reference"))
          (ws (and reference (referenced-workspace wm reference))))
     (cond ((equal request "EventStream")
-           (setf (ipc-client-subscribed client) t)
+           (setf (ipc-client-subscribed-p client) t)
            (cons *ipc-ok* (niri-events wm)))
           ((null reference) (list (ipc-error "unsupported request")))
           ((null ws) (list (ipc-error "no such workspace")))
@@ -119,18 +125,21 @@ and then shows the window that its workspace's active_window_id names."
              (list *ipc-ok*)))))
 
 (defun ipc-handle-line (wm client octets)
-  (multiple-value-bind (request error)
-      (ignore-errors (parse-json (sb-ext:octets-to-string octets :external-format :utf-8)))
-    (dolist (reply (if error
-                       (list (ipc-error "invalid request"))
-                       (ipc-replies wm client request)))
+  (multiple-value-bind (request valid)
+      (handler-case (values (json:parse (sb-ext:octets-to-string
+                                         octets :external-format '(:utf-8 :replacement #\?)))
+                            t)
+        (json:json-error () nil))
+    (dolist (reply (if valid
+                       (handle-ipc-request wm client request)
+                       (list (ipc-error "invalid request"))))
       (ipc-send client reply))))
 
 (defun ipc-read (wm client)
   (let* ((buffer (make-array 4096 :element-type '(unsigned-byte 8)))
-         (length (nth-value 1 (ignore-errors
-                                (sb-bsd-sockets:socket-receive (ipc-client-socket client)
-                                                               buffer nil)))))
+         (length (nth-value 1 (without-socket-errors
+                                  (sb-bsd-sockets:socket-receive (ipc-client-socket client)
+                                                                 buffer nil)))))
     (if (member length '(nil 0))
         (close-client client)
         (let ((input (concatenate 'octets (ipc-client-input client) (subseq buffer 0 length))))
@@ -166,7 +175,7 @@ runs it: fd handlers are thread-local in SBCL."
             (lambda () (ipc-accept wm ipc))))
 
 (defun open-ipc (path)
-  "An IPC listening on PATH, only for its owner; clients queue up until
+  "An IPC listening on PATH, only for its owner. Clients queue up until
 IPC-LISTEN."
   (let ((listener (make-instance 'sb-bsd-sockets:local-socket :type :stream))
         (umask (sb-posix:umask #o177)))
@@ -180,8 +189,9 @@ IPC-LISTEN."
 
 (defun close-ipc (ipc)
   (mapc #'close-client (ipc-clients ipc))
-  (ignore-errors (sb-bsd-sockets:socket-close (ipc-listener ipc)))
-  (ignore-errors (delete-file (ipc-path ipc))))
+  (without-socket-errors (sb-bsd-sockets:socket-close (ipc-listener ipc)))
+  (handler-case (delete-file (ipc-path ipc))
+    (file-error () nil)))
 
 (defun start-ipc (wm)
   (let ((ipc (open-ipc (ipc-socket-path))))
@@ -206,6 +216,6 @@ IPC-LISTEN."
         (setf (ipc-last-events ipc) events
               (ipc-clients ipc) (remove-if-not #'ipc-client-socket (ipc-clients ipc)))
         (dolist (client (ipc-clients ipc))
-          (when (ipc-client-subscribed client)
+          (when (ipc-client-subscribed-p client)
             (dolist (event changed)
               (ipc-send client event))))))))

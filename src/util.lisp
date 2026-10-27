@@ -4,8 +4,9 @@
 (in-package #:nucleotide)
 
 (defun notify (control &rest args)
+  "Log the message and show it as a desktop notification."
   (let ((message (apply #'format nil control args)))
-    (format *error-output* "~&nucleotide: ~A~%" message)
+    (log-message :info "~A" message)
     (ignore-errors
       (uiop:launch-program (list "notify-send" "nucleotide" message)))
     (values)))
@@ -25,7 +26,7 @@
 
 (defun spawn-program (command)
   "Start COMMAND detached from nucleotide. A string is run by sh, so it may
-contain arguments (\"alacritty -e htop\"); a list is used as argv directly."
+contain arguments (\"alacritty -e htop\"). A list is used as argv directly."
   (uiop:launch-program
    (list* "setsid" "-f"
           (if (stringp command)

@@ -14,13 +14,16 @@
             (window-app-id win) (window-title win))))
 
 (defun menu-choose (choices)
-  "Run *MENU-COMMAND* on CHOICES; the index of the chosen one, or NIL."
-  (let ((output (ignore-errors
-                  (uiop:run-program *menu-command*
-                                    :input (make-string-input-stream
-                                            (format nil "~{~A~%~}" choices))
-                                    :output '(:string :stripped t)
-                                    :ignore-error-status t))))
+  "Run *MENU-COMMAND* on CHOICES and return the index of the chosen one, or NIL."
+  (let ((output (handler-case
+                    (uiop:run-program *menu-command*
+                                      :input (make-string-input-stream
+                                              (format nil "~{~A~%~}" choices))
+                                      :output '(:string :stripped t)
+                                      :ignore-error-status t)
+                  (error (c)
+                    (notify "~A failed: ~A" (first *menu-command*) c)
+                    nil))))
     (let ((number (and output (parse-integer output :junk-allowed t))))
       (and number (<= 1 number (length choices)) (1- number)))))
 
@@ -32,6 +35,7 @@
       (follow-focus wm previous))))
 
 (define-command switch-window (wm)
+  "Choose a window with *MENU-COMMAND* and focus it."
   (let* ((windows (all-windows wm))
          (choices (loop for win in windows
                         for number from 1

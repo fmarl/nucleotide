@@ -6,29 +6,6 @@
 (def-suite ipc :in :nucleotide)
 (in-suite ipc)
 
-(test json-output
-  (is (equal "{\"a\":1,\"b\":true,\"c\":false,\"d\":null,\"e\":[1,\"f\"],\"g\":[]}"
-             (n::json-string '(:object ("a" . 1) ("b" . :true) ("c" . :false) ("d" . :null)
-                               ("e" 1 "f") ("g")))))
-  (is (equal "\"x\\\"y\\\\z\"" (n::json-string "x\"y\\z")))
-  (is (equal "\"a\\u000Ab\"" (n::json-string (format nil "a~%b"))))
-  (is (equal "\"grüße\"" (n::json-string "grüße"))))
-
-(test json-input
-  (is (equal "EventStream" (n::parse-json "\"EventStream\"")))
-  (is (= 7 (n::json-get (n::parse-json
-                         "{\"Action\":{\"FocusWorkspace\":{\"reference\":{\"Id\":7}}}}")
-                        "Action" "FocusWorkspace" "reference" "Id")))
-  (is (equal '(1 "a\"b" :true :null (:object))
-             (n::parse-json "[1, \"a\\\"b\", true, null, {}]")))
-  (signals n::nucleotide-error (n::parse-json "{\"a\":"))
-  (signals n::nucleotide-error (n::parse-json "1 2"))
-  (signals n::nucleotide-error (n::parse-json "[1.5]")))
-
-(test deeply-nested-json-is-rejected
-  (signals n::nucleotide-error
-           (n::parse-json (make-string 60000 :initial-element #\[))))
-
 (defun workspace-objects (wm)
   (mapcar #'rest (n::niri-workspaces wm)))
 
@@ -54,13 +31,13 @@
          (output (add-output wm 0 :name "eDP-1"))
          (ws (n::output-workspace output))
          (win (open-window-on ws)))
-    (setf (n::window-title win) "title")
+    (setf (n::%window-title win) "title")
     (is (equal `(("id" . ,(n::window-id win)) ("title" . "title") ("app_id" . :null)
                  ("workspace_id" . ,(n::workspace-id ws)) ("is_focused" . :true))
                (rest (first (n::niri-windows wm)))))))
 
 (defun focus-request (id)
-  (n::parse-json
+  (json:parse
    (format nil "{\"Action\":{\"FocusWorkspace\":{\"reference\":{\"Id\":~D}}}}" id)))
 
 (test focus-workspace-requests-switch-workspaces
@@ -72,11 +49,11 @@
     (declare (ignore left))
     (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
       (is (equal (list n::*ipc-ok*)
-                 (n::ipc-replies wm client (focus-request (n::workspace-id target)))))
+                 (n::handle-ipc-request wm client (focus-request (n::workspace-id target)))))
       (is (eq target (n::wm-active-workspace wm)))
-      (is (search "Err" (first (n::ipc-replies wm client (focus-request 0)))))
-      (is (search "Err" (first (n::ipc-replies wm client (n::parse-json "\"Version\"")))))
-      (is (not (n::ipc-client-subscribed client))))))
+      (is (search "Err" (first (n::handle-ipc-request wm client (focus-request 0)))))
+      (is (search "Err" (first (n::handle-ipc-request wm client (json:parse "\"Version\"")))))
+      (is (not (n::ipc-client-subscribed-p client))))))
 
 (test focus-workspace-requests-ignore-workspaces-without-output
   (let* ((wm (make-test-wm))
@@ -86,8 +63,8 @@
          (client (n::make-ipc-client nil)))
     (n::unassign-output wm removed)
     (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
-      (is (search "Err" (first (n::ipc-replies wm client
-                                               (focus-request (n::workspace-id stashed))))))
+      (is (search "Err" (first (n::handle-ipc-request wm client
+                                                      (focus-request (n::workspace-id stashed))))))
       (is (eq output (n::wm-focused-output wm))))))
 
 (test socket-paths-take-the-name-of-an-absolute-wayland-display
@@ -101,12 +78,12 @@
   (let* ((wm (make-test-wm))
          (client (n::make-ipc-client nil)))
     (add-output wm 0 :name "eDP-1")
-    (let ((replies (n::ipc-replies wm client "EventStream")))
+    (let ((replies (n::handle-ipc-request wm client "EventStream")))
       (is (equal n::*ipc-ok* (first replies)))
       (is (= 3 (length replies)))
       (is (search "WorkspacesChanged" (second replies)))
       (is (search "WindowsChanged" (third replies)))
-      (is (n::ipc-client-subscribed client)))))
+      (is (n::ipc-client-subscribed-p client)))))
 
 (test requests-with-wrong-types-or-bytes-get-errors
   (let ((wm (make-test-wm))
@@ -145,22 +122,23 @@
 
 (defmacro with-ipc-connection ((stream wm ipc) &body body)
   "Run BODY with STREAM connected to an IPC of WM that serves in this thread."
-  (let ((path (gensym)) (handler (gensym)) (socket (gensym)))
-    `(let* ((,path (format nil "/tmp/nucleotide-ipc-test-~D.sock" (sb-posix:getpid)))
-            (,ipc (n::open-ipc ,path))
-            (,handler (n::ipc-listen ,wm ,ipc))
-            (,socket (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
-       (setf (n::wm-ipc ,wm) ,ipc)
-       (n::ipc-update ,wm)
-       (unwind-protect
-            (let ((,stream (progn (sb-bsd-sockets:socket-connect ,socket ,path)
-                                  (sb-bsd-sockets:socket-make-stream
-                                   ,socket :input t :output t :external-format :utf-8))))
-              ,@body)
-         (sb-sys:remove-fd-handler ,handler)
-         (ignore-errors (sb-bsd-sockets:socket-close ,socket))
-         (n::close-ipc ,ipc))
-       (is (not (probe-file ,path))))))
+  (let ((directory (gensym)) (path (gensym)) (handler (gensym)) (socket (gensym)))
+    `(with-private-directory (,directory)
+       (let* ((,path (format nil "~A/ipc.sock" ,directory))
+              (,ipc (n::open-ipc ,path))
+              (,handler (n::ipc-listen ,wm ,ipc))
+              (,socket (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
+         (setf (n::wm-ipc ,wm) ,ipc)
+         (n::ipc-update ,wm)
+         (unwind-protect
+              (let ((,stream (progn (sb-bsd-sockets:socket-connect ,socket ,path)
+                                    (sb-bsd-sockets:socket-make-stream
+                                     ,socket :input t :output t :external-format :utf-8))))
+                ,@body)
+           (sb-sys:remove-fd-handler ,handler)
+           (n::without-socket-errors (sb-bsd-sockets:socket-close ,socket))
+           (n::close-ipc ,ipc))
+         (is (not (probe-file ,path)))))))
 
 (defun subscribe (stream)
   (write-line "\"EventStream\"" stream)
@@ -189,7 +167,7 @@
         (is (search (format nil "\"id\":~D" (n::window-id win)) (read-reply stream))))
       (n::ipc-update wm)
       (is (null (read-reply stream)))
-      (setf (n::window-title (first (n::all-windows wm))) "new title")
+      (setf (n::%window-title (first (n::all-windows wm))) "new title")
       (n::ipc-update wm)
       (is (search "new title" (read-reply stream)))
       (is (null (read-reply stream))))))
@@ -254,9 +232,9 @@
     (open-window-on active)
     (setf (n::wm-highlight wm) highlighted)
     (is (eql (n::workspace-id active)
-             (n::json-get (find (n::window-id highlighted) (n::niri-windows wm)
-                                :key (lambda (win) (n::json-get win "id")))
+             (json:lookup (find (n::window-id highlighted) (n::niri-windows wm)
+                                :key (lambda (win) (json:lookup win "id")))
                           "workspace_id")))
     (is (eql (n::window-id highlighted)
-             (n::json-get (n::niri-workspace wm output active 1) "active_window_id")))
-    (is (eq :null (n::json-get (n::niri-workspace wm output home 2) "active_window_id")))))
+             (json:lookup (n::niri-workspace wm output active 1) "active_window_id")))
+    (is (eq :null (json:lookup (n::niri-workspace wm output home 2) "active_window_id")))))
