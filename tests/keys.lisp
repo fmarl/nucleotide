@@ -21,6 +21,14 @@
   (is (equal '(#x5b . 64) (n::parse-key "Super+BracketLeft")))
   (is (equal '(#x1008ff14 . 0) (n::parse-key "XF86AudioPlay")))
   (is (equal '(#x10020ac . 0) (n::parse-key (string (code-char #x20ac)))))
+  (is (equal '(#xe0 . 0) (n::parse-key "AGRAVE")))
+  (is (equal '(#xc0 . 0) (n::parse-key "Agrave")))
+  (is (equal '(#xfe80 . 0) (n::parse-key "DEAD_A")))
+  (is (equal '(#xff . 0) (n::parse-key "YDIAERESIS")))
+  (is (equal '(#xfea0 . 0) (n::parse-key "cH")))
+  (is (equal '(#x7e1 . 0) (n::parse-key "greek_ALPHA")))
+  (is (equal '(#x1000561 . 0) (n::parse-key "armenian_AYB")))
+  (signals n::nucleotide-error (n::parse-key "NoSymbol"))
   (signals n::nucleotide-error (n::parse-key "Super+NoSuchKey"))
   (signals n::nucleotide-error (n::parse-key "")))
 
@@ -29,7 +37,6 @@
   (signals n::nucleotide-error (n::parse-key-sequence "A B C")))
 
 (test (bindings-take-commands :fixture fresh-config)
-
   (n::bind "Super+Q" n::close-window)
   (n::bind "Super+H" (n::focus :left))
   (is (equal '(n::close-window) (action "Super+Q")))
@@ -37,14 +44,12 @@
   (signals n::nucleotide-error (n::bind "Super+X" (n::no-such-command))))
 
 (test (bindings-replace-the-same-keys :fixture fresh-config)
-
   (n::bind "Super+Q" n::close-window)
   (n::bind "Super+Q" n::exit-session)
   (is (= 1 (length n::*bindings*)))
   (is (equal '(n::exit-session) (action "Super+Q"))))
 
 (test (chords-and-their-prefix-exclude-each-other :fixture fresh-config)
-
   (n::bind "Super+Space" n::toggle-floating)
   (n::bind "Super+Space T" (n::set-layout n::tiling))
   (n::bind "Super+Space M" (n::set-layout n::monocle))
@@ -54,13 +59,11 @@
   (is (= 1 (length n::*bindings*))))
 
 (test (unbind :fixture fresh-config)
-
   (n::bind "Super+Q" n::close-window)
   (n::unbind "Super+Q")
   (is (null n::*bindings*)))
 
 (test (the-defaults-bind-known-commands :fixture fresh-config)
-
   (n::use-defaults)
   (is (equal '(n::switch-workspace 3) (action "Super+3")))
   (is (equal '(n::switch-workspace 3) (action "Super+Shift+3")))

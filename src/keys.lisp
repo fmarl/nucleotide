@@ -3,26 +3,54 @@
 
 (in-package #:nucleotide)
 
-(defvar *libxkbcommon* "libxkbcommon.so.0")
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun keysym-header-entries (pathname)
+    (with-open-file (in pathname)
+      (loop for line = (read-line in nil)
+            while line
+            when (uiop:string-prefix-p "#define XKB_KEY_" line)
+            collect (destructuring-bind (name value &rest comment)
+                        (remove "" (uiop:split-string (subseq line 16)) :test #'string=)
+                      (declare (ignore comment))
+                      (cons name (parse-integer value :start 2 :radix 16)))))))
 
-(defun xkb-keysym-from-name-address ()
-  (unless (sb-sys:find-dynamic-foreign-symbol-address "xkb_keysym_from_name")
-    (sb-alien:load-shared-object *libxkbcommon* :dont-save t))
-  (sb-sys:find-dynamic-foreign-symbol-address "xkb_keysym_from_name"))
+(defun keysym-table (entries)
+  (let ((table (make-hash-table :test #'equal)))
+    (loop for (name . keysym) in entries
+          do (setf (gethash name table) keysym))
+    table))
 
-(defconstant +keysym-case-insensitive+ 1)
+(defun keysym-table-ignoring-case (keysyms)
+  "Names that differ only in case resolve to the one with the most lower case
+letters, like Greek_alpha, as in xkb_keysym_from_name."
+  (let ((table (make-hash-table :test #'equalp)))
+    (flet ((lower-count (name) (count-if #'lower-case-p name)))
+      (maphash (lambda (name keysym)
+                 (let ((other (gethash name table)))
+                   (when (or (null other)
+                             (> (lower-count name) (lower-count (car other)))
+                             (and (= (lower-count name) (lower-count (car other)))
+                                  (< keysym (cdr other))))
+                     (setf (gethash name table) (cons name keysym)))))
+               keysyms))
+    table))
+
+(defmacro define-keysyms (file)
+  (let ((entries (keysym-header-entries
+                  (asdf:system-relative-pathname "nucleotide" (format nil "protocol/~A" file)))))
+    `(progn
+       (defparameter *keysyms* (keysym-table ',entries))
+       (defparameter *keysyms-ignoring-case* (keysym-table-ignoring-case *keysyms*)))))
+
+(define-keysyms "xkbcommon-keysyms.h")
+
+(defun char-keysym (char)
+  (let ((code (char-code char)))
+    (if (< code #x100) code (logior #x1000000 code))))
 
 (defun keysym-from-name (name)
-  (let ((address (xkb-keysym-from-name-address)))
-    (flet ((lookup (flags)
-             (sb-alien:alien-funcall
-              (sb-alien:sap-alien (sb-sys:int-sap address)
-                                  (function sb-alien:unsigned-int sb-alien:c-string sb-alien:int))
-              name flags)))
-      (let ((keysym (lookup 0)))
-        (if (zerop keysym)
-            (lookup +keysym-case-insensitive+)
-            keysym)))))
+  (or (gethash name *keysyms*)
+      (cdr (gethash name *keysyms-ignoring-case*))))
 
 (defparameter *modifier-names*
   `(("Shift" . ,+river-seat-v1-modifiers-shift+)
@@ -49,10 +77,9 @@
 
 (defun key-keysym (name)
   (let ((keysym (if (= 1 (length name))
-                    (let ((code (char-code (char-downcase (char name 0)))))
-                      (if (< code #x100) code (logior #x1000000 code)))
+                    (char-keysym (char-downcase (char name 0)))
                     (keysym-from-name name))))
-    (when (zerop keysym)
+    (when (member keysym '(nil 0))
       (nucleotide-error "unknown key ~S" name))
     keysym))
 
@@ -76,9 +103,8 @@
   (and (< (length a) (length b)) (equal a (subseq b 0 (length a)))))
 
 (defun set-binding (keys action)
-  "Run ACTION, a command like (FOCUS :LEFT), on KEYS: a key, or a prefix and a
-key like \"Super+Space T\". It replaces the bindings of the same keys, and of
-keys it is a prefix of or that are its prefix."
+  "Like BIND with an evaluated ACTION. Replaces bindings of the same keys and of
+chords that share their prefix with KEYS."
   (let ((sequence (parse-key-sequence keys))
         (action (normalize-action action)))
     (setf *bindings*
@@ -91,7 +117,9 @@ keys it is a prefix of or that are its prefix."
     keys))
 
 (defmacro bind (keys action)
+  "Bind KEYS, like \"Super+Q\" or \"Super+Space T\", to ACTION, like (focus :left)."
   `(set-binding ,keys ',action))
 
 (defun unbind (keys)
+  "Remove the binding of KEYS."
   (setf *bindings* (remove (parse-key-sequence keys) *bindings* :key #'car :test #'equal)))

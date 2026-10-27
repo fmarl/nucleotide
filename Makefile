@@ -5,11 +5,7 @@ SBCL := sbcl --non-interactive
 EMACS := emacs --batch -Q
 LISP_FILES := $(wildcard *.lisp *.asd src/*.lisp src/core/*.lisp tests/*.lisp scripts/*.lisp)
 
-ifdef GUIX_ENVIRONMENT
-export LD_LIBRARY_PATH := $(GUIX_ENVIRONMENT)/lib$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
-endif
-
-.PHONY: all check lint fmt clean
+.PHONY: all check lint fmt keysyms clean
 
 all:
 	$(SBCL) --load build.lisp
@@ -24,6 +20,10 @@ lint:
 
 fmt:
 	$(EMACS) -l scripts/fmt.el $(LISP_FILES)
+
+keysyms:
+	guix shell libxkbcommon -- sh -c \
+	  'install -m 644 "$$GUIX_ENVIRONMENT/include/xkbcommon/xkbcommon-keysyms.h" protocol/'
 
 clean:
 	rm -rf ./nucleotide
