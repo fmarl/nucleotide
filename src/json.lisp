@@ -1,9 +1,14 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
-(in-package #:nucleotide)
+(in-package #:nucleotide.json)
 
-(defun json-bool (value)
+(define-condition json-error (simple-error) ())
+
+(defun json-error (control &rest args)
+  (error 'json-error :format-control control :format-arguments args))
+
+(defun bool (value)
   (if value :true :false))
 
 (defun write-json-string (string stream)
@@ -41,11 +46,11 @@
                                   #\})
                      (write-items #\[ value (lambda (item) (write-json item stream)) #\]))))))))
 
-(defun json-string (value)
+(defun encode (value)
   (with-output-to-string (stream)
     (write-json value stream)))
 
-(defun json-get (object &rest keys)
+(defun lookup (object &rest keys)
   (reduce (lambda (object key)
             (and (consp object)
                  (eq (first object) :object)
@@ -56,8 +61,29 @@
 (defun read-json-char (in &rest expected)
   (let ((char (and (peek-char t in nil) (read-char in))))
     (unless (member char expected)
-      (nucleotide-error "expected ~{~C~^ or ~} in JSON" expected))
+      (json-error "expected ~{~C~^ or ~} in JSON" expected))
     char))
+
+(defun read-json-code-unit (in)
+  (loop repeat 4
+        for digit = (let ((char (read-char in nil)))
+                      (or (and char (digit-char-p char 16))
+                          (json-error "invalid \\u escape in JSON")))
+        for code = digit then (+ (* 16 code) digit)
+        finally (return code)))
+
+(defun read-json-code-point (in)
+  (let ((code (read-json-code-unit in)))
+    (cond ((<= #xd800 code #xdbff)
+           (let ((low (and (eql #\\ (read-char in nil))
+                           (eql #\u (read-char in nil))
+                           (read-json-code-unit in))))
+             (unless (and low (<= #xdc00 low #xdfff))
+               (json-error "unpaired surrogate in JSON"))
+             (+ #x10000 (ash (- code #xd800) 10) (- low #xdc00))))
+          ((<= #xdc00 code #xdfff)
+           (json-error "unpaired surrogate in JSON"))
+          (t code))))
 
 (defun read-json-escape (in)
   (let ((char (read-char in nil)))
@@ -67,12 +93,8 @@
       (#\r #\Return)
       (#\b #\Backspace)
       (#\f #\Page)
-      (#\u (code-char (parse-integer (map 'string (lambda (i)
-                                                    (declare (ignore i))
-                                                    (read-char in))
-                                          '(0 1 2 3))
-                                     :radix 16)))
-      ((nil) (nucleotide-error "unterminated JSON string"))
+      (#\u (code-char (read-json-code-point in)))
+      ((nil) (json-error "unterminated JSON string"))
       (t char))))
 
 (defun read-json-string (in)
@@ -80,7 +102,7 @@
   (with-output-to-string (out)
     (loop for char = (read-char in nil)
           do (case char
-               ((nil) (nucleotide-error "unterminated JSON string"))
+               ((nil) (json-error "unterminated JSON string"))
                (#\" (return))
                (#\\ (write-char (read-json-escape in) out))
                (t (write-char char out))))))
@@ -102,10 +124,10 @@
 
 (defun read-json (in &optional (depth 0))
   (when (> depth +json-max-depth+)
-    (nucleotide-error "JSON nested too deeply"))
+    (json-error "JSON nested too deeply"))
   (flet ((read-value () (read-json in (1+ depth))))
     (case (peek-char t in nil)
-      ((nil) (nucleotide-error "unexpected end of JSON"))
+      ((nil) (json-error "unexpected end of JSON"))
       (#\{ (read-char in)
            (cons :object (read-json-items in #\}
                                           (lambda ()
@@ -119,11 +141,11 @@
            (cond ((string= token "true") :true)
                  ((string= token "false") :false)
                  ((string= token "null") :null)
-                 ((ignore-errors (parse-integer token)))
-                 (t (nucleotide-error "unsupported JSON value ~S" token))))))))
+                 ((handler-case (parse-integer token) (parse-error () nil)))
+                 (t (json-error "unsupported JSON value ~S" token))))))))
 
-(defun parse-json (string)
+(defun parse (string)
   (with-input-from-string (in string)
     (prog1 (read-json in)
       (when (peek-char t in nil)
-        (nucleotide-error "trailing characters after JSON")))))
+        (json-error "trailing characters after JSON")))))
