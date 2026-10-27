@@ -90,25 +90,12 @@
                                                (focus-request (n::workspace-id stashed))))))
       (is (eq output (n::wm-focused-output wm))))))
 
-(test the-active-window-of-a-highlight-is-the-highlighted-one
-  (let* ((wm (make-test-wm))
-         (output (add-output wm 0 :name "eDP-1"))
-         (ws (n::output-workspace output))
-         (highlighted (open-window-on (ws wm 2))))
-    (open-window-on ws)
-    (setf (n::wm-highlight wm) highlighted)
-    (is (eql (n::window-id highlighted)
-             (n::json-get (n::niri-workspace wm output ws 1) "active_window_id")))))
-
 (test socket-paths-take-the-name-of-an-absolute-wayland-display
-  (let ((previous (uiop:getenv "WAYLAND_DISPLAY")))
-    (unwind-protect
-         (progn
-           (sb-posix:setenv "WAYLAND_DISPLAY" "/run/user/1000/wayland-1" 1)
-           (is (search "/nucleotide.wayland-1." (n::ipc-socket-path))))
-      (if previous
-          (sb-posix:setenv "WAYLAND_DISPLAY" previous 1)
-          (sb-posix:unsetenv "WAYLAND_DISPLAY")))))
+  (with-private-directory (runtime)
+    (with-environment (("XDG_RUNTIME_DIR" runtime)
+                       ("WAYLAND_DISPLAY" "/run/user/1000/wayland-1"))
+      (is (equal (format nil "~A/nucleotide.wayland-1.~D.sock" runtime (sb-posix:getpid))
+                 (n::ipc-socket-path))))))
 
 (test event-streams-start-with-ok-and-the-state
   (let* ((wm (make-test-wm))
@@ -138,20 +125,12 @@
     (is (every (lambda (reply) (search "\"Err\"" reply)) replies))))
 
 (test the-runtime-directory-must-be-private
-  (let ((dir (format nil "/tmp/nucleotide-runtime-~D/" (sb-posix:getpid)))
-        (old (sb-posix:getenv "XDG_RUNTIME_DIR")))
-    (ensure-directories-exist dir)
-    (unwind-protect
-         (progn
-           (sb-posix:setenv "XDG_RUNTIME_DIR" dir 1)
-           (sb-posix:chmod dir #o755)
-           (signals n::nucleotide-error (n::ipc-socket-path))
-           (sb-posix:chmod dir #o700)
-           (is (search dir (n::ipc-socket-path))))
-      (if old
-          (sb-posix:setenv "XDG_RUNTIME_DIR" old 1)
-          (sb-posix:unsetenv "XDG_RUNTIME_DIR"))
-      (uiop:delete-directory-tree (pathname dir) :validate t))))
+  (with-private-directory (runtime)
+    (with-environment (("XDG_RUNTIME_DIR" runtime))
+      (sb-posix:chmod runtime #o755)
+      (signals n::nucleotide-error (n::ipc-socket-path))
+      (sb-posix:chmod runtime #o700)
+      (is (search runtime (n::ipc-socket-path))))))
 
 (defun serve (times)
   (loop repeat times do (sb-sys:serve-event 0.05)))
@@ -188,11 +167,17 @@
   (finish-output stream)
   (list (read-reply stream) (read-reply stream) (read-reply stream)))
 
+(test the-socket-is-only-for-its-owner
+  (let ((wm (make-test-wm)))
+    (add-output wm 0 :name "eDP-1")
+    (with-ipc-connection (stream wm ipc)
+      (declare (ignore stream))
+      (is (= #o600 (logand #o777 (sb-posix:stat-mode (sb-posix:stat (n::ipc-path ipc)))))))))
+
 (test subscribers-get-only-changes-over-the-socket
   (let* ((wm (make-test-wm))
          (output (add-output wm 0 :name "eDP-1")))
     (with-ipc-connection (stream wm ipc)
-      (is (= #o600 (logand #o777 (sb-posix:stat-mode (sb-posix:stat (n::ipc-path ipc))))))
       (destructuring-bind (ok workspaces windows) (subscribe stream)
         (is (equal n::*ipc-ok* ok))
         (is (search "WindowsChanged" windows))
@@ -266,7 +251,12 @@
          (active (n::output-workspace output))
          (home (ws wm 2))
          (highlighted (open-window-on home)))
+    (open-window-on active)
     (setf (n::wm-highlight wm) highlighted)
     (is (eql (n::workspace-id active)
-             (n::json-get (first (n::niri-windows wm)) "workspace_id")))
+             (n::json-get (find (n::window-id highlighted) (n::niri-windows wm)
+                                :key (lambda (win) (n::json-get win "id")))
+                          "workspace_id")))
+    (is (eql (n::window-id highlighted)
+             (n::json-get (n::niri-workspace wm output active 1) "active_window_id")))
     (is (eq :null (n::json-get (n::niri-workspace wm output home 2) "active_window_id")))))

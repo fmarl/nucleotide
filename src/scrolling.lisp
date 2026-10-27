@@ -21,7 +21,7 @@
    (heights :initarg :heights :initform '() :reader column-heights
             :documentation "Alist from the windows with a set height to their
 fraction of the column; the others share the rest. A window alone in its
-column has none, so no height it cannot show takes effect later.")))
+column has none, as it could not show it.")))
 
 (defun make-column (windows width &optional active heights)
   (make-instance 'column :windows windows :width width :active active

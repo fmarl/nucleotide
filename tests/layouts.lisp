@@ -47,7 +47,31 @@
   (signals n::nucleotide-error (n::make-layout 'no-such-layout)))
 
 (test tiling-uses-its-ratio-and-the-gap
-  (let ((n::*gap* 0))
-    (is (equal '((0 0 500 800) (500 0 500 800))
+  (let ((n::*gap* 8))
+    (is (equal '((8 8 492 784) (508 8 484 784))
                (n::layout-arrange (n::make-layout '(n::tiling :ratio 1/2)) nil '(a b)
                                   0 0 1000 800)))))
+
+(defun workspace-with (&rest windows)
+  (let ((ws (make-instance 'n::workspace :name "test")))
+    (setf (n::workspace-windows ws) windows)
+    ws))
+
+(test neighbors-wrap-around-in-tiling
+  (let* ((layout (n::make-layout 'n::tiling))
+         (ws (workspace-with 'a 'b 'c)))
+    (is (eq 'b (n::layout-neighbor layout ws 'a :next)))
+    (is (eq 'a (n::layout-neighbor layout ws 'c :right)))
+    (is (eq 'c (n::layout-neighbor layout ws 'a :up)))
+    (is (null (n::layout-neighbor layout (workspace-with 'a) 'a :next)))))
+
+(test moving-swaps-with-the-neighbor
+  (let* ((layout (n::make-layout 'n::monocle))
+         (ws (workspace-with 'a 'b 'c)))
+    (n::layout-move layout ws 'c :next)
+    (is (equal '(c b a) (n::workspace-windows ws)))))
+
+(test the-successor-is-another-window
+  (let ((layout (n::make-layout 'n::tiling)))
+    (is (eq 'b (n::layout-successor layout (workspace-with 'a 'b) 'a)))
+    (is (null (n::layout-successor layout (workspace-with 'a) 'a)))))

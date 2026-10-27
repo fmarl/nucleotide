@@ -161,11 +161,9 @@
 
 (defun scrolling-wm ()
   (let* ((wm (make-test-wm))
-         (output (add-output wm 0)))
-    (setf (n::output-width output) 1016
-          (n::output-height output) 816
-          (n::workspace-layout (n::output-workspace output)) (make-instance 'n::scrolling))
-    (values wm (n::output-workspace output))))
+         (ws (n::output-workspace (add-output wm 0))))
+    (setf (n::workspace-layout ws) (make-instance 'n::scrolling))
+    (values wm ws)))
 
 (defmacro with-scrolling-wm ((wm ws) &body body)
   `(multiple-value-bind (,wm ,ws) (scrolling-wm)
@@ -228,19 +226,20 @@
 (test (windows-that-leave-a-column-take-no-height-along :fixture fresh-config)
   (let* ((a (make-instance 'n::window))
          (b (make-instance 'n::window))
-         (column (n::make-column (list a b) 1/2 nil (list (cons a 1/4)))))
-    (is (null (n::column-heights (n::change-column column :windows (list b)))))))
+         (c (make-instance 'n::window))
+         (column (n::make-column (list a b c) 1/2 nil (list (cons a 1/4)))))
+    (is (null (n::column-heights (n::change-column column :windows (list b c)))))))
 
 (test (windows-alone-in-their-column-keep-no-height :fixture fresh-config)
   (with-scrolling-wm (wm ws)
     (let ((a (open-window ws))
-          (b (make-instance 'n::window)))
+          (b (open-window ws)))
+      (focus ws a)
       (n::cycle-window-height wm)
-      (is (null (n::column-heights (first (n::scrolling-columns (n::workspace-layout ws))))))
-      (is (null (n::column-heights (n::make-column (list a b) 1/2 nil
-                                                   (n::column-heights
-                                                    (n::make-column (list a) 1/2 nil
-                                                                    (list (cons a 1/3)))))))))))
+      (focus ws b)
+      (n::consume-or-expel wm :left)
+      (is (equal (list (list a b)) (columns ws)))
+      (is (null (n::column-heights (first (n::scrolling-columns (n::workspace-layout ws)))))))))
 
 (test (heights-change-from-what-the-column-shows :fixture fresh-config)
   (with-scrolling-wm (wm ws)

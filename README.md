@@ -1,6 +1,6 @@
 # Nucleotide
 
-A hackable Wayland window manager in Common Lisp for the
+A hackable, multi-paradigm Wayland window manager in Common Lisp for the
 [river](https://github.com/riverwm/river) compositor.
 
 ## Features

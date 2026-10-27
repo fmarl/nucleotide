@@ -13,6 +13,7 @@
     <request name=\"get_child\">
       <arg name=\"id\" type=\"new_id\" interface=\"test_child_v1\"/>
       <arg name=\"scale\" type=\"fixed\"/>
+      <arg name=\"parent\" type=\"object\" interface=\"test_thing_v1\"/>
     </request>
     <event name=\"title\"><arg name=\"title\" type=\"string\"/></event>
     <enum name=\"edges\" bitfield=\"true\">
@@ -34,7 +35,8 @@
   (is (equal '((n::define-request (n::test-thing-v1 n::destroy 0 :destructor t))
                (n::define-request (n::test-thing-v1 n::get-child 1)
                  (n::id (:new-id n::test-child-v1))
-                 (n::scale :fixed)))
+                 (n::scale :fixed)
+                 (n::parent (:object))))
              (forms 'n::define-request))))
 
 (test events-use-keywords

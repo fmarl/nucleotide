@@ -199,8 +199,7 @@ IPC-LISTEN."
     (setf (wm-ipc wm) nil)))
 
 (defun ipc-update (wm)
-  "Send subscribers the events from the first one that changed since the last
-call on."
+  "Send subscribers every event from the first one that changed."
   (let ((ipc (wm-ipc wm)))
     (when ipc
       (let* ((events (niri-events wm))

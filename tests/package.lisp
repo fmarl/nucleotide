@@ -71,3 +71,31 @@
     (push win (n::workspace-windows ws))
     (setf (n::workspace-focus ws) win)
     win))
+
+(defun call-with-environment (variables thunk)
+  (let ((previous (mapcar (lambda (variable) (uiop:getenv (first variable))) variables)))
+    (unwind-protect
+         (progn
+           (loop for (name value) in variables
+                 do (sb-posix:setenv name value 1))
+           (funcall thunk))
+      (loop for (name) in variables
+            for value in previous
+            do (if value
+                   (sb-posix:setenv name value 1)
+                   (sb-posix:unsetenv name))))))
+
+(defmacro with-environment ((&rest variables) &body body)
+  "Run BODY with the environment VARIABLES, (name value) lists, set."
+  `(call-with-environment (list ,@(mapcar (lambda (variable) `(list ,@variable)) variables))
+                          (lambda () ,@body)))
+
+(defun call-with-private-directory (function)
+  (let ((directory (sb-posix:mkdtemp "/tmp/nucleotide-test-XXXXXX")))
+    (unwind-protect (funcall function directory)
+      (uiop:delete-directory-tree (uiop:ensure-directory-pathname directory) :validate t))))
+
+(defmacro with-private-directory ((directory) &body body)
+  "Run BODY with DIRECTORY bound to the name of a new directory only its owner
+may use."
+  `(call-with-private-directory (lambda (,directory) ,@body)))

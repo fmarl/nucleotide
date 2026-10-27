@@ -7,24 +7,20 @@
 (in-suite config)
 
 (defmacro with-config-home ((file) &body body)
-  (let ((dir (gensym)) (old (gensym)))
-    `(let* ((,dir (format nil "/tmp/nucleotide-test-~D-~D/" (sb-posix:getpid) (random 100000)))
-            (,file (format nil "~Anucleotide/init.lisp" ,dir))
-            (,old (sb-posix:getenv "XDG_CONFIG_HOME")))
-       (ensure-directories-exist ,file)
-       (unwind-protect
-            (progn (sb-posix:setenv "XDG_CONFIG_HOME" ,dir 1)
-                   (with-fresh-config ,@body))
-         (if ,old
-             (sb-posix:setenv "XDG_CONFIG_HOME" ,old 1)
-             (sb-posix:unsetenv "XDG_CONFIG_HOME"))
-         (uiop:delete-directory-tree (pathname ,dir) :validate t)))))
+  (let ((home (gensym)))
+    `(with-private-directory (,home)
+       (let ((,file (format nil "~A/nucleotide/init.lisp" ,home)))
+         (ensure-directories-exist ,file)
+         (sb-posix:chmod (directory-namestring ,file) #o755)
+         (with-environment (("XDG_CONFIG_HOME" (format nil "~A/" ,home)))
+           (with-fresh-config ,@body))))))
 
 (defun write-config (file &rest forms)
   (with-open-file (out file :direction :output :if-exists :supersede)
     (let ((*package* (find-package '#:nucleotide)))
       (dolist (form forms)
-        (print form out)))))
+        (print form out))))
+  (sb-posix:chmod file #o644))
 
 (test without-an-init-file-the-defaults-apply
   (with-config-home (file)

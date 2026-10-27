@@ -28,41 +28,41 @@
   (is (equal '((#x20 . 64) (#x74 . 0)) (n::parse-key-sequence "Super+Space T")))
   (signals n::nucleotide-error (n::parse-key-sequence "A B C")))
 
-(test bindings-take-commands
-  (with-fresh-config
-    (n::bind "Super+Q" n::close-window)
-    (n::bind "Super+H" (n::focus :left))
-    (is (equal '(n::close-window) (action "Super+Q")))
-    (is (equal '(n::focus :left) (action "Super+H")))
-    (signals n::nucleotide-error (n::bind "Super+X" (n::no-such-command)))))
+(test (bindings-take-commands :fixture fresh-config)
 
-(test bindings-replace-the-same-keys
-  (with-fresh-config
-    (n::bind "Super+Q" n::close-window)
-    (n::bind "Super+Q" n::exit-session)
-    (is (= 1 (length n::*bindings*)))
-    (is (equal '(n::exit-session) (action "Super+Q")))))
+  (n::bind "Super+Q" n::close-window)
+  (n::bind "Super+H" (n::focus :left))
+  (is (equal '(n::close-window) (action "Super+Q")))
+  (is (equal '(n::focus :left) (action "Super+H")))
+  (signals n::nucleotide-error (n::bind "Super+X" (n::no-such-command))))
 
-(test chords-and-their-prefix-exclude-each-other
-  (with-fresh-config
-    (n::bind "Super+Space" n::toggle-floating)
-    (n::bind "Super+Space T" (n::set-layout n::tiling))
-    (n::bind "Super+Space M" (n::set-layout n::monocle))
-    (is (= 2 (length n::*bindings*)))
-    (n::bind "Super+Space" n::toggle-floating)
-    (is (equal '(n::toggle-floating) (action "Super+Space")))
-    (is (= 1 (length n::*bindings*)))))
+(test (bindings-replace-the-same-keys :fixture fresh-config)
 
-(test unbind
-  (with-fresh-config
-    (n::bind "Super+Q" n::close-window)
-    (n::unbind "Super+Q")
-    (is (null n::*bindings*))))
+  (n::bind "Super+Q" n::close-window)
+  (n::bind "Super+Q" n::exit-session)
+  (is (= 1 (length n::*bindings*)))
+  (is (equal '(n::exit-session) (action "Super+Q"))))
 
-(test the-defaults-bind-known-commands
-  (with-fresh-config
-    (n::use-defaults)
-    (is (equal '(n::switch-workspace 3) (action "Super+3")))
-    (is (equal '(n::switch-workspace 3) (action "Super+Shift+3")))
-    (is (equal '(n::send-to-workspace 3) (action "Super+Ctrl+Shift+3")))
-    (is (equal '(n::toggle-highlight :app-id "emacs") (action "Super+Space E")))))
+(test (chords-and-their-prefix-exclude-each-other :fixture fresh-config)
+
+  (n::bind "Super+Space" n::toggle-floating)
+  (n::bind "Super+Space T" (n::set-layout n::tiling))
+  (n::bind "Super+Space M" (n::set-layout n::monocle))
+  (is (= 2 (length n::*bindings*)))
+  (n::bind "Super+Space" n::toggle-floating)
+  (is (equal '(n::toggle-floating) (action "Super+Space")))
+  (is (= 1 (length n::*bindings*))))
+
+(test (unbind :fixture fresh-config)
+
+  (n::bind "Super+Q" n::close-window)
+  (n::unbind "Super+Q")
+  (is (null n::*bindings*)))
+
+(test (the-defaults-bind-known-commands :fixture fresh-config)
+
+  (n::use-defaults)
+  (is (equal '(n::switch-workspace 3) (action "Super+3")))
+  (is (equal '(n::switch-workspace 3) (action "Super+Shift+3")))
+  (is (equal '(n::send-to-workspace 3) (action "Super+Ctrl+Shift+3")))
+  (is (equal '(n::toggle-highlight :app-id "emacs") (action "Super+Space E"))))

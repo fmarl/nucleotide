@@ -16,8 +16,7 @@ bindings can run."
      ',name))
 
 (defvar *argument-checks* '()
-  "Alist from commands to functions that signal an error for arguments the
-command cannot take, so that bad bindings fail when the init file loads.")
+  "Alist from commands to functions that reject bad arguments when they are bound.")
 
 (defun check-arguments (command function)
   (setf *argument-checks* (alist-set command function *argument-checks*)))

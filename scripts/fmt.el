@@ -15,6 +15,11 @@
                 (define-interface . (4 4 4))
                 (test . (4 &body))
                 (with-fresh-config . (&body))
+                (with-rules . (&body))
+                (with-environment . (4 &body))
+                (with-private-directory . (4 &body))
+                (with-config-home . (4 &body))
+                (with-scrolling-wm . (4 &body))
                 (with-ipc-connection . (4 &body))))
   (put (car spec) 'common-lisp-indent-function (cdr spec)))
 

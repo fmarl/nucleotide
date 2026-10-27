@@ -50,8 +50,7 @@
                                  *border-unfocused*))))
 
 (defun place-floating-windows (wm windows)
-  "Floating windows are placed here rather than while managing, since only
-the render sequence brings their dimensions."
+  "River sends the dimensions of windows only in render sequences."
   (dolist (win windows)
     (when (and (window-floating win) (plusp (window-width win)))
       (place-floating wm win))))

@@ -21,8 +21,21 @@
   (is (not (n::auto-float-p (make-win))))
   (is (not (n::auto-float-p (make-win :min '(400 300) :max '(800 600))))))
 
-(test floating-windows-start-centered
-  (is (equal '(300 250) (n::center-in-area 400 300 1000 800))))
+(test dialogs-start-centered-on-their-parent-if-it-is-visible
+  (let* ((wm (make-test-wm))
+         (ws (n::output-workspace (add-output wm 0)))
+         (parent (open-window-on ws))
+         (dialog (make-win :parent parent)))
+    (setf (n::window-workspace dialog) ws
+          (n::window-width dialog) 400
+          (n::window-height dialog) 300
+          (n::window-x parent) 100
+          (n::window-y parent) 100
+          (n::window-width parent) 600
+          (n::window-height parent) 400)
+    (is (equal '(200 150) (n::initial-float-offset wm dialog)))
+    (setf (n::window-clip parent) :hidden)
+    (is (equal '(300 250) (n::initial-float-offset wm dialog)))))
 
 (test closing-a-dialog-focuses-its-parent
   (let* ((ws (make-instance 'n::workspace :name "test"))

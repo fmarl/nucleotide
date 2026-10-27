@@ -90,12 +90,14 @@
          (there (n::output-workspace right))
          (win (open-window-on here))
          (layout (n::workspace-layout here)))
+    (setf (n::window-home win) (ws wm 3))
     (n::swap-workspace-contents here there)
     (is (eq there (n::window-workspace win)))
     (is (equal (list win) (n::workspace-windows there)))
     (is (null (n::workspace-windows here)))
     (is (eq win (n::workspace-focus there)))
-    (is (eq layout (n::workspace-layout there)))))
+    (is (eq layout (n::workspace-layout there)))
+    (is (null (n::window-home win)))))
 
 (test neighbor-outputs-are-ordered-left-to-right
   (let* ((wm (make-test-wm))
@@ -113,12 +115,3 @@
     (is (null (n::clip-box 8 8 496 784 output)))
     (is (eq :hidden (n::clip-box 1008 8 496 784 output)))
     (is (equal '(-504 0 1000 800) (n::clip-box 504 0 1000 800 output)))))
-
-(test windows-moved-with-their-workspace-stay-where-they-were-moved
-  (let* ((wm (make-test-wm))
-         (left (add-output wm 0))
-         (right (add-output wm 1000))
-         (win (open-window-on (n::output-workspace left))))
-    (setf (n::window-home win) (ws wm 3))
-    (n::swap-workspace-contents (n::output-workspace left) (n::output-workspace right))
-    (is (null (n::window-home win)))))

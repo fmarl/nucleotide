@@ -93,7 +93,6 @@
   (let* ((wm (make-test-wm))
          (focused (open-window-on (ws wm 1)))
          (highlighted (open-window-on (ws wm 2))))
-    (add-output wm 0)
     (setf (n::wm-highlight wm) highlighted)
     (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
       (n::send-focused-to wm (ws wm 3)))

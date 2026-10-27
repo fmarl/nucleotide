@@ -69,8 +69,8 @@ until a floating window is placed.")
   (print-unreadable-object (win stream :type t :identity t)
     (format stream "~@[~A~]~@[ ~S~]" (window-app-id win) (window-title win))))
 
-;;; Slots that hold windows are read through LIVE, so that closed windows drop
-;;; out of them instead of being removed from each one.
+;;; Readers of slots that hold windows skip closed ones, so that DETACH-WINDOW
+;;; need not clear them.
 
 (defun live (win)
   (and win (not (window-closed win)) win))
@@ -133,9 +133,7 @@ nothing is highlighted.")
    (pointer-window :initform nil :accessor wm-pointer-window)
    (op :initform nil :accessor wm-op)
    (bindings :initform '() :accessor wm-bindings)
-   ;; Requests that commands and events leave for the next manage sequence,
-   ;; lists with the newest first. Every manage sequence carries out the other
-   ;; state as it is.
+   ;; Requests for the next manage sequence; lists hold the newest first.
    (pending-warp :initform nil :accessor wm-pending-warp)
    (pending-bindings :initform '() :accessor wm-pending-bindings)
    (pending-closes :initform '() :accessor wm-pending-closes)
