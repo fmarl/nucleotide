@@ -35,7 +35,7 @@ only, and return the configuration it leaves as an alist."
 (defun load-user-config ()
   "Install the init file, or the defaults without one. Returns T, NIL without a
 file, or :ERROR, which keeps the current configuration."
-  (let ((file (probe-file (user-config-file))))
+  (let ((file (and (probe-file (user-config-file)) (user-config-file))))
     (handler-case
         (progn
           (install-config (call-with-default-config

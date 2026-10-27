@@ -87,6 +87,16 @@
       (is (eq :error (n::load-user-config))))
     (is (null (action "Super+A")))))
 
+(test a-linked-init-file-is-checked-where-the-link-is
+  (with-config-home (file)
+    (with-private-directory (store)
+      (let ((target (format nil "~A/init.lisp" store)))
+        (write-config target '(n::bind "Super+A" n::close-window))
+        (sb-posix:chmod store #o775)
+        (sb-posix:symlink target file)
+        (is (eq t (n::load-user-config)))
+        (is (action "Super+A"))))))
+
 (test init-files-may-belong-to-root
   (if (zerop (sb-posix:getuid))
       (skip "running as root")
