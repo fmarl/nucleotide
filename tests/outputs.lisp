@@ -57,6 +57,22 @@
       (is (eq (first (n::output-workspaces laptop)) (n::window-workspace moved)))
       (is (null (n::wm-stash wm))))))
 
+(test windows-return-to-their-first-output-after-several-removals
+  (let* ((wm (make-test-wm))
+         (first-monitor (add-output wm 0 :name "DP-1"))
+         (second-monitor (add-output wm 1000 :name "DP-2"))
+         (laptop (add-output wm 2000 :name "eDP-1"))
+         (home (nth 2 (n::output-workspaces first-monitor)))
+         (win (open-window-on home)))
+    (n::unassign-output wm first-monitor)
+    (is (eq second-monitor (n::workspace-output (n::window-workspace win))))
+    (n::unassign-output wm second-monitor)
+    (is (eq laptop (n::workspace-output (n::window-workspace win))))
+    (is (eq home (n::window-home win)))
+    (let ((again (add-output wm 0 :name "DP-1")))
+      (n::restore-output wm again)
+      (is (eq home (n::window-workspace win))))))
+
 (test removing-the-last-output-keeps-its-workspaces-for-the-next
   (let* ((wm (make-test-wm))
          (output (add-output wm 0))
@@ -97,3 +113,12 @@
     (is (null (n::clip-box 8 8 496 784 output)))
     (is (eq :hidden (n::clip-box 1008 8 496 784 output)))
     (is (equal '(-504 0 1000 800) (n::clip-box 504 0 1000 800 output)))))
+
+(test windows-moved-with-their-workspace-stay-where-they-were-moved
+  (let* ((wm (make-test-wm))
+         (left (add-output wm 0))
+         (right (add-output wm 1000))
+         (win (open-window-on (n::output-workspace left))))
+    (setf (n::window-home win) (ws wm 3))
+    (n::swap-workspace-contents (n::output-workspace left) (n::output-workspace right))
+    (is (null (n::window-home win)))))

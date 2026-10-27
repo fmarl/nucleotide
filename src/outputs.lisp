@@ -59,9 +59,11 @@ lies outside, else the box of OUTPUT relative to the window to clip it to."
       (setf (output-workspace output) (wm-active-workspace wm)))))
 
 (defun migrate-windows (from to &key home)
+  "Windows that already have a home keep it, so that they return to an output
+removed earlier."
   (dolist (win (workspace-windows from))
     (setf (window-workspace win) to
-          (window-home win) home))
+          (window-home win) (or (window-home win) home)))
   (setf (workspace-windows to) (append (workspace-windows from) (workspace-windows to))
         (workspace-focus to) (or (workspace-focus to) (workspace-focus from))
         (workspace-windows from) '()
@@ -118,10 +120,13 @@ keep OUTPUT's workspaces so the windows can return to them."
   (setf (wm-active-workspace wm) ws))
 
 (defun swap-workspace-contents (a b)
+  "Windows that are moved on purpose no longer return to a removed output."
   (dolist (win (workspace-windows a))
-    (setf (window-workspace win) b))
+    (setf (window-workspace win) b
+          (window-home win) nil))
   (dolist (win (workspace-windows b))
-    (setf (window-workspace win) a))
+    (setf (window-workspace win) a
+          (window-home win) nil))
   (rotatef (workspace-windows a) (workspace-windows b))
   (rotatef (workspace-focus a) (workspace-focus b))
   (rotatef (workspace-layout a) (workspace-layout b)))
