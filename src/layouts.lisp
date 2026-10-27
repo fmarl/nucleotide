@@ -6,8 +6,7 @@
 (define-setting *gap* 8
   :documentation "Pixels between windows and around them.")
 
-(defclass layout () ()
-  (:documentation "Layouts are subclasses that implement LAYOUT-ARRANGE."))
+(defclass layout () ())
 
 (defclass tiling (layout)
   ((ratio :initarg :ratio :initform 3/5 :reader tiling-ratio
@@ -41,15 +40,15 @@ initargs like (TILING :RATIO 1/2)."
   (let ((index (+ (position item list) (step-direction direction))))
     (and (< -1 index (length list)) (nth index list))))
 
-(defgeneric layout-update (layout workspace windows x y width height)
+(defgeneric layout-update (layout workspace windows area)
   (:documentation "Update the state of LAYOUT for arranging WINDOWS, the tiled
-windows of WORKSPACE, in the area at X Y of WIDTH HEIGHT.")
-  (:method (layout workspace windows x y width height)
-    (declare (ignore layout workspace windows x y width height))))
+windows of WORKSPACE, in the rect AREA.")
+  (:method (layout workspace windows area)
+    (declare (ignore layout workspace windows area))))
 
-(defgeneric layout-arrange (layout workspace windows x y width height)
-  (:documentation "An (x y width height) list for each of WINDOWS after
-LAYOUT-UPDATE, without changing LAYOUT."))
+(defgeneric layout-arrange (layout workspace windows area)
+  (:documentation "A rect for each of WINDOWS after LAYOUT-UPDATE, without
+changing LAYOUT."))
 
 (defgeneric layout-neighbor (layout workspace win direction)
   (:documentation "The window next to WIN in DIRECTION, one of :LEFT, :RIGHT,
@@ -63,10 +62,11 @@ LAYOUT-UPDATE, without changing LAYOUT."))
              windows)))))
 
 (defgeneric layout-move (layout workspace win direction)
+  (:documentation "Move WIN one step in DIRECTION within WORKSPACE.")
   (:method (layout workspace win direction)
     (let ((other (layout-neighbor layout workspace win direction)))
       (when other
-        (setf (workspace-windows workspace) (swap (workspace-windows workspace) win other))))))
+        (swap-windows workspace win other)))))
 
 (defgeneric layout-successor (layout workspace win)
   (:documentation "The window to focus when WIN leaves WORKSPACE.")
@@ -74,38 +74,36 @@ LAYOUT-UPDATE, without changing LAYOUT."))
     (declare (ignore layout))
     (find win (workspace-windows workspace) :test-not #'eq)))
 
-(defun inset (x y width height gap)
-  (values (+ x gap) (+ y gap) (- width (* 2 gap)) (- height (* 2 gap))))
-
-(defun stack-rects-by (fractions x y width height gap)
+(defun stack-rects-by (fractions area gap)
   "The last rect takes what rounding leaves."
-  (loop with room = (- height (* (1- (length fractions)) gap))
+  (loop with room = (- (rect-height area) (* (1- (length fractions)) gap))
         for (fraction . more) on fractions
-        for top = y then (+ top each gap)
-        for each = (if more (floor (* fraction room)) (- (+ y height) top))
-        collect (list x top width each)))
+        for top = (rect-y area) then (+ top each gap)
+        for each = (if more (floor (* fraction room)) (- (rect-bottom area) top))
+        collect (rect (rect-x area) top (rect-width area) each)))
 
-(defun stack-rects (n x y width height gap)
+(defun stack-rects (n area gap)
   (when (plusp n)
-    (stack-rects-by (make-list n :initial-element (/ 1 n)) x y width height gap)))
+    (stack-rects-by (make-list n :initial-element (/ 1 n)) area gap)))
 
-(defun tiling-rects (n x y width height ratio gap)
-  (multiple-value-bind (x y width height) (inset x y width height gap)
+(defun tiling-rects (n area ratio gap)
+  (let ((area (inset area gap)))
     (if (< n 2)
-        (loop repeat n collect (list x y width height))
-        (let ((master-width (floor (* width ratio))))
-          (cons (list x y master-width height)
-                (stack-rects (1- n) (+ x master-width gap) y
-                             (- width master-width gap) height gap))))))
+        (make-list n :initial-element area)
+        (let ((master-width (floor (* (rect-width area) ratio))))
+          (cons (rect (rect-x area) (rect-y area) master-width (rect-height area))
+                (stack-rects (1- n)
+                             (rect (+ (rect-x area) master-width gap) (rect-y area)
+                                   (- (rect-width area) master-width gap) (rect-height area))
+                             gap))))))
 
-(defun monocle-rects (n x y width height gap)
-  (multiple-value-bind (x y width height) (inset x y width height gap)
-    (loop repeat n collect (list x y width height))))
+(defun monocle-rects (n area gap)
+  (make-list n :initial-element (inset area gap)))
 
-(defmethod layout-arrange ((layout tiling) workspace windows x y width height)
+(defmethod layout-arrange ((layout tiling) workspace windows area)
   (declare (ignore workspace))
-  (tiling-rects (length windows) x y width height (tiling-ratio layout) *gap*))
+  (tiling-rects (length windows) area (tiling-ratio layout) *gap*))
 
-(defmethod layout-arrange ((layout monocle) workspace windows x y width height)
+(defmethod layout-arrange ((layout monocle) workspace windows area)
   (declare (ignore workspace))
-  (monocle-rects (length windows) x y width height *gap*))
+  (monocle-rects (length windows) area *gap*))

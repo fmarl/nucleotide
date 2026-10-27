@@ -6,7 +6,8 @@
 (defun parse-color (color-code)
   (unless (and (stringp color-code)
                (member (length color-code) '(7 9))
-               (char= #\# (char color-code 0)))
+               (char= #\# (char color-code 0))
+               (every (lambda (char) (digit-char-p char 16)) (subseq color-code 1)))
     (nucleotide-error "~S is not a color like \"#6f8cab\"" color-code))
   (append (loop for start from 1 below (length color-code) by 2
                 collect (parse-integer color-code :start start :end (+ start 2) :radix 16))
@@ -31,18 +32,18 @@
     (cond ((eq win highlight) t)
           ((not (workspace-shown-p ws)) nil)
           ((and highlight (eq ws (wm-active-workspace wm))) nil)
-          ((or (window-fullscreen win) (window-floating win)) t)
+          ((or (window-fullscreen win) (window-floating-p win)) t)
           (t (not (eq (window-clip win) :hidden))))))
 
 (defun stacking-rank (wm win)
   (+ (cond ((window-fullscreen win) 4)
-           ((window-floating win) 2)
+           ((window-floating-p win) 2)
            (t 0))
      (if (eq win (wm-focus wm)) 1 0)))
 
-(defun clip-request (win)
-  "The set_clip_box arguments for WIN; an empty box disables clipping."
-  (if (consp (window-clip win)) (window-clip win) '(0 0 0 0)))
+(defun clip-box-arguments (win)
+  "The set_clip_box arguments for WIN. An empty box disables clipping."
+  (if (rect-p (window-clip win)) (rect-list (window-clip win)) '(0 0 0 0)))
 
 (defun border-color (wm win)
   (rgba->uint32 (parse-color (if (eq (wm-focus wm) win)
@@ -52,15 +53,15 @@
 (defun place-floating-windows (wm windows)
   "River sends the dimensions of windows only in render sequences."
   (dolist (win windows)
-    (when (and (window-floating win) (plusp (window-width win)))
+    (when (and (window-floating-p win) (plusp (window-width win)))
       (place-floating wm win))))
 
-(defun render-show (wm win)
+(defun render-window (wm win)
   (river-window-v1.show (window-proxy win))
   (apply #'river-window-v1.set-borders (window-proxy win) +all-edges+ *border-width*
          (border-color wm win))
   (when (supports-p (window-proxy win) 2)
-    (apply #'river-window-v1.set-clip-box (window-proxy win) (clip-request win)))
+    (apply #'river-window-v1.set-clip-box (window-proxy win) (clip-box-arguments win)))
   (river-node-v1.set-position (window-node win) (window-x win) (window-y win))
   (river-node-v1.place-top (window-node win)))
 
@@ -72,4 +73,4 @@
       (river-window-v1.hide (window-proxy win)))
     (dolist (win (stable-sort (reverse visible) #'<
                               :key (lambda (win) (stacking-rank wm win))))
-      (render-show wm win))))
+      (render-window wm win))))

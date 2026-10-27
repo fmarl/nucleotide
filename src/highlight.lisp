@@ -5,7 +5,7 @@
 
 (define-command toggle-highlight (wm &rest match)
   "Show the most recently focused window that matches MATCH, a plist like the
-one of RULE, alone on the focused output; again to stop."
+one of RULE, alone on the focused output. Run it again to stop."
   (setf (wm-highlight wm)
         (unless (wm-highlight wm)
           (find-if (lambda (win) (rule-matches-p match win))
@@ -21,6 +21,5 @@ one of RULE, alone on the focused output; again to stop."
 (defun manage-highlight (wm)
   (let ((win (wm-highlight wm))
         (output (wm-focused-output wm)))
-    (when (and win output (not (window-floating win)) (not (window-fullscreen win)))
-      (multiple-value-bind (x y width height) (usable-area output)
-        (place-window win (first (monocle-rects 1 x y width height *gap*)) nil)))))
+    (when (and win output (not (window-floating-p win)) (not (window-fullscreen win)))
+      (place-window win (inset (usable-area output) *gap*) nil))))
