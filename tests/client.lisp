@@ -81,7 +81,7 @@
     (feed-message display (n::proxy-id object) 0 0 1 0 0 "")
     (feed-message display (n::proxy-id object) 0 0 2 0 0 "")
     (let ((*error-output* (make-broadcast-stream)))
-      (n::%dispatch-buffered display))
+      (n::dispatch-buffered display))
     (is (equal '(1 2) (mapcar #'third (funcall events))))))
 
 (test delete-id-frees-ids
@@ -99,7 +99,7 @@
     (setf (n::u32ref buf 0) 1
           (n::u32ref buf 4) 0
           (n::connection-rend conn) 8)
-    (signals n::wl-protocol-error (n::%dispatch-buffered display))))
+    (signals n::wl-protocol-error (n::dispatch-buffered display))))
 
 (test only-connection-errors-escape-the-event-loop
   (is (null (let ((*error-output* (make-broadcast-stream)))
@@ -107,3 +107,20 @@
   (signals n::wl-protocol-error
            (n::call-reporting-errors
             (lambda () (error 'n::wl-protocol-error :format-control "broken")))))
+
+(test requests-come-only-from-the-thread-of-the-display
+  (let* ((display (make-test-display))
+         (proxy (n::make-proxy display 'test-object)))
+    (is (typep (sb-thread:join-thread
+                (sb-thread:make-thread
+                 (lambda ()
+                   (handler-case (n::send-request proxy 0 '() '())
+                     (n::nucleotide-error (c) c)))))
+               'n::nucleotide-error))))
+
+(test messages-below-the-log-level-are-dropped
+  (let ((n::*log-level* :warn))
+    (is (equal "" (with-output-to-string (*error-output*)
+                    (n::log-message :info "hidden"))))
+    (is (search "warn: shown" (with-output-to-string (*error-output*)
+                                (n::log-message :warn "shown"))))))

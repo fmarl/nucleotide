@@ -14,7 +14,7 @@ event is logged and skipped.")
   (lock (sb-thread:make-mutex :name "nucleotide event loop"))
   wake-read-fd
   wake-write-fd
-  (running t))
+  (running-p t))
 
 (defun make-event-loop (display)
   (multiple-value-bind (read-fd write-fd) (sb-posix:pipe)
@@ -36,7 +36,7 @@ event is logged and skipped.")
   (values))
 
 (defun event-loop-stop (loop)
-  (event-loop-post loop (lambda () (setf (loop-running loop) nil))))
+  (event-loop-post loop (lambda () (setf (loop-running-p loop) nil))))
 
 (defun report-or-debug (condition)
   "Skip the failing event, or with *DEBUG-ON-ERROR* enter the debugger with
@@ -46,7 +46,7 @@ end the loop."
     (if *debug-on-error*
         (invoke-debugger condition)
         (progn
-          (format *error-output* "~&nucleotide: error in event loop: ~A~%" condition)
+          (log-message :error "event skipped: ~A" condition)
           (invoke-restart 'skip)))))
 
 (defun call-reporting-errors (thunk)
@@ -56,11 +56,11 @@ end the loop."
       :report "Skip this event and keep the event loop running."
       nil)))
 
-(defun %dispatch-buffered (display)
+(defun dispatch-buffered (display)
   (loop while (buffered-message-size (display-connection display))
         do (call-reporting-errors (lambda () (dispatch-event display)))))
 
-(defun %run-posted-thunks (loop)
+(defun run-posted-thunks (loop)
   (let ((buf (make-array 64 :element-type '(unsigned-byte 8))))
     (sb-sys:with-pinned-objects (buf)
       (sb-posix:read (loop-wake-read-fd loop) (sb-sys:vector-sap buf) 64)))
@@ -69,6 +69,7 @@ end the loop."
         do (call-reporting-errors thunk)))
 
 (defun run-event-loop (loop)
+  (setf (display-thread (loop-display loop)) sb-thread:*current-thread*)
   (let* ((display (loop-display loop))
          (socket-fd (sb-bsd-sockets:socket-file-descriptor
                      (connection-socket (display-connection display))))
@@ -77,27 +78,26 @@ end the loop."
                  socket-fd :input
                  (lambda (fd)
                    (declare (ignore fd))
-                   (%fill-read-buffer (display-connection display))
-                   (%dispatch-buffered display)))
+                   (fill-read-buffer (display-connection display))
+                   (dispatch-buffered display)))
                 (sb-sys:add-fd-handler
                  (loop-wake-read-fd loop) :input
                  (lambda (fd)
                    (declare (ignore fd))
-                   (%run-posted-thunks loop))))))
+                   (run-posted-thunks loop))))))
     (unwind-protect
-         (loop while (loop-running loop)
-               do (handler-case (progn (%dispatch-buffered display)
+         (loop while (loop-running-p loop)
+               do (handler-case (progn (dispatch-buffered display)
                                        (sb-sys:serve-event))
                     (wl-error (c)
                       (unless (typep c 'wl-disconnected)
-                        (format *error-output* "~&nucleotide: ~A~%" c))
-                      (setf (loop-running loop) nil))
+                        (log-message :error "~A" c))
+                      (setf (loop-running-p loop) nil))
                     (error (c)
-                      (format *error-output*
-                              "~&nucleotide: error in event loop: ~A~%" c))))
+                      (log-message :error "event loop: ~A" c))))
       (mapc #'sb-sys:remove-fd-handler handlers)
       (sb-thread:with-mutex ((loop-lock loop))
-        (setf (loop-running loop) nil)
+        (setf (loop-running-p loop) nil)
         (sb-posix:close (loop-wake-read-fd loop))
         (sb-posix:close (loop-wake-write-fd loop))
         (setf (loop-wake-read-fd loop) nil

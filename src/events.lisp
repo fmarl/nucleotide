@@ -5,7 +5,7 @@
 
 (defgeneric handle-event (wm object event &rest args)
   (:documentation "Handle EVENT, a keyword, sent to OBJECT: a proxy or the window or
-output standing for it. Define methods with DEFINE-HANDLER; events without a
+output standing for it. Define methods with DEFINE-HANDLER. Events without a
 method are ignored.")
   (:method (wm object event &rest args)
     (declare (ignore wm object event args))

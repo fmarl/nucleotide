@@ -54,3 +54,10 @@
   (let ((buf (buffer 4)))
     (setf (n::i32ref buf 0) -2)
     (is (equalp (octets #xfe #xff #xff #xff) buf))))
+
+(test overlong-messages-are-refused
+  (let ((buffer (buffer 16)))
+    (signals n::nucleotide-error (n::put-wl-string buffer 0 (make-string 20 :initial-element #\a)))
+    (signals n::nucleotide-error (n::put-wl-array buffer 8 (buffer 8)))
+    (signals n::nucleotide-error (n::encode-arg buffer 16 :uint 1))
+    (is (= 16 (n::put-wl-string buffer 0 "0123456789")))))

@@ -13,12 +13,10 @@ Skip the failing event instead, or else end only the failing thread."
                   (thread sb-thread:*current-thread*))
               (cond
                 (skip
-                 (format *error-output* "~&nucleotide: error in event loop: ~A~%"
-                         condition)
+                 (log-message :error "event skipped: ~A" condition)
                  (invoke-restart skip))
                 ((not (eq thread (sb-thread:main-thread)))
-                 (format *error-output* "~&nucleotide: thread ~S ended: ~A~%"
-                         (sb-thread:thread-name thread) condition)
+                 (log-message :error "thread ~S ended: ~A" (sb-thread:thread-name thread) condition)
                  (sb-thread:abort-thread))
                 (previous
                  (funcall previous condition hook))))))))
@@ -26,7 +24,7 @@ Skip the failing event instead, or else end only the failing thread."
 (defun run ()
   (handler-case (start-wm)
     (error (c)
-      (format *error-output* "~&nucleotide: ~A~%" c)
+      (log-message :error "~A" c)
       (return-from run 1)))
   (sb-thread:join-thread (wm-thread *wm*) :default nil)
   (stop-ipc *wm*)

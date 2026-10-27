@@ -7,9 +7,9 @@
     '(:tap t)
   :documentation "Plist of settings applied to every device that supports them: :TAP,
 :NATURAL-SCROLL, :LEFT-HANDED, :MIDDLE-EMULATION and :DISABLE-WHILE-TYPING take
-T or NIL; :CLICK-METHOD takes :BUTTON-AREAS or :CLICKFINGER; :SCROLL-METHOD
-:NO-SCROLL, :TWO-FINGER, :EDGE or :ON-BUTTON-DOWN; :ACCEL-PROFILE :FLAT or
-:ADAPTIVE; :ACCEL-SPEED a number from -1 to 1. Devices get them when they appear.")
+T or NIL. :CLICK-METHOD takes :BUTTON-AREAS or :CLICKFINGER, :SCROLL-METHOD
+:NO-SCROLL, :TWO-FINGER, :EDGE or :ON-BUTTON-DOWN, :ACCEL-PROFILE :FLAT or
+:ADAPTIVE, and :ACCEL-SPEED a number from -1 to 1. Devices get them when they appear.")
 
 (defparameter *libinput-requests*
   '((:tap :tap-support river-libinput-device-v1.set-tap "tap_state")
@@ -54,7 +54,7 @@ how to encode its value: the name of an enum, or :DOUBLE.")
   (push (lambda (event &rest args)
           (declare (ignore args))
           (unless (eq event :success)
-            (warn "libinput setting ~S rejected: ~A" setting event)))
+            (log-message :warn "libinput setting ~S rejected: ~A" setting event)))
         (proxy-hooks result)))
 
 (defun apply-libinput-settings (device event support)

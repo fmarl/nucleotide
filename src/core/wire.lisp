@@ -56,12 +56,18 @@
                                          :end (+ offset 4 (1- len)))
                 (+ offset 4 (pad4 len))))))
 
+(defun check-room (buffer end)
+  (when (> end (length buffer))
+    (nucleotide-error "message longer than ~D bytes" (length buffer))))
+
 (defun put-wl-string (buffer offset string)
   (if (null string)
-      (progn (setf (u32ref buffer offset) 0)
+      (progn (check-room buffer (+ offset 4))
+             (setf (u32ref buffer offset) 0)
              (+ offset 4))
       (let* ((bytes (sb-ext:string-to-octets string :external-format :utf-8))
              (len (1+ (length bytes))))
+        (check-room buffer (+ offset 4 (pad4 len)))
         (setf (u32ref buffer offset) len)
         (replace buffer bytes :start1 (+ offset 4))
         (fill buffer 0 :start (+ offset 4 (length bytes)) :end (+ offset 4 (pad4 len)))
@@ -74,12 +80,13 @@
 
 (defun put-wl-array (buffer offset bytes)
   (let ((len (length bytes)))
+    (check-room buffer (+ offset 4 (pad4 len)))
     (setf (u32ref buffer offset) len)
     (replace buffer bytes :start1 (+ offset 4))
     (fill buffer 0 :start (+ offset 4 len) :end (+ offset 4 (pad4 len)))
     (+ offset 4 (pad4 len))))
 
-(defun %fill-read-buffer (connection)
+(defun fill-read-buffer (connection)
   (let ((rbuf (connection-rbuf connection)))
     (when (plusp (connection-rstart connection))
       (replace rbuf rbuf :start2 (connection-rstart connection)
@@ -103,7 +110,7 @@
 
 (defun ensure-bytes (connection n)
   (loop while (< (- (connection-rend connection) (connection-rstart connection)) n)
-        do (%fill-read-buffer connection)))
+        do (fill-read-buffer connection)))
 
 (defun peek-message (connection)
   (ensure-bytes connection 8)

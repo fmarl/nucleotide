@@ -24,7 +24,9 @@
   ((connection :initarg :connection :reader display-connection)
    (proxies :initform (make-hash-table) :reader display-proxies)
    (next-id :initform 2 :accessor display-next-id)
-   (free-ids :initform nil :accessor display-free-ids)))
+   (free-ids :initform nil :accessor display-free-ids)
+   (thread :initform sb-thread:*current-thread* :accessor display-thread
+           :documentation "The only thread that may send requests.")))
 
 (defmethod proxy-display ((display wl-display))
   display)
@@ -46,6 +48,8 @@
     proxy))
 
 (defun encode-arg (buf off type value)
+  (when (member type '(:uint :int :fixed :object))
+    (check-room buf (+ off 4)))
   (ecase type
     (:uint (setf (u32ref buf off) value) (+ off 4))
     (:int (setf (i32ref buf off) value) (+ off 4))
@@ -57,6 +61,9 @@
 (defun send-request (proxy opcode signature args)
   (when (proxy-destroyed-p proxy)
     (nucleotide-error "request (opcode ~D) -> destroyed proxy ~S" opcode proxy))
+  (unless (eq sb-thread:*current-thread* (display-thread (proxy-display proxy)))
+    (nucleotide-error "request to ~S from ~S, which does not run the display"
+                      proxy sb-thread:*current-thread*))
   (let* ((conn (display-connection (proxy-display proxy)))
          (buf (connection-wbuf conn))
          (end (reduce (lambda (off type-and-value)
@@ -113,7 +120,7 @@
              (event (unwind-protect (decode-event display proxy definition body-offset)
                       (consume-message conn (+ 8 body-size)))))
         (cond (event (run-hooks proxy event))
-              (proxy (warn "no event definition for opcode ~D on ~S" opcode proxy)))
+              (proxy (log-message :warn "no event definition for opcode ~D on ~S" opcode proxy)))
         (values)))))
 
 (defmacro define-interface (name wire-name)
@@ -183,7 +190,7 @@
        (when (< id #xff000000)
          (push id (display-free-ids display)))))))
 
-(defun %display-from-socket (socket)
+(defun display-from-socket (socket)
   (let* ((conn (make-wire-connection socket))
          (display (make-instance 'wl-display :id 1 :version 1
                                  :connection conn)))
@@ -203,7 +210,7 @@
 (defun wl-display-connect (&optional name)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
     (sb-bsd-sockets:socket-connect socket (wl-socket-path name))
-    (%display-from-socket socket)))
+    (display-from-socket socket)))
 
 (defun wl-display-disconnect (display)
   (close-connection (display-connection display))

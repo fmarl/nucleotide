@@ -94,9 +94,8 @@
   (protocol-forms (xml:parse (uiop:read-file-string pathname))))
 
 (defmacro define-protocol (file)
-  "Define proxy classes, requests, events and enum constants for the Wayland
-protocol in FILE at compile time. A relative FILE is looked up in the
-protocol/ directory of the nucleotide system."
+  "Define the classes, requests, events and enum constants of the Wayland
+protocol in protocol/FILE at compile time."
   `(progn
      ,@(protocol-file-forms
         (merge-pathnames file (asdf:system-relative-pathname
