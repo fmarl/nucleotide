@@ -3,9 +3,6 @@
 
 (in-package #:nucleotide)
 
-;;; niri's scrollable tiling: windows live in columns on an endless
-;;; horizontal strip, and the view scrolls to keep the focused column visible.
-
 (define-setting *column-widths* '(1/3 1/2 2/3)
   :documentation "Fractions of the output width that CYCLE-COLUMN-WIDTH steps through.")
 
@@ -249,8 +246,6 @@ move it into the neighboring column in DIRECTION."
 
 (defun clamp-fraction (fraction)
   (max 1/10 (min 1 fraction)))
-
-;;; Commands; they do nothing unless the active workspace scrolls.
 
 (defun scrolling-focus (wm)
   (let ((layout (wm-active-layout wm))

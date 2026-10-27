@@ -3,10 +3,6 @@
 
 (in-package #:nucleotide)
 
-;;; Every output has its own workspaces and shows one of them. The workspaces
-;;; of a removed output are kept under its name; their windows move to another
-;;; output and return when the output is connected again.
-
 (define-setting *warp-pointer* t
   :documentation "Move the pointer to an output when the focus moves there.")
 

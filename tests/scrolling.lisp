@@ -6,9 +6,6 @@
 (def-suite scrolling :in :nucleotide)
 (in-suite scrolling)
 
-;;; An output of 1016x816 with gaps of 8 leaves a view of 1000x800, so a
-;;; half-width column is 496 pixels wide and two of them fill the view.
-
 (defun make-scrolling-workspace ()
   (let ((ws (make-instance 'n::workspace :name "test")))
     (setf (n::workspace-layout ws) (make-instance 'n::scrolling))

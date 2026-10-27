@@ -3,10 +3,6 @@
 
 (in-package #:nucleotide)
 
-;;; The part of niri's IPC that waybar's niri/workspaces and niri/window
-;;; modules use: JSON lines on a Unix socket, which the programs nucleotide
-;;; starts find in NIRI_SOCKET.
-
 (defstruct (ipc (:constructor make-ipc (path listener)))
   path
   listener

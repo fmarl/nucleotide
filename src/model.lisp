@@ -3,9 +3,6 @@
 
 (in-package #:nucleotide)
 
-;;; Classes rather than structures: redefining a class in the running WM
-;;; updates the existing instances.
-
 (defclass output ()
   ((proxy :initarg :proxy :accessor output-proxy)
    (layer-shell :initform nil :accessor output-layer-shell)
@@ -69,9 +66,6 @@ until a floating window is placed.")
   (print-unreadable-object (win stream :type t :identity t)
     (format stream "~@[~A~]~@[ ~S~]" (window-app-id win) (window-title win))))
 
-;;; Readers of slots that hold windows skip closed ones, so that DETACH-WINDOW
-;;; need not clear them.
-
 (defun live (win)
   (and win (not (window-closed win)) win))
 
@@ -133,7 +127,6 @@ nothing is highlighted.")
    (pointer-window :initform nil :accessor wm-pointer-window)
    (op :initform nil :accessor wm-op)
    (bindings :initform '() :accessor wm-bindings)
-   ;; Requests for the next manage sequence; lists hold the newest first.
    (pending-warp :initform nil :accessor wm-pending-warp)
    (pending-bindings :initform '() :accessor wm-pending-bindings)
    (pending-closes :initform '() :accessor wm-pending-closes)

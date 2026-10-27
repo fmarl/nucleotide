@@ -110,8 +110,6 @@
     (multiple-value-bind (sender opcode body-offset body-size) (peek-message conn)
       (let* ((proxy (gethash sender (display-proxies display)))
              (definition (event-definition proxy opcode))
-             ;; Consume the message even if decoding fails, otherwise the
-             ;; same broken message would be dispatched again and again.
              (event (unwind-protect (decode-event display proxy definition body-offset)
                       (consume-message conn (+ 8 body-size)))))
         (cond (event (run-hooks proxy event))

@@ -69,8 +69,6 @@ workspace already uses keeps its state."
 (define-command toggle-fullscreen (wm)
   (let ((win (wm-focus wm)))
     (when win
-      ;; Fullscreen state only changes in the next manage sequence, so a
-      ;; second toggle before that cancels the pending one.
       (let ((pending (assoc win (wm-pending-fullscreens wm))))
         (if pending
             (setf (wm-pending-fullscreens wm)

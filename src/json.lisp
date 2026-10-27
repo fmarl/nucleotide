@@ -3,9 +3,6 @@
 
 (in-package #:nucleotide)
 
-;;; Objects are (:object (key . value)...) with string keys, arrays are lists
-;;; and true, false and null are :true, :false and :null.
-
 (defun json-bool (value)
   (if value :true :false))
 
