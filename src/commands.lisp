@@ -15,10 +15,20 @@ bindings can run."
      (pushnew ',name *commands*)
      ',name))
 
+(defvar *argument-checks* '()
+  "Alist from commands to functions that signal an error for arguments the
+command cannot take, so that bad bindings fail when the init file loads.")
+
+(defun check-arguments (command function)
+  (setf *argument-checks* (alist-set command function *argument-checks*)))
+
 (defun normalize-action (action)
   (let ((action (if (listp action) action (list action))))
     (unless (member (first action) *commands*)
       (nucleotide-error "unknown command ~S" (first action)))
+    (let ((check (alist-get (first action) *argument-checks*)))
+      (when check
+        (apply check (rest action))))
     action))
 
 (defun run-command (wm action)

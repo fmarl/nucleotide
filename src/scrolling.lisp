@@ -11,18 +11,29 @@
 
 (define-setting *default-column-width* 1/2)
 
+(define-setting *window-heights* '(1/3 1/2 2/3)
+  :documentation "Fractions of the column height that CYCLE-WINDOW-HEIGHT steps through.")
+
 (defclass column ()
   ((windows :initarg :windows :reader column-windows)
    (width :initarg :width :reader column-width)
-   (active :initarg :active :initform nil :reader column-active)))
+   (active :initarg :active :initform nil :reader column-active)
+   (heights :initarg :heights :initform '() :reader column-heights
+            :documentation "Alist from the windows with a set height to their
+fraction of the column; the others share the rest. A window alone in its
+column has none, so no height it cannot show takes effect later.")))
 
-(defun make-column (windows width &optional active)
-  (make-instance 'column :windows windows :width width :active active))
+(defun make-column (windows width &optional active heights)
+  (make-instance 'column :windows windows :width width :active active
+                 :heights (and (rest windows)
+                               (remove-if-not (lambda (entry) (member (car entry) windows))
+                                              heights))))
 
 (defun change-column (column &key (windows (column-windows column))
                                (width (column-width column))
-                               (active (column-active column)))
-  (make-column windows width active))
+                               (active (column-active column))
+                               (heights (column-heights column)))
+  (make-column windows width active heights))
 
 (defclass scrolling (layout)
   ((columns :initform '() :accessor scrolling-columns)
@@ -112,11 +123,27 @@ column right of ANCHOR's."
             (scrolling-anchor layout) (if i focus (scrolling-anchor layout))
             (scrolling-center layout) nil))))
 
+(defun height-fractions (column windows)
+  "Windows without a set height keep at least a small part, and set heights
+are scaled to fill the column when the others cannot."
+  (let* ((set (mapcar (lambda (win) (alist-get win (column-heights column))) windows))
+         (unset (count nil set))
+         (taken (reduce #'+ (remove nil set)))
+         (minimum (min 1/10 (/ 1 (* 2 (length windows)))))
+         (room (if (zerop unset) 1 (min taken (- 1 (* unset minimum)))))
+         (scale (if (plusp taken) (/ room taken) 0))
+         (each (if (plusp unset) (/ (- 1 room) unset) 0)))
+    (mapcar (lambda (height) (if height (* height scale) each)) set)))
+
+(defun stacked-windows (column)
+  (remove-if #'window-fullscreen (column-windows column)))
+
 (defun column-rects (column windows x y width height gap)
-  (let ((tiled (remove-if-not (lambda (win) (member win windows))
-                              (column-windows column))))
-    (when tiled
-      (mapcar #'cons tiled (stack-rects (length tiled) x y width height gap)))))
+  (let ((stacked (remove-if-not (lambda (win) (member win windows))
+                                (stacked-windows column))))
+    (when stacked
+      (mapcar #'cons stacked (stack-rects-by (height-fractions column stacked)
+                                             x y width height gap)))))
 
 (defmethod layout-arrange ((layout scrolling) workspace windows x y width height)
   (declare (ignore workspace))
@@ -195,9 +222,33 @@ move it into the neighboring column in DIRECTION."
           (target (consume columns column win target))
           (t columns))))
 
-(defun next-column-width (width)
-  (or (find-if (lambda (preset) (> preset width)) *column-widths*)
-      (first *column-widths*)))
+(defun next-preset (presets fraction)
+  (or (find-if (lambda (preset) (> preset fraction)) presets)
+      (first presets)))
+
+(defun parse-percent (string)
+  "The fraction and the sign, #\\+, #\\- or NIL, of a size like \"50%\" or \"+10%\"."
+  (let* ((sign (and (plusp (length string)) (find (char string 0) "+-")))
+         (start (if sign 1 0))
+         (end (1- (length string))))
+    (when (and (< start end)
+               (char= #\% (char string end))
+               (every #'digit-char-p (subseq string start end)))
+      (values (/ (parse-integer string :start start :end end) 100) sign))))
+
+(defun size-changer (change)
+  "A function from a fraction to the one CHANGE makes of it."
+  (multiple-value-bind (amount sign) (and (stringp change) (parse-percent change))
+    (cond ((realp change) (constantly change))
+          ((null amount)
+           (nucleotide-error "~S is not a fraction or a size like \"50%\" or \"+10%\""
+                             change))
+          ((eql sign #\+) (lambda (fraction) (+ fraction amount)))
+          ((eql sign #\-) (lambda (fraction) (- fraction amount)))
+          (t (constantly amount)))))
+
+(defun clamp-fraction (fraction)
+  (max 1/10 (min 1 fraction)))
 
 ;;; Commands; they do nothing unless the active workspace scrolls.
 
@@ -221,6 +272,25 @@ move it into the neighboring column in DIRECTION."
                        (let ((column (column-containing columns win)))
                          (substitute (funcall function column) column columns)))))
 
+(defun change-window-height (column win function)
+  "COLUMN with the height of WIN set to what FUNCTION makes of the fraction it
+shows, or unset when FUNCTION returns NIL."
+  (let ((stacked (stacked-windows column)))
+    (if (and (rest stacked) (member win stacked))
+        (let ((height (funcall function (nth (position win stacked)
+                                             (height-fractions column stacked)))))
+          (change-column column :heights (if height
+                                             (alist-set win (clamp-fraction height)
+                                                        (column-heights column))
+                                             (alist-remove win (column-heights column)))))
+        column)))
+
+(defun update-focused-height (wm function)
+  (update-columns wm (lambda (columns win)
+                       (let ((column (column-containing columns win)))
+                         (substitute (change-window-height column win function)
+                                     column columns)))))
+
 (define-command consume-or-expel (wm direction)
   (update-columns wm (lambda (columns win)
                        (consume-or-expel-in columns win direction))))
@@ -228,8 +298,34 @@ move it into the neighboring column in DIRECTION."
 (define-command cycle-column-width (wm)
   (update-focused-column wm (lambda (column)
                               (change-column column
-                                             :width (next-column-width
-                                                     (column-width column))))))
+                                             :width (next-preset *column-widths*
+                                                                 (column-width column))))))
+
+(define-command set-column-width (wm change)
+  "Change the width of the focused column, as a fraction of the output like 1/2,
+or as in niri with \"50%\", \"+10%\" or \"-10%\"."
+  (let ((changer (size-changer change)))
+    (update-focused-column wm (lambda (column)
+                                (change-column column
+                                               :width (clamp-fraction
+                                                       (funcall changer
+                                                                (column-width column))))))))
+
+(define-command set-window-height (wm change)
+  "Change the height of the focused window, as a fraction of its column like
+1/2, or as in niri with \"50%\", \"+10%\" or \"-10%\". The other windows of the
+column share the rest."
+  (update-focused-height wm (size-changer change)))
+
+(check-arguments 'set-column-width #'size-changer)
+(check-arguments 'set-window-height #'size-changer)
+
+(define-command cycle-window-height (wm)
+  (update-focused-height wm (lambda (height) (next-preset *window-heights* height))))
+
+(define-command reset-window-height (wm)
+  "Let the focused window share the height of its column again."
+  (update-focused-height wm (constantly nil)))
 
 (define-command toggle-full-width (wm)
   (update-focused-column wm (lambda (column)

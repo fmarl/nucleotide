@@ -99,3 +99,7 @@
         (finishes (n::check-file-permissions "/etc/passwd" #o022 :allow-root t))
         (signals n::nucleotide-error
                  (n::check-file-permissions "/etc/passwd" #o044 :allow-root t)))))
+
+(test (bad-sizes-fail-when-they-are-bound :fixture fresh-config)
+  (signals n::nucleotide-error (n::set-binding "Super+Minus" '(n::set-column-width "-10")))
+  (is (equal "Super+Minus" (n::set-binding "Super+Minus" '(n::set-column-width "-10%")))))

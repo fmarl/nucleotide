@@ -77,13 +77,17 @@ LAYOUT-UPDATE, without changing LAYOUT."))
 (defun inset (x y width height gap)
   (values (+ x gap) (+ y gap) (- width (* 2 gap)) (- height (* 2 gap))))
 
+(defun stack-rects-by (fractions x y width height gap)
+  "The last rect takes what rounding leaves."
+  (loop with room = (- height (* (1- (length fractions)) gap))
+        for (fraction . more) on fractions
+        for top = y then (+ top each gap)
+        for each = (if more (floor (* fraction room)) (- (+ y height) top))
+        collect (list x top width each)))
+
 (defun stack-rects (n x y width height gap)
-  (let ((each (floor (- height (* (1- n) gap)) n)))
-    (loop for i below n
-          for top = (+ y (* i (+ each gap)))
-          collect (list x top width (if (= i (1- n))
-                                        (- (+ y height) top)
-                                        each)))))
+  (when (plusp n)
+    (stack-rects-by (make-list n :initial-element (/ 1 n)) x y width height gap)))
 
 (defun tiling-rects (n x y width height ratio gap)
   (multiple-value-bind (x y width height) (inset x y width height gap)

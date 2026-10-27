@@ -31,6 +31,10 @@ focused column.
 | `Super+Shift+H/L/K/J` | Move the column, or the window within its column |
 | `Super+[` / `Super+]` | Move the window into the column to the left / right, or out of its column |
 | `Super+R` | Cycle the column width through `*column-widths*` (1/3, 1/2, 2/3) |
+| `Super+-` / `Super+=` | Make the column 10% narrower / wider |
+| `Super+Shift+R` | Cycle the window height through `*window-heights*` (1/3, 1/2, 2/3) |
+| `Super+Shift+-` / `Super+Shift+=` | Make the window 10% lower / higher |
+| `Super+Ctrl+R` | Let the window share the column height again |
 | `Super+Ctrl+F` | Toggle full width |
 | `Super+C` | Center the focused column |
 | `Super+Q` | Close the focused window |
