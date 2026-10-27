@@ -35,7 +35,8 @@ focused column.
 | `Super+Shift+R` | Cycle the window height through `*window-heights*` (1/3, 1/2, 2/3) |
 | `Super+Shift+-` / `Super+Shift+=` | Make the window 10% lower / higher |
 | `Super+Ctrl+R` | Let the window share the column height again |
-| `Super+Ctrl+F` | Toggle full width |
+| `Super+F` | Toggle full width |
+| `Super+Shift+F` | Toggle fullscreen |
 | `Super+C` | Center the focused column |
 | `Super+Q` | Close the focused window |
 | `Super+Space Q` | Quit the session |

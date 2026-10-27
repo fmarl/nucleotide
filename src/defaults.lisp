@@ -24,7 +24,7 @@
   (bind "Super+Shift+Minus" (set-window-height "-10%"))
   (bind "Super+Shift+Equal" (set-window-height "+10%"))
   (bind "Super+Ctrl+R" reset-window-height)
-  (bind "Super+Ctrl+F" toggle-full-width)
+  (bind "Super+F" toggle-full-width)
   (bind "Super+C" center-column)
   (bind "Super+Shift+Space" toggle-floating)
   (bind "Super+Tab" switch-window)
@@ -34,7 +34,7 @@
   (bind "Super+Shift+Period" (send-to-output :right))
   (bind "Super+Ctrl+Comma" (move-workspace-to-output :left))
   (bind "Super+Ctrl+Period" (move-workspace-to-output :right))
-  (bind "Super+F" toggle-fullscreen)
+  (bind "Super+Shift+F" toggle-fullscreen)
   (bind "Super+Q" close-window)
   ;; Keyboards like emacs58 send the digits shifted.
   (loop for n from 1 to 9
