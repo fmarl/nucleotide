@@ -132,8 +132,11 @@ nothing is highlighted.")
    (last-workspace :initform nil :accessor wm-last-workspace)
    (pointer-window :initform nil :accessor wm-pointer-window)
    (op :initform nil :accessor wm-op)
-   (pending-warp :initform nil :accessor wm-pending-warp)
    (bindings :initform '() :accessor wm-bindings)
+   ;; Requests that commands and events leave for the next manage sequence,
+   ;; lists with the newest first. Every manage sequence carries out the other
+   ;; state as it is.
+   (pending-warp :initform nil :accessor wm-pending-warp)
    (pending-bindings :initform '() :accessor wm-pending-bindings)
    (pending-closes :initform '() :accessor wm-pending-closes)
    (pending-submap-ops :initform '() :accessor wm-pending-submap-ops)

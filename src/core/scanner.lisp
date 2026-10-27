@@ -36,7 +36,7 @@
     (list (lispify (xml:attribute arg "name"))
           (cond ((string= type "new_id")
                  (if interface (list :new-id (lispify interface)) :new-id))
-                ((string= type "object") :object)
+                ((string= type "object") '(:object))
                 (t (wire-type type))))))
 
 (defun event-arg-spec (arg)

@@ -49,9 +49,14 @@
                                  *border-focused*
                                  *border-unfocused*))))
 
+(defun place-floating-windows (wm windows)
+  "Floating windows are placed here rather than while managing, since only
+the render sequence brings their dimensions."
+  (dolist (win windows)
+    (when (and (window-floating win) (plusp (window-width win)))
+      (place-floating wm win))))
+
 (defun render-show (wm win)
-  (when (and (window-floating win) (plusp (window-width win)))
-    (place-floating wm win))
   (river-window-v1.show (window-proxy win))
   (apply #'river-window-v1.set-borders (window-proxy win) +all-edges+ *border-width*
          (border-color wm win))
@@ -63,6 +68,7 @@
 (defun render (wm)
   (let* ((windows (all-windows wm))
          (visible (remove-if-not (lambda (win) (window-visible-p wm win)) windows)))
+    (place-floating-windows wm visible)
     (dolist (win (set-difference windows visible))
       (river-window-v1.hide (window-proxy win)))
     (dolist (win (stable-sort (reverse visible) #'<

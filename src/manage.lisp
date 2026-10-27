@@ -89,7 +89,7 @@
 
 (defun manage-pending-dimensions (wm)
   (dolist (win (all-windows wm))
-    (let ((dimensions (drain (window-pending-dimensions win))))
+    (let ((dimensions (shiftf (window-pending-dimensions win) nil)))
       (when (and dimensions (window-floating win))
         (apply #'propose-dimensions win dimensions)))))
 
@@ -114,7 +114,7 @@
             do (place-window win rect output)))))
 
 (defun manage-warp (wm)
-  (let ((target (drain (wm-pending-warp wm)))
+  (let ((target (shiftf (wm-pending-warp wm) nil))
         (seat (wm-seat wm)))
     (when (and target seat (supports-p seat 3))
       (apply #'river-seat-v1.pointer-warp seat target))))

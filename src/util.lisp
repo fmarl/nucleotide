@@ -21,7 +21,7 @@
                         path (logand (sb-posix:stat-mode stat) #o777)))))
 
 (defmacro drain (place)
-  `(prog1 ,place (setf ,place '())))
+  `(shiftf ,place '()))
 
 (defun spawn-program (command)
   "Start COMMAND detached from nucleotide. A string is run by sh, so it may
