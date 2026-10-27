@@ -38,14 +38,14 @@
   (+ (cond ((window-fullscreen win) 4)
            ((window-floating win) 2)
            (t 0))
-     (if (eq win (effective-focus wm)) 1 0)))
+     (if (eq win (wm-focus wm)) 1 0)))
 
 (defun clip-request (win)
   "The set_clip_box arguments for WIN; an empty box disables clipping."
   (if (consp (window-clip win)) (window-clip win) '(0 0 0 0)))
 
 (defun border-color (wm win)
-  (rgba->uint32 (parse-color (if (eq (effective-focus wm) win)
+  (rgba->uint32 (parse-color (if (eq (wm-focus wm) win)
                                  *border-focused*
                                  *border-unfocused*))))
 

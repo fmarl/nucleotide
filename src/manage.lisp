@@ -129,7 +129,7 @@
       (run-event-hooks :workspace-changed ws))))
 
 (defun manage-focus (wm)
-  (let ((focused (effective-focus wm))
+  (let ((focused (wm-focus wm))
         (seat (wm-seat wm)))
     (when (and seat (not (wm-layer-shell-focus wm)))
       (if focused

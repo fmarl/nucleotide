@@ -69,5 +69,5 @@
 (defun open-window-on (ws)
   (let ((win (make-instance 'n::window :workspace ws)))
     (push win (n::workspace-windows ws))
-    (setf (n::workspace-focused ws) win)
+    (setf (n::workspace-focus ws) win)
     win))

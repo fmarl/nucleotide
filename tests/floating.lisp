@@ -31,9 +31,9 @@
          (dialog (make-instance 'n::window :workspace ws)))
     (setf (n::window-parent dialog) parent
           (n::workspace-windows ws) (list dialog other parent)
-          (n::workspace-focused ws) dialog)
+          (n::workspace-focus ws) dialog)
     (n::remove-window ws dialog)
-    (is (eq parent (n::workspace-focused ws)))))
+    (is (eq parent (n::workspace-focus ws)))))
 
 (test overlap-with-outputs
   (let* ((wm (make-test-wm))

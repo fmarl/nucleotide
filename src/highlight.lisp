@@ -3,10 +3,6 @@
 
 (in-package #:nucleotide)
 
-(defun effective-focus (wm)
-  "While a highlight is active, the highlighted window is the only visible one."
-  (or (wm-highlight wm) (wm-focused-window wm)))
-
 (define-command toggle-highlight (wm &rest match)
   "Show the most recently focused window that matches MATCH, a plist like the
 one of RULE, alone on the focused output; again to stop."

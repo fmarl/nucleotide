@@ -78,7 +78,7 @@
     (is (eq there (n::window-workspace win)))
     (is (equal (list win) (n::workspace-windows there)))
     (is (null (n::workspace-windows here)))
-    (is (eq win (n::workspace-focused there)))
+    (is (eq win (n::workspace-focus there)))
     (is (eq layout (n::workspace-layout there)))))
 
 (test neighbor-outputs-are-ordered-left-to-right

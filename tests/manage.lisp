@@ -21,7 +21,7 @@
          (win (make-instance 'n::window :workspace (ws wm 1) :proxy :window))
          (calls '()))
     (push win (n::workspace-windows (ws wm 1)))
-    (setf (n::workspace-focused (ws wm 1)) win
+    (setf (n::workspace-focus (ws wm 1)) win
           (n::wm-seat wm) :seat)
     (with-stubs ((n::river-seat-v1.focus-window
                   (lambda (seat window) (declare (ignore seat)) (push (list :focus window) calls)))
@@ -54,3 +54,23 @@
       (n::manage-pending-dimensions wm))
     (is (equal (list (list floating 500 200)) proposed))
     (is (null (n::window-pending-dimensions tiled)))))
+
+(test the-focus-is-the-highlighted-window-while-there-is-one
+  (let* ((wm (make-test-wm))
+         (focused (open-window-on (ws wm 1)))
+         (highlighted (open-window-on (ws wm 2))))
+    (is (eq focused (n::wm-focus wm)))
+    (setf (n::wm-highlight wm) highlighted)
+    (is (eq highlighted (n::wm-focus wm)))
+    (is (eq focused (n::workspace-focus (ws wm 1))))))
+
+(test workspace-commands-act-on-the-workspace-focus-during-a-highlight
+  (let* ((wm (make-test-wm))
+         (focused (open-window-on (ws wm 1)))
+         (highlighted (open-window-on (ws wm 2))))
+    (add-output wm 0)
+    (setf (n::wm-highlight wm) highlighted)
+    (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
+      (n::send-focused-to wm (ws wm 3)))
+    (is (eq (ws wm 3) (n::window-workspace focused)))
+    (is (eq (ws wm 2) (n::window-workspace highlighted)))))

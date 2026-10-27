@@ -76,7 +76,9 @@ startup.")
   ((id :initform (next-id) :reader workspace-id)
    (name :initarg :name :accessor workspace-name)
    (windows :initform '() :accessor workspace-windows)
-   (focused :initform nil :accessor workspace-focused)
+   (focus :initform nil :accessor workspace-focus
+          :documentation "The window that has the focus while the workspace is active and
+nothing is highlighted.")
    (output :initform nil :accessor workspace-output)
    (layout :initform (make-layout *default-layout*) :accessor workspace-layout)))
 
@@ -141,11 +143,10 @@ startup.")
 (defun all-windows (wm)
   (loop for ws in (wm-workspaces wm) append (workspace-windows ws)))
 
-(defun wm-focused-window (wm)
-  (workspace-focused (wm-active-workspace wm)))
-
-(defun (setf wm-focused-window) (focused wm)
-  (setf (workspace-focused (wm-active-workspace wm)) focused))
+(defun wm-focus (wm)
+  "While a highlight is active, the highlighted window is the only visible one
+and has the focus."
+  (or (wm-highlight wm) (workspace-focus (wm-active-workspace wm))))
 
 (defun wm-active-layout (wm)
   (workspace-layout (wm-active-workspace wm)))

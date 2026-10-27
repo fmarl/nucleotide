@@ -5,12 +5,12 @@
 
 (defun focus-window (wm win)
   (show-workspace wm (window-workspace win))
-  (setf (workspace-focused (window-workspace win)) win))
+  (setf (workspace-focus (window-workspace win)) win))
 
 (define-command focus (wm &optional (direction :next))
   "Focus the window in DIRECTION: :LEFT, :RIGHT, :UP or :DOWN."
   (let* ((ws (wm-active-workspace wm))
-         (focused (wm-focused-window wm))
+         (focused (workspace-focus ws))
          (target (if focused
                      (layout-neighbor (workspace-layout ws) ws focused direction)
                      (first (workspace-windows ws)))))
@@ -19,8 +19,8 @@
       (mark-dirty wm))))
 
 (define-command move (wm &optional (direction :next))
-  (let ((ws (wm-active-workspace wm))
-        (focused (wm-focused-window wm)))
+  (let* ((ws (wm-active-workspace wm))
+         (focused (workspace-focus ws)))
     (when focused
       (layout-move (workspace-layout ws) ws focused direction)
       (mark-dirty wm))))
@@ -34,25 +34,25 @@
 
 (defun remove-window (ws win)
   (let ((remaining (remove win (workspace-windows ws))))
-    (when (eq (workspace-focused ws) win)
-      (setf (workspace-focused ws) (focus-successor ws win remaining)))
+    (when (eq (workspace-focus ws) win)
+      (setf (workspace-focus ws) (focus-successor ws win remaining)))
     (setf (workspace-windows ws) remaining)))
 
 (defun move-to-workspace (win ws)
   (remove-window (window-workspace win) win)
   (setf (window-workspace win) ws
         (window-home win) nil
-        (workspace-focused ws) win)
+        (workspace-focus ws) win)
   (push win (workspace-windows ws)))
 
 (define-command close-window (wm)
-  (let ((win (effective-focus wm)))
+  (let ((win (wm-focus wm)))
     (when win
       (push win (wm-pending-closes wm))
       (mark-dirty wm))))
 
 (defun send-focused-to (wm ws)
-  (let ((win (wm-focused-window wm)))
+  (let ((win (workspace-focus (wm-active-workspace wm))))
     (when (and win ws (not (eq ws (window-workspace win))))
       (move-to-workspace win ws)
       (mark-dirty wm))))
@@ -67,7 +67,7 @@ workspace already uses keeps its state."
   (mark-dirty wm))
 
 (define-command toggle-fullscreen (wm)
-  (let ((win (effective-focus wm)))
+  (let ((win (wm-focus wm)))
     (when win
       ;; Fullscreen state only changes in the next manage sequence, so a
       ;; second toggle before that cancels the pending one.

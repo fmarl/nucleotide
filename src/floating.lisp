@@ -67,7 +67,7 @@
         (window-configured win) nil))
 
 (define-command toggle-floating (wm)
-  (let ((win (effective-focus wm)))
+  (let ((win (wm-focus wm)))
     (when (and win (not (window-fullscreen win)))
       (if (window-floating win)
           (tile-window win)

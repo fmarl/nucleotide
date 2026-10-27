@@ -63,9 +63,9 @@ lies outside, else the box of OUTPUT relative to the window to clip it to."
     (setf (window-workspace win) to
           (window-home win) home))
   (setf (workspace-windows to) (append (workspace-windows from) (workspace-windows to))
-        (workspace-focused to) (or (workspace-focused to) (workspace-focused from))
+        (workspace-focus to) (or (workspace-focus to) (workspace-focus from))
         (workspace-windows from) '()
-        (workspace-focused from) nil))
+        (workspace-focus from) nil))
 
 (defun evacuate-output (wm output target)
   "Move the windows of OUTPUT to the same workspaces of TARGET; with a name,
@@ -94,8 +94,8 @@ keep OUTPUT's workspaces so the windows can return to them."
     (setf (window-workspace win) home
           (window-home win) nil)
     (push win (workspace-windows home))
-    (unless (workspace-focused home)
-      (setf (workspace-focused home) win))))
+    (unless (workspace-focus home)
+      (setf (workspace-focus home) win))))
 
 (defun restore-output (wm output)
   (let ((stashed (alist-get (output-name output) (wm-stash wm))))
@@ -123,7 +123,7 @@ keep OUTPUT's workspaces so the windows can return to them."
   (dolist (win (workspace-windows b))
     (setf (window-workspace win) a))
   (rotatef (workspace-windows a) (workspace-windows b))
-  (rotatef (workspace-focused a) (workspace-focused b))
+  (rotatef (workspace-focus a) (workspace-focus b))
   (rotatef (workspace-layout a) (workspace-layout b)))
 
 (defun output-center (output)

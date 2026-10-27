@@ -17,7 +17,7 @@
 (defun open-window (ws)
   (let ((win (make-instance 'n::window :workspace ws)))
     (push win (n::workspace-windows ws))
-    (setf (n::workspace-focused ws) win)
+    (setf (n::workspace-focus ws) win)
     (arrange ws)
     win))
 
@@ -25,7 +25,7 @@
   (n::layout-arrange (n::workspace-layout ws) ws tiled 0 0 1016 816))
 
 (defun focus (ws win)
-  (setf (n::workspace-focused ws) win)
+  (setf (n::workspace-focus ws) win)
   (arrange ws))
 
 (defun columns (ws)
@@ -132,7 +132,7 @@
          (a (open-window ws))
          (b (open-window ws)))
     (n::remove-window ws b)
-    (is (eq a (n::workspace-focused ws)))
+    (is (eq a (n::workspace-focus ws)))
     (arrange ws)
     (is (equal (list (list a)) (columns ws)))))
 

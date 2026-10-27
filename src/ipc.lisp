@@ -34,7 +34,7 @@
             dir (or (uiop:getenv "WAYLAND_DISPLAY") "wayland-0") (sb-posix:getpid))))
 
 (defun niri-workspace (wm output ws index)
-  (let ((active (workspace-focused ws)))
+  (let ((active (workspace-focus ws)))
     `(:object ("id" . ,(workspace-id ws))
               ("idx" . ,index)
               ("name" . :null)
@@ -61,7 +61,7 @@
             ("is_focused" . ,(json-bool (eq win focused)))))
 
 (defun niri-windows (wm)
-  (let ((focused (effective-focus wm)))
+  (let ((focused (wm-focus wm)))
     (loop for output in (wm-outputs wm)
           append (loop for ws in (output-workspaces output)
                        append (loop for win in (workspace-windows ws)

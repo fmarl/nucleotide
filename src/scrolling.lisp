@@ -88,13 +88,13 @@ column right of ANCHOR's."
   (mark-active-window (reconcile-columns (scrolling-columns layout)
                                          (remove-if #'window-floating (workspace-windows workspace))
                                          (scrolling-anchor layout))
-                      (workspace-focused workspace)))
+                      (workspace-focus workspace)))
 
 (defun update-scroll (layout workspace view)
   "Update LAYOUT's columns and offset for WORKSPACE; return the left edges and
 widths of the columns."
   (let* ((gap *gap*)
-         (focus (workspace-focused workspace))
+         (focus (workspace-focus workspace))
          (columns (arranged-columns layout workspace))
          (widths (mapcar (lambda (column) (column-pixel-width column view gap)) columns))
          (lefts (column-lefts widths gap))
@@ -197,7 +197,7 @@ move it into the neighboring column in DIRECTION."
 
 (defun scrolling-focus (wm)
   (let ((layout (wm-active-layout wm))
-        (win (wm-focused-window wm)))
+        (win (workspace-focus (wm-active-workspace wm))))
     (when (and (typep layout 'scrolling)
                win
                (column-containing (scrolling-columns layout) win))
