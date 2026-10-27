@@ -42,6 +42,7 @@
    (app-id :initform nil :accessor window-app-id)
    (workspace :initarg :workspace :accessor window-workspace)
    (parent :initform nil :accessor window-parent)
+   (closed :initform nil :accessor window-closed)
    (home :initform nil :accessor window-home
          :documentation "The workspace of a removed output the window returns to.")
    (x :initform 0 :accessor window-x)
@@ -67,6 +68,18 @@ until a floating window is placed.")
 (defmethod print-object ((win window) stream)
   (print-unreadable-object (win stream :type t :identity t)
     (format stream "~@[~A~]~@[ ~S~]" (window-app-id win) (window-title win))))
+
+;;; Slots that hold windows are read through LIVE, so that closed windows drop
+;;; out of them instead of being removed from each one.
+
+(defun live (win)
+  (and win (not (window-closed win)) win))
+
+(defun live-windows (windows &key (key #'identity))
+  (remove-if (lambda (item) (window-closed (funcall key item))) windows))
+
+(defmethod window-parent :around ((win window))
+  (live (call-next-method)))
 
 (define-setting *default-layout* 'tiling
   :documentation "The layout of new workspaces, in the format MAKE-LAYOUT takes. Read at
@@ -142,6 +155,24 @@ nothing is highlighted.")
 
 (defun all-windows (wm)
   (loop for ws in (wm-workspaces wm) append (workspace-windows ws)))
+
+(defmethod wm-highlight :around ((wm wm))
+  (live (call-next-method)))
+
+(defmethod wm-focus-history :around ((wm wm))
+  (live-windows (call-next-method)))
+
+(defmethod wm-last-focus :around ((wm wm))
+  (live (call-next-method)))
+
+(defmethod wm-pointer-window :around ((wm wm))
+  (live (call-next-method)))
+
+(defmethod wm-pending-closes :around ((wm wm))
+  (live-windows (call-next-method)))
+
+(defmethod wm-pending-fullscreens :around ((wm wm))
+  (live-windows (call-next-method) :key #'car))
 
 (defun wm-focus (wm)
   "While a highlight is active, the highlighted window is the only visible one

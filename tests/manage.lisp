@@ -55,6 +55,31 @@
     (is (equal (list (list floating 500 200)) proposed))
     (is (null (n::window-pending-dimensions tiled)))))
 
+(test closed-windows-drop-out-of-every-reference
+  (let* ((wm (make-test-wm))
+         (closed (open-window-on (ws wm 1)))
+         (child (open-window-on (ws wm 1))))
+    (setf (n::window-node closed) :node
+          (n::window-proxy closed) :proxy
+          (n::window-parent child) closed
+          (n::wm-highlight wm) closed
+          (n::wm-pointer-window wm) closed
+          (n::wm-last-focus wm) closed
+          (n::wm-focus-history wm) (list closed child)
+          (n::wm-pending-closes wm) (list closed)
+          (n::wm-pending-fullscreens wm) (list (cons closed nil) (cons child :exit)))
+    (with-stubs ((n::river-node-v1.destroy (lambda (node) (declare (ignore node))))
+                 (n::river-window-v1.destroy (lambda (proxy) (declare (ignore proxy)))))
+      (n::detach-window wm closed))
+    (is (null (n::window-parent child)))
+    (is (null (n::wm-highlight wm)))
+    (is (null (n::wm-pointer-window wm)))
+    (is (null (n::wm-last-focus wm)))
+    (is (equal (list child) (n::wm-focus-history wm)))
+    (is (null (n::wm-pending-closes wm)))
+    (is (equal (list (cons child :exit)) (n::wm-pending-fullscreens wm)))
+    (is (equal (list child) (n::workspace-windows (ws wm 1))))))
+
 (test the-focus-is-the-highlighted-window-while-there-is-one
   (let* ((wm (make-test-wm))
          (focused (open-window-on (ws wm 1)))

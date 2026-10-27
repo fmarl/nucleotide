@@ -25,7 +25,7 @@
       (and number (<= 1 number (length choices)) (1- number)))))
 
 (defun focus-from-switcher (wm win)
-  (when (member win (all-windows wm))
+  (when (live win)
     (let ((previous (wm-focused-output wm)))
       (end-highlight wm)
       (focus-window wm win)

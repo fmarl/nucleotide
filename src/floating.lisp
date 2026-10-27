@@ -135,7 +135,7 @@
 (defun finish-pointer-op (wm op)
   (river-seat-v1.op-end (wm-seat wm))
   (when (and (eq (op-kind op) :move)
-             (member (op-win op) (all-windows wm)))
+             (live (op-win op)))
     (settle-floating wm (op-win op)))
   (setf (wm-op wm) nil))
 

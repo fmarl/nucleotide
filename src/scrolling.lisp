@@ -31,6 +31,9 @@
            :documentation "The focused tiled window as of the last arrangement.")
    (center :initform nil :accessor scrolling-center)))
 
+(defmethod scrolling-anchor :around ((layout scrolling))
+  (live (call-next-method)))
+
 (defun column-containing (columns win)
   (find-if (lambda (column) (member win (column-windows column))) columns))
 
