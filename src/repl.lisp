@@ -60,6 +60,7 @@ DONT-CLOSE, it stops listening after the first connection."
     (uiop:symbol-call '#:slynk '#:stop-server port)))
 
 (define-command toggle-repl (wm)
+  "Open the REPL port, or close it."
   (declare (ignore wm))
   (if (repl-listening-p)
       (progn

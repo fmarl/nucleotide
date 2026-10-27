@@ -8,7 +8,7 @@
 returning its default value, and :CHECK.")
 
 (defmacro define-setting (name default &key documentation check)
-  "Define the setting NAME. RESET-SETTINGS gives it DEFAULT again, and CHECK is
+  "Define the setting NAME. Every configuration starts from DEFAULT, and CHECK is
 called with its value after the init file loaded."
   `(progn
      (defparameter ,name ,default ,@(and documentation (list documentation)))
@@ -18,9 +18,9 @@ called with its value after the init file loaded."
                                  *settings*))
      ',name))
 
-(defun reset-settings ()
-  (loop for (name . properties) in *settings*
-        do (setf (symbol-value name) (funcall (getf properties :default)))))
+(defun setting-defaults ()
+  (loop for (nil . properties) in *settings*
+        collect (funcall (getf properties :default))))
 
 (defun check-settings ()
   (loop for (name . properties) in *settings*

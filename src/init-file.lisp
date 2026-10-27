@@ -6,57 +6,51 @@
 (defun user-config-file ()
   (uiop:xdg-config-home "nucleotide" "init.lisp"))
 
-(defun reset-config ()
-  (reset-settings)
-  (setf *commands* (copy-list *builtin-commands*)
-        *bindings* '()
-        *window-rules* '()
-        *hooks* '()))
+(defun config-variables ()
+  (list* '*commands* '*bindings* '*window-rules* '*hooks* (mapcar #'car *settings*)))
 
-(defun save-config ()
-  (list* (cons '*commands* *commands*)
-         (cons '*bindings* *bindings*)
-         (cons '*window-rules* *window-rules*)
-         (cons '*hooks* *hooks*)
-         (loop for (name) in *settings*
-               collect (cons name (symbol-value name)))))
+(defun default-config ()
+  (list* (copy-list *builtin-commands*) '() '() '() (setting-defaults)))
 
-(defun restore-config (saved)
-  (loop for (name . value) in saved
-        do (setf (symbol-value name) value)))
+(defun call-with-default-config (function)
+  "Call FUNCTION with the configuration at its defaults, bound in this thread
+only, and return the configuration it leaves as an alist."
+  (let ((variables (config-variables)))
+    (progv variables (default-config)
+      (funcall function)
+      (check-settings)
+      (mapcar (lambda (variable) (cons variable (symbol-value variable))) variables))))
+
+(defun install-config (config)
+  (loop for (variable . value) in config
+        do (setf (symbol-value variable) value)))
 
 (defun load-config-file (file)
-  (let ((*package* (find-package '#:nucleotide)))
+  (check-file-permissions (uiop:pathname-directory-pathname file) #o022 :allow-root t)
+  (check-file-permissions file #o022 :allow-root t)
+  (let ((*package* (find-package '#:nucleotide.user)))
     (handler-bind ((sb-kernel:redefinition-warning #'muffle-warning))
-      (load file)))
-  (check-settings))
+      (load file))))
 
 (defun load-user-config ()
-  "Load the init file from scratch, or the defaults without one. Returns T
-when it loaded, NIL when there is none, and :ERROR when loading failed; then
-the configuration stays as it was, or is the defaults at startup."
-  (let ((file (user-config-file))
-        (saved (save-config)))
-    (reset-config)
-    (cond ((probe-file file)
-           (handler-case
-               (progn
-                 (check-file-permissions (uiop:pathname-directory-pathname file) #o022
-                                         :allow-root t)
-                 (check-file-permissions file #o022 :allow-root t)
-                 (load-config-file file)
-                 t)
-             (error (c)
-               (notify "~A not loaded: ~A" file c)
-               (restore-config saved)
-               (unless *bindings*
-                 (use-defaults))
-               :error)))
-          (t
-           (use-defaults)
-           nil))))
+  "Install the init file, or the defaults without one. Returns T, NIL without a
+file, or :ERROR, which keeps the current configuration."
+  (let ((file (probe-file (user-config-file))))
+    (handler-case
+        (progn
+          (install-config (call-with-default-config
+                           (if file
+                               (lambda () (load-config-file file))
+                               #'use-defaults)))
+          (and file t))
+      (error (c)
+        (notify "~A not loaded: ~A" file c)
+        (unless *bindings*
+          (install-config (call-with-default-config #'use-defaults)))
+        :error))))
 
 (define-command reload-config (wm)
+  "Load the init file again, starting from the defaults."
   (unless (eq (load-user-config) :error)
     (when (wm-seat wm)
       (uninstall-all-keybinds wm)

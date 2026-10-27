@@ -17,7 +17,7 @@
 
 (defun write-config (file &rest forms)
   (with-open-file (out file :direction :output :if-exists :supersede)
-    (let ((*package* (find-package '#:nucleotide)))
+    (let ((*package* (find-package '#:nucleotide.user)))
       (dolist (form forms)
         (print form out))))
   (sb-posix:chmod file #o644))
@@ -99,3 +99,17 @@
 (test (bad-sizes-fail-when-they-are-bound :fixture fresh-config)
   (signals n::nucleotide-error (n::set-binding "Super+Minus" '(n::set-column-width "-10")))
   (is (equal "Super+Minus" (n::set-binding "Super+Minus" '(n::set-column-width "-10%")))))
+
+(test the-init-file-package-sees-every-command-and-setting
+  (dolist (symbol (append n::*builtin-commands* (mapcar #'car n::*settings*)))
+    (is (eq :inherited (nth-value 1 (find-symbol (symbol-name symbol) '#:nucleotide.user)))
+        "~S is not exported" symbol)))
+
+(test loading-leaves-the-configuration-of-other-threads-alone
+  (flet ((elsewhere ()
+           (sb-thread:join-thread (sb-thread:make-thread (lambda () n::*gap*)))))
+    (let ((before (elsewhere)))
+      (n::call-with-default-config
+       (lambda ()
+         (setf n::*gap* (1+ before))
+         (is (eql before (elsewhere))))))))

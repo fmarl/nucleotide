@@ -46,10 +46,10 @@ Set `*default-layout*` to `'scrolling` or `'(tiling :ratio 1/2)` to change the
 layout of new workspaces, and `*gap*` for the gaps of all layouts.
 
 ## Monitors
-Every monitor has workspaces 1–9. `Super+1…9` switches the workspace on the
-focused monitor and `Super+Ctrl+1…9` sends the focused window there. Both also
+Every monitor has workspaces 1 to 9. `Super+1` to `Super+9` switch the workspace on the
+focused monitor, and with Ctrl they send the focused window there. Both also
 work with Shift held, for keyboards that send the digits shifted. `Super+,`
-and `Super+.` focus the monitor to the left or right; add Shift to send the
+and `Super+.` focus the monitor to the left or right. Add Shift to send the
 window there, or Ctrl to swap the workspace with the one shown there.
 
 ## Floating windows
@@ -60,9 +60,9 @@ right one.
 
 ## Configuration
 At startup nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp` into the
-`nucleotide` package. Without it you get the default keys from
-`src/defaults.lisp`. The file is ignored if it or its directory is writable by
-others.
+`nucleotide.user` package, which sees the symbols that `nucleotide` exports.
+Without it you get the default keys from `src/defaults.lisp`. The file is
+ignored if it or its directory is writable by others.
 
 ```lisp
 (use-defaults)
@@ -97,7 +97,7 @@ handlers the file redefined before the error. A few settings, like
 
 ## REPL
 `Super+Space R` opens a Slynk listener on `localhost:4005`. It accepts one
-connection and then stops listening; pressing the key again closes it early
+connection and then stops listening. Pressing the key again closes it early
 without ending an open SLY session. Only clients that know the secret in
 `~/.sly-secret` get in. nucleotide creates that file with mode 600 and won't
 open the port if others can read it. SLY reads the same file, so
