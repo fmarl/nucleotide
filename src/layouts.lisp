@@ -41,9 +41,15 @@ initargs like (TILING :RATIO 1/2)."
   (let ((index (+ (position item list) (step-direction direction))))
     (and (< -1 index (length list)) (nth index list))))
 
+(defgeneric layout-update (layout workspace windows x y width height)
+  (:documentation "Update the state of LAYOUT for arranging WINDOWS, the tiled
+windows of WORKSPACE, in the area at X Y of WIDTH HEIGHT.")
+  (:method (layout workspace windows x y width height)
+    (declare (ignore layout workspace windows x y width height))))
+
 (defgeneric layout-arrange (layout workspace windows x y width height)
-  (:documentation "An (x y width height) list for each of WINDOWS, the tiled
-windows of WORKSPACE."))
+  (:documentation "An (x y width height) list for each of WINDOWS after
+LAYOUT-UPDATE, without changing LAYOUT."))
 
 (defgeneric layout-neighbor (layout workspace win direction)
   (:documentation "The window next to WIN in DIRECTION, one of :LEFT, :RIGHT,

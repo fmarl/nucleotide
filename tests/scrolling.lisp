@@ -22,7 +22,9 @@
     win))
 
 (defun arrange (ws &optional (tiled (n::workspace-windows ws)))
-  (n::layout-arrange (n::workspace-layout ws) ws tiled 0 0 1016 816))
+  (let ((layout (n::workspace-layout ws)))
+    (n::layout-update layout ws tiled 0 0 1016 816)
+    (n::layout-arrange layout ws tiled 0 0 1016 816)))
 
 (defun focus (ws win)
   (setf (n::workspace-focus ws) win)

@@ -93,33 +93,36 @@ column right of ANCHOR's."
                                          (scrolling-anchor layout))
                       (workspace-focus workspace)))
 
-(defun update-scroll (layout workspace view)
-  "Update LAYOUT's columns and offset for WORKSPACE; return the left edges and
-widths of the columns."
+(defun column-geometry (columns view gap)
+  "The left edges and the widths of COLUMNS."
+  (let ((widths (mapcar (lambda (column) (column-pixel-width column view gap)) columns)))
+    (values (column-lefts widths gap) widths)))
+
+(defmethod layout-update ((layout scrolling) workspace windows x y width height)
+  (declare (ignore windows))
   (let* ((gap *gap*)
+         (view (nth-value 2 (inset x y width height gap)))
          (focus (workspace-focus workspace))
          (columns (arranged-columns layout workspace))
-         (widths (mapcar (lambda (column) (column-pixel-width column view gap)) columns))
-         (lefts (column-lefts widths gap))
          (i (column-index columns focus)))
-    (setf (scrolling-offset layout) (target-offset layout (and i (nth i lefts))
-                                                   (and i (nth i widths)) view)
-          (scrolling-columns layout) columns
-          (scrolling-anchor layout) (if i focus (scrolling-anchor layout))
-          (scrolling-center layout) nil)
-    (values lefts widths)))
+    (multiple-value-bind (lefts widths) (column-geometry columns view gap)
+      (setf (scrolling-offset layout) (target-offset layout (and i (nth i lefts))
+                                                     (and i (nth i widths)) view)
+            (scrolling-columns layout) columns
+            (scrolling-anchor layout) (if i focus (scrolling-anchor layout))
+            (scrolling-center layout) nil))))
 
 (defun column-rects (column windows x y width height gap)
-  "Alist from the windows of COLUMN that are among WINDOWS to their rectangles."
   (let ((tiled (remove-if-not (lambda (win) (member win windows))
                               (column-windows column))))
     (when tiled
       (mapcar #'cons tiled (stack-rects (length tiled) x y width height gap)))))
 
 (defmethod layout-arrange ((layout scrolling) workspace windows x y width height)
+  (declare (ignore workspace))
   (let ((gap *gap*))
     (multiple-value-bind (x y view height) (inset x y width height gap)
-      (multiple-value-bind (lefts widths) (update-scroll layout workspace view)
+      (multiple-value-bind (lefts widths) (column-geometry (scrolling-columns layout) view gap)
         (let ((rects (mapcan (lambda (column left column-width)
                                (column-rects column windows
                                              (+ x (- left (scrolling-offset layout))) y

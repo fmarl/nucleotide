@@ -106,9 +106,11 @@
 
 (defun manage-layout (ws output)
   (multiple-value-bind (x y width height) (usable-area output)
-    (let ((tiled (tiled-windows ws)))
+    (let ((tiled (tiled-windows ws))
+          (layout (workspace-layout ws)))
+      (layout-update layout ws tiled x y width height)
       (loop for win in tiled
-            for rect in (layout-arrange (workspace-layout ws) ws tiled x y width height)
+            for rect in (layout-arrange layout ws tiled x y width height)
             do (place-window win rect output)))))
 
 (defun manage-warp (wm)
