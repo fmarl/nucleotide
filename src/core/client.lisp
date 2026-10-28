@@ -64,6 +64,10 @@
   (unless (eq sb-thread:*current-thread* (display-thread (proxy-display proxy)))
     (nucleotide-error "request to ~S from ~S, which does not run the display"
                       proxy sb-thread:*current-thread*))
+  (loop for type in signature
+        for value in args
+        when (and (eq type :object) value (proxy-destroyed-p value))
+        do (nucleotide-error "request (opcode ~D) to ~S names destroyed ~S" opcode proxy value))
   (let* ((conn (display-connection (proxy-display proxy)))
          (buf (connection-wbuf conn))
          (end (reduce (lambda (off type-and-value)

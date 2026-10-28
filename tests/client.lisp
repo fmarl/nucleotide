@@ -125,6 +125,13 @@
     (is (search "warn: shown" (with-output-to-string (*error-output*)
                                 (n::log-message :warn "shown"))))))
 
+(test requests-never-name-destroyed-objects
+  (let* ((display (make-test-display))
+         (proxy (n::make-proxy display 'test-object))
+         (gone (n::make-proxy display 'test-object)))
+    (setf (n::proxy-destroyed-p gone) t)
+    (signals n::nucleotide-error (n::send-request proxy 0 '(:object) (list gone)))))
+
 (n::define-request (test-object newer 0 :since 2))
 
 (test requests-need-the-version-that-introduced-them
