@@ -15,7 +15,7 @@
 
 (package
   (name "nucleotide")
-  (version "0.1.0")
+  (version "0.4.0")
   (source (local-file %source-dir "nucleotide-checkout"
                       #:recursive? #t
                       #:select? (git-predicate %source-dir)))
