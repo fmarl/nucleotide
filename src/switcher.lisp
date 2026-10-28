@@ -8,11 +8,13 @@
   :check (type-check 'argv))
 
 (defun window-label (win number)
+  "One line of the menu, even for titles with newlines."
   (let* ((ws (window-workspace win))
          (output (workspace-output ws)))
-    (format nil "~D: [~@[~A:~]~A] ~@[~A~]~@[ - ~A~]"
-            number (and output (output-name output)) (workspace-name ws)
-            (window-app-id win) (window-title win))))
+    (substitute-if #\Space (lambda (char) (< (char-code char) #x20))
+                   (format nil "~D: [~@[~A:~]~A] ~@[~A~]~@[ - ~A~]"
+                           number (and output (output-name output)) (workspace-name ws)
+                           (window-app-id win) (window-title win)))))
 
 (defun menu-choose (choices)
   "Run *MENU-COMMAND* on CHOICES and return the index of the chosen one, or NIL."
