@@ -125,8 +125,12 @@ keep their place."
   (remove-if #'window-floating-p (workspace-windows ws)))
 
 (defun place-window (win rect output)
-  (position-window win (rect-origin rect) (and output (clip-box rect output)))
-  (propose-size win (rect-size rect)))
+  "Large gaps or many windows squeeze rects below a pixel. River rejects negative
+sizes, and 0 lets the window choose."
+  (let ((rect (rect (rect-x rect) (rect-y rect)
+                    (max 1 (rect-width rect)) (max 1 (rect-height rect)))))
+    (position-window win (rect-origin rect) (and output (clip-box rect output)))
+    (propose-size win (rect-size rect))))
 
 (defun manage-layout (ws output)
   "Place the tiled and maximized windows of WS, which OUTPUT shows. River places

@@ -62,7 +62,8 @@ focused column.
 
 In tiling and monocle, `H`/`K` and `L`/`J` step through the windows instead.
 Set `*default-layout*` to `'scrolling` or `'(tiling :ratio 1/2)` to change the
-layout of new workspaces, and `*gap*` for the gaps of all layouts.
+layout of new workspaces, and `*gap*` for the gaps of all layouts. Gaps that
+leave no room on a monitor shrink windows to a single pixel.
 
 ## Monitors
 Every monitor has workspaces 1 to 9. `Super+1` to `Super+9` switch the

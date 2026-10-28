@@ -130,7 +130,7 @@ and the requests it sent so far."
 (defun proposed-dimensions (requests)
   (loop for (nil request nil body) in requests
         when (equal "propose_dimensions" request)
-        collect (list (n::u32ref body 0) (n::u32ref body 4))))
+        collect (list (n::i32ref body 0) (n::i32ref body 4))))
 
 (defun key-binding (requests keysym)
   (created-id requests "get_xkb_binding" keysym 8 4))
@@ -499,6 +499,13 @@ opened while the pointer is on the right one."
                    (names requests)))
         (is (equal '(40 300) (list (n::u32ref repeat 0) (n::u32ref repeat 4))))
         (is (= 128 (n::u32ref scroll 0)))))))
+
+(test (squeezed-windows-still-get-a-pixel :fixture fresh-config)
+  (setf n::*gap* 600)
+  (with-fake-server (display socket)
+    (connect-wm-with-window display socket)
+    (run-sequence display socket "manage_start")
+    (is (equal '((1 1)) (proposed-dimensions (received socket display))))))
 
 (test (a-reset-connection-counts-as-disconnected :fixture fresh-config)
   (with-fake-server (display socket)
