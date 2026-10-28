@@ -12,10 +12,11 @@
 (defun lispify-keyword (wire-name)
   (intern (lisp-name wire-name) '#:keyword))
 
+(defun enum-constant-string (interface enum entry)
+  (format nil "+~A-~A-~A+" (lisp-name interface) (lisp-name enum) (lisp-name entry)))
+
 (defun enum-constant-name (interface enum entry)
-  (intern (format nil "+~A-~A-~A+"
-                  (lisp-name interface) (lisp-name enum) (lisp-name entry))
-          '#:nucleotide))
+  (intern (enum-constant-string interface enum entry) '#:nucleotide))
 
 (defun parse-enum-value (string)
   (if (and (> (length string) 2) (string-equal "0x" string :end2 2))

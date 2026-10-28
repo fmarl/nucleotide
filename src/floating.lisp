@@ -4,13 +4,16 @@
 (in-package #:nucleotide)
 
 (define-setting *pointer-modifiers* "Super"
-  :documentation "The modifiers that move and resize windows with the pointer.")
+  :documentation "The modifiers that move and resize windows with the pointer."
+  :check #'parse-modifiers)
 
 (define-setting *move-button* 272
-  :documentation "Linux input event code of the button that moves windows (BTN_LEFT).")
+  :documentation "Linux input event code of the button that moves windows (BTN_LEFT)."
+  :check (type-check '(unsigned-byte 32) "a button code like 272"))
 
 (define-setting *resize-button* 273
-  :documentation "Linux input event code of the button that resizes windows (BTN_RIGHT).")
+  :documentation "Linux input event code of the button that resizes windows (BTN_RIGHT)."
+  :check (type-check '(unsigned-byte 32) "a button code like 273"))
 
 (defun fixed-size-p (win)
   (and (plusp (window-min-width win))

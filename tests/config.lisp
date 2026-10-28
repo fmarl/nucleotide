@@ -123,3 +123,30 @@
        (lambda ()
          (setf n::*gap* (1+ before))
          (is (eql before (elsewhere))))))))
+
+(test every-setting-is-checked
+  (dolist (bad '((n::*default-layout* n::tilling)
+                 (n::*gap* "8")
+                 (n::*border-width* -1)
+                 (n::*pointer-modifiers* "Hyper")
+                 (n::*move-button* :left)
+                 (n::*num-of-workspaces* 0)
+                 (n::*repl-port* 70000)
+                 (n::*default-column-width* 3/2)
+                 (n::*column-widths* ())
+                 (n::*window-heights* (1/2 2))
+                 (n::*menu-command* "bemenu")
+                 (n::*autostart-programs* (42))
+                 (n::*libinput-settings* (:tap))
+                 (n::*libinput-settings* (:tapping t))
+                 (n::*libinput-settings* (:click-method :clickfingers))
+                 (n::*libinput-settings* (:accel-speed 2))))
+    (destructuring-bind (setting value) bad
+      (signals n::nucleotide-error
+               (n::call-with-default-config (lambda () (setf (symbol-value setting) value))))))
+  (finishes (n::call-with-default-config
+             (lambda ()
+               (setf n::*default-layout* '(n::tiling :ratio 1/2)
+                     n::*autostart-programs* '("waybar" ("foot" "--server"))
+                     n::*libinput-settings* '(:tap t :click-method :clickfinger
+                                              :accel-speed -1/2))))))

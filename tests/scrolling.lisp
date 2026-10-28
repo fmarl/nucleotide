@@ -86,7 +86,8 @@
                (list (rect ws a) (rect ws b))))
     (setf (n::scrolling-columns layout)
           (n::consume-or-expel-in (n::scrolling-columns layout) b :next))
-    (is (equal (list (list a) (list b)) (columns ws)))))
+    (is (equal (list (list a) (list b)) (columns ws)))
+    (is (eq a (n::layout-neighbor layout ws b :prev)))))
 
 (test (successor-prefers-the-same-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))

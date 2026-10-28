@@ -15,7 +15,8 @@
 accessor that holds the proxy.")
 
 (define-setting *num-of-workspaces* 9
-  :documentation "Workspaces per output. Read at startup.")
+  :documentation "Workspaces per output. Read at startup."
+  :check (type-check '(integer 1) "a number of workspaces like 9"))
 
 (defun make-workspaces ()
   (loop for i from 1 to *num-of-workspaces*

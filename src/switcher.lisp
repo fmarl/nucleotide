@@ -4,7 +4,8 @@
 (in-package #:nucleotide)
 
 (define-setting *menu-command* '("bemenu" "-i" "-l" "20" "-p" "window")
-  :documentation "A dmenu-like program: reads choices on stdin, prints the chosen one.")
+  :documentation "A dmenu-like program: reads choices on stdin, prints the chosen one."
+  :check (type-check '(satisfies argv-p) "a program and its arguments like (\"bemenu\" \"-i\")"))
 
 (defun window-label (win number)
   (let* ((ws (window-workspace win))

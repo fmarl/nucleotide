@@ -3,7 +3,12 @@
 
 (in-package #:nucleotide)
 
-(define-setting *default-column-width* 1/2)
+(deftype fraction ()
+  "A part of the width or height of an output or column."
+  '(real (0) 1))
+
+(define-setting *default-column-width* 1/2
+  :check (type-check 'fraction "a fraction like 1/2"))
 
 (defclass column ()
   ((windows :initarg :windows :reader column-windows)
@@ -15,7 +20,8 @@ fraction of the column. The others share the rest. A window alone in its
 column has none, as it could not show it.")))
 
 (defun make-column (windows width &key active heights)
-  (make-instance 'column :windows windows :width width :active active
+  (make-instance 'column :windows windows :width width
+                 :active (find active windows)
                  :heights (and (rest windows)
                                (remove-if-not (lambda (entry) (member (car entry) windows))
                                               heights))))
@@ -49,9 +55,7 @@ column right of ANCHOR's."
                      for present = (remove-if-not (lambda (win) (member win windows))
                                                   (column-windows column))
                      when present
-                     collect (copy-column column
-                                          :windows present
-                                          :active (find (column-active column) present))))
+                     collect (copy-column column :windows present)))
          (placed (mappend #'column-windows kept))
          (new (reverse (remove-if (lambda (win) (member win placed)) windows)))
          (at (1+ (or (column-index kept anchor) (1- (length kept))))))

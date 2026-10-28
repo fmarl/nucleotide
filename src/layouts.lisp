@@ -4,7 +4,8 @@
 (in-package #:nucleotide)
 
 (define-setting *gap* 8
-  :documentation "Pixels between windows and around them.")
+  :documentation "Pixels between windows and around them."
+  :check (type-check '(and wire-int unsigned-byte) "a number of pixels like 8"))
 
 (defclass layout () ())
 

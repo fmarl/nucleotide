@@ -56,13 +56,25 @@ OUTPUT relative to RECT to clip it to."
     (when (member (wm-active-workspace wm) workspaces)
       (setf (output-workspace output) (wm-active-workspace wm)))))
 
+(defun corresponding-workspace (index workspaces)
+  "The workspace at INDEX of WORKSPACES, or the last one if there are fewer:
+outputs plugged in after a reload may have another *NUM-OF-WORKSPACES*."
+  (or (nth index workspaces) (car (last workspaces))))
+
+(defun migrate-workspaces (from to &key keep-home)
+  "Move the windows of each workspace of FROM to the corresponding one of TO.
+With KEEP-HOME they can return to the workspace they came from."
+  (loop for ws in from
+        for index from 0
+        do (migrate-windows ws (corresponding-workspace index to)
+                            :home (and keep-home ws))))
+
 (defun evacuate-output (wm output target)
   "Move the windows of OUTPUT to the same workspaces of TARGET. With a name,
 keep OUTPUT's workspaces so the windows can return to them."
   (let ((workspaces (output-workspaces output))
         (name (output-name output)))
-    (mapc (lambda (ws there) (migrate-windows ws there :home (and name ws)))
-          workspaces (output-workspaces target))
+    (migrate-workspaces workspaces (output-workspaces target) :keep-home name)
     (when name
       (setf (wm-stash wm) (alist-set name workspaces (wm-stash wm))))
     (when (member (wm-active-workspace wm) workspaces)
@@ -83,9 +95,9 @@ keep OUTPUT's workspaces so the windows can return to them."
       (let ((current (output-workspaces output))
             (shown (position (output-workspace output) (output-workspaces output))))
         (setf (wm-stash wm) (alist-remove (output-name output) (wm-stash wm)))
-        (mapc #'migrate-windows current stashed)
+        (migrate-workspaces current stashed)
         (adopt-workspaces output stashed)
-        (setf (output-workspace output) (nth shown stashed))
+        (setf (output-workspace output) (corresponding-workspace shown stashed))
         (when (member (wm-active-workspace wm) current)
           (setf (wm-active-workspace wm) (output-workspace output)))
         (dolist (win (all-windows wm))
@@ -154,8 +166,8 @@ workspace shown on the neighboring output, and follow them there."
 
 (defun attach-output (wm proxy)
   (let ((output (make-instance 'output :proxy proxy)))
-    (setf (wm-outputs wm) (append (wm-outputs wm) (list output)))
     (assign-output wm output)
+    (setf (wm-outputs wm) (append (wm-outputs wm) (list output)))
     (forward-events wm proxy output)
     (when (wm-layer-shell wm)
       (let ((layer-shell (river-layer-shell-v1.get-output (wm-layer-shell wm)

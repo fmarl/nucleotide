@@ -20,8 +20,13 @@ window or NIL, and :WORKSPACE-CHANGED with the active workspace."
                            *hooks*))
   function)
 
+(defvar *failed-hooks* '())
+
 (defun run-event-hooks (event &rest args)
   (dolist (function (alist-get event *hooks*))
     (handler-case (apply function args)
       (error (c)
-        (notify "~(~S~) hook failed: ~A" event c)))))
+        (cond ((member function *failed-hooks*)
+               (log-message :error "~(~S~) hook failed: ~A" event c))
+              (t (push function *failed-hooks*)
+                 (notify "~(~S~) hook failed: ~A" event c)))))))

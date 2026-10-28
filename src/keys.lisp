@@ -5,9 +5,12 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun keysym-header-pathname ()
-    (or (loop for dir in (uiop:getenv-absolute-directories "PATH")
-              thereis (probe-file
-                       (merge-pathnames "../include/xkbcommon/xkbcommon-keysyms.h" dir)))
+    (or (loop for dir in (append (mapcar (lambda (dir) (merge-pathnames "../include/" dir))
+                                         (uiop:getenv-absolute-directories "PATH"))
+                                 (uiop:getenv-absolute-directories "C_INCLUDE_PATH")
+                                 (uiop:getenv-absolute-directories "CPATH")
+                                 (list #p"/usr/include/"))
+              thereis (probe-file (merge-pathnames "xkbcommon/xkbcommon-keysyms.h" dir)))
         (error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
 
   (defun keysym-header-entries (pathname)

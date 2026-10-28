@@ -9,5 +9,5 @@
   "The least severe level that is printed: :DEBUG, :INFO, :WARN or :ERROR.")
 
 (defun log-message (level control &rest args)
-  (when (>= (position level *log-levels*) (position *log-level* *log-levels*))
+  (when (>= (position level *log-levels*) (or (position *log-level* *log-levels*) 0))
     (format *error-output* "~&nucleotide ~(~A~): ~?~%" level control args)))

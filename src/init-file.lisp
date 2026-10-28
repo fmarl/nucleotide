@@ -7,10 +7,11 @@
   (uiop:xdg-config-home "nucleotide" "init.lisp"))
 
 (defun config-variables ()
-  (list* '*commands* '*bindings* '*window-rules* '*hooks* (mapcar #'car *settings*)))
+  (list* '*commands* '*bindings* '*window-rules* '*hooks* '*failed-hooks*
+         (mapcar #'car *settings*)))
 
 (defun default-config ()
-  (list* (copy-list *builtin-commands*) '() '() '() (setting-defaults)))
+  (list* (copy-list *builtin-commands*) '() '() '() '() (setting-defaults)))
 
 (defun call-with-default-config (function)
   "Call FUNCTION with the configuration at its defaults, bound in this thread

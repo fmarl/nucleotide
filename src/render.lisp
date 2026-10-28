@@ -13,7 +13,8 @@
                 collect (parse-integer color-code :start start :end (+ start 2) :radix 16))
           (and (= 7 (length color-code)) '(255))))
 
-(define-setting *border-width* 2)
+(define-setting *border-width* 2
+  :check (type-check '(and wire-int unsigned-byte) "a number of pixels like 2"))
 
 (define-setting *border-focused* "#6f8cab"
   :check #'parse-color)

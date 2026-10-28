@@ -21,6 +21,13 @@
       (nucleotide-error "~A has unsafe permissions ~3,'0O"
                         path (logand (sb-posix:stat-mode stat) #o777)))))
 
+(defun argv-p (object)
+  (and (consp object) (every #'stringp object)))
+
+(defun command-p (object)
+  "Whether SPAWN-PROGRAM takes OBJECT."
+  (or (stringp object) (argv-p object)))
+
 (defun spawn-program (command)
   "Start COMMAND detached from nucleotide. A string is run by sh, so it may
 contain arguments (\"alacritty -e htop\"). A list is used as argv directly."

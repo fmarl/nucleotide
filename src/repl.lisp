@@ -3,7 +3,8 @@
 
 (in-package #:nucleotide)
 
-(define-setting *repl-port* 4005)
+(define-setting *repl-port* 4005
+  :check (type-check '(integer 1 65535) "a port like 4005"))
 
 (defun repl-secret-file ()
   (merge-pathnames ".sly-secret" (user-homedir-pathname)))

@@ -124,3 +124,27 @@
     (is (eq right (n::output-at wm (n::point 1000 0))))
     (is (null (n::output-at wm (n::point 1000 800))))
     (is (null (n::output-at wm (n::point 2000 0))))))
+
+(test outputs-with-fewer-workspaces-take-all-windows
+  (let* ((wm (make-test-wm))
+         (laptop (add-output wm 0 :name "eDP-1"))
+         (monitor (add-output wm 1000 :workspaces 6))
+         (home (nth 5 (n::output-workspaces monitor)))
+         (win (open-window-on home)))
+    (n::show-workspace wm home)
+    (n::unassign-output wm monitor)
+    (is (eq (car (last (n::output-workspaces laptop))) (n::window-workspace win)))
+    (is (member win (n::all-windows wm)))
+    (is (eq laptop (n::wm-focused-output wm)))))
+
+(test replugged-outputs-with-fewer-workspaces-show-one-of-them
+  (let* ((wm (make-test-wm))
+         (laptop (add-output wm 0 :name "eDP-1"))
+         (monitor (add-output wm 1000 :name "HDMI-A-1")))
+    (declare (ignore laptop))
+    (n::unassign-output wm monitor)
+    (let ((again (add-output wm 1000 :name "HDMI-A-1" :workspaces 6)))
+      (n::show-workspace wm (nth 5 (n::output-workspaces again)))
+      (n::restore-output wm again)
+      (is (eq (car (last (n::output-workspaces again))) (n::output-workspace again)))
+      (is (eq (n::output-workspace again) (n::wm-active-workspace wm))))))

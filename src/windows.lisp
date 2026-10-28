@@ -114,7 +114,8 @@ workspace."
   (end-pointer-op wm win)
   (river-node-v1.destroy (window-node win))
   (river-window-v1.destroy (window-proxy win))
-  (run-event-hooks :window-closed win))
+  (when (window-rules-applied-p win)
+    (run-event-hooks :window-closed win)))
 
 (define-handler (wm (win window) :closed) ()
   (detach-window wm win))

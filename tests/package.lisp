@@ -53,9 +53,9 @@
 (defun ws (wm number)
   (n::nth-workspace wm (1- number)))
 
-(defun add-output (wm x &key name)
+(defun add-output (wm x &key name (workspaces 4))
   (let ((output (make-instance 'n::output :proxy nil))
-        (n::*num-of-workspaces* 4))
+        (n::*num-of-workspaces* workspaces))
     (setf (n::output-rect output) (n::rect x 0 1000 800)
           (n::output-name output) name
           (n::wm-outputs wm) (append (n::wm-outputs wm) (list output)))

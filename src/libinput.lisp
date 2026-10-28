@@ -9,7 +9,8 @@
 :NATURAL-SCROLL, :LEFT-HANDED, :MIDDLE-EMULATION and :DISABLE-WHILE-TYPING take
 T or NIL. :CLICK-METHOD takes :BUTTON-AREAS or :CLICKFINGER, :SCROLL-METHOD
 :NO-SCROLL, :TWO-FINGER, :EDGE or :ON-BUTTON-DOWN, :ACCEL-PROFILE :FLAT or
-:ADAPTIVE, and :ACCEL-SPEED a number from -1 to 1. Devices get them when they appear.")
+:ADAPTIVE, and :ACCEL-SPEED a number from -1 to 1. Devices get them when they appear."
+  :check 'check-libinput-settings)
 
 (defparameter *libinput-requests*
   '((:tap :tap-support river-libinput-device-v1.set-tap "tap_state")
@@ -32,7 +33,11 @@ T or NIL. :CLICK-METHOD takes :BUTTON-AREAS or :CLICKFINGER, :SCROLL-METHOD
 how to encode its value: the name of an enum, or :DOUBLE.")
 
 (defun enum-value (class enum entry)
-  (symbol-value (enum-constant-name (interface-wire-name class) enum entry)))
+  (let ((name (find-symbol (enum-constant-string (interface-wire-name class) enum entry)
+                           '#:nucleotide)))
+    (unless (and name (boundp name))
+      (nucleotide-error "~A is not one of the values of ~A" entry enum))
+    (symbol-value name)))
 
 (defun double-octets (number)
   (let ((double (coerce number 'double-float))
@@ -49,6 +54,17 @@ how to encode its value: the name of an enum, or :DOUBLE.")
         (t
          (enum-value 'river-libinput-device-v1 encoding
                      (if value "enabled" "disabled")))))
+
+(defun check-libinput-settings (plist)
+  (unless (and (listp plist) (evenp (length plist)))
+    (nucleotide-error "~S is not a plist like (:tap t)" plist))
+  (loop for (setting value) on plist by #'cddr
+        for encoding = (fourth (or (find setting *libinput-requests* :key #'first)
+                                   (nucleotide-error "unknown libinput setting ~S" setting)))
+        do (if (eq encoding :double)
+               (unless (typep value '(real -1 1))
+                 (nucleotide-error "~S is not a number from -1 to 1" value))
+               (libinput-value encoding value))))
 
 (defun watch-libinput-result (setting result)
   (push (lambda (event &rest args)

@@ -102,7 +102,8 @@ leaves one of them."
 
 (define-setting *default-layout* 'tiling
   :documentation "The layout of new workspaces, in the format MAKE-LAYOUT takes. Read at
-startup.")
+startup."
+  :check 'make-layout)
 
 (defclass workspace ()
   ((id :initform (new-id) :reader workspace-id)

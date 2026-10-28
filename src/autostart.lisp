@@ -3,9 +3,14 @@
 
 (in-package #:nucleotide)
 
+(defun check-commands (commands)
+  (unless (and (listp commands) (every #'command-p commands))
+    (nucleotide-error "~S is not a list of commands like (\"waybar\")" commands)))
+
 (define-setting *autostart-programs*
     '(("waybar"))
-  :documentation "Commands started once at startup, in the format SPAWN takes.")
+  :documentation "Commands started once at startup, in the format SPAWN takes."
+  :check #'check-commands)
 
 (defvar *autostarted* nil)
 
