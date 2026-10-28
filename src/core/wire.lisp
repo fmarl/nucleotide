@@ -54,10 +54,12 @@
 (defun pad4 (n) (logand (+ n 3) -4))
 
 (defun get-wl-string (buffer offset)
+  "X11 windows may send titles that are not UTF-8."
   (let ((len (u32ref buffer offset)))
     (if (zerop len)
         (values nil (+ offset 4))
-        (values (sb-ext:octets-to-string buffer :external-format :utf-8
+        (values (sb-ext:octets-to-string buffer :external-format
+                                         '(:utf-8 :replacement #\REPLACEMENT_CHARACTER)
                                          :start (+ offset 4)
                                          :end (+ offset 4 (1- len)))
                 (+ offset 4 (pad4 len))))))

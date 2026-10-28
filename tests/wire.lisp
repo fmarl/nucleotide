@@ -61,3 +61,9 @@
     (signals n::nucleotide-error (n::put-wl-array buffer 8 (buffer 8)))
     (signals n::nucleotide-error (n::encode-arg buffer 16 :uint 1))
     (is (= 16 (n::put-wl-string buffer 0 "0123456789")))))
+
+(test invalid-utf-8-becomes-replacement-characters
+  (let ((title (n::get-wl-string (octets 5 0 0 0 #x61 #xff #xfe #x62 0 0 0 0) 0)))
+    (is (char= #\a (char title 0)))
+    (is (char= #\b (char title (1- (length title)))))
+    (is (find #\REPLACEMENT_CHARACTER title))))
