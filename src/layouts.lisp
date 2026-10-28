@@ -41,14 +41,15 @@ initargs like (TILING :RATIO 1/2)."
     (and (< -1 index (length list)) (nth index list))))
 
 (defgeneric layout-update (layout workspace windows area)
-  (:documentation "Update the state of LAYOUT for arranging WINDOWS, the tiled
-windows of WORKSPACE, in the rect AREA.")
+  (:documentation "Update the state of LAYOUT for WINDOWS, the windows of WORKSPACE
+that do not float, in the rect AREA. Fullscreen ones are among them, so that
+LAYOUT can keep their place.")
   (:method (layout workspace windows area)
     (declare (ignore layout workspace windows area))))
 
 (defgeneric layout-arrange (layout workspace windows area)
-  (:documentation "A rect for each of WINDOWS after LAYOUT-UPDATE, without
-changing LAYOUT."))
+  (:documentation "A rect for each of WINDOWS, those of LAYOUT-UPDATE that are not
+fullscreen, without changing LAYOUT."))
 
 (defgeneric layout-neighbor (layout workspace win direction)
   (:documentation "The window next to WIN in DIRECTION, one of :LEFT, :RIGHT,

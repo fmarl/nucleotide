@@ -89,9 +89,8 @@ column right of ANCHOR's."
         ((scrolling-center-p layout) (centering-scroll-offset left width view))
         (t (scroll-into-view (scrolling-offset layout) left width view))))
 
-(defun arranged-columns (layout workspace)
-  (mark-active-window (reconcile-columns (scrolling-columns layout)
-                                         (remove-if #'window-floating-p (workspace-windows workspace))
+(defun arranged-columns (layout workspace windows)
+  (mark-active-window (reconcile-columns (scrolling-columns layout) windows
                                          (scrolling-anchor layout))
                       (workspace-focus workspace)))
 
@@ -101,11 +100,10 @@ column right of ANCHOR's."
     (values (column-lefts widths gap) widths)))
 
 (defmethod layout-update ((layout scrolling) workspace windows area)
-  (declare (ignore windows))
   (let* ((gap *gap*)
          (view (rect-width (inset area gap)))
          (focus (workspace-focus workspace))
-         (columns (arranged-columns layout workspace))
+         (columns (arranged-columns layout workspace windows))
          (i (column-index columns focus)))
     (multiple-value-bind (lefts widths) (column-geometry columns view gap)
       (setf (scrolling-offset layout) (target-offset layout (and i (nth i lefts))
@@ -131,7 +129,7 @@ are scaled to fill the column when the others cannot."
 
 (defun column-rects (column windows area gap)
   (let ((stacked (remove-if-not (lambda (win) (member win windows))
-                                (stacked-windows column))))
+                                (column-windows column))))
     (when stacked
       (mapcar #'cons stacked (stack-rects-by (height-fractions column stacked) area gap)))))
 

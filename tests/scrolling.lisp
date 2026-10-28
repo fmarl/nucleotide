@@ -17,10 +17,13 @@
     (arrange ws)
     win))
 
-(defun arrange (ws &optional (tiled (n::workspace-windows ws)))
+(defun arranged-windows (ws)
+  (remove-if #'n::window-fullscreen (n::layout-windows ws)))
+
+(defun arrange (ws)
   (let ((layout (n::workspace-layout ws)))
-    (n::layout-update layout ws tiled (n::rect 0 0 1016 816))
-    (boxes (n::layout-arrange layout ws tiled (n::rect 0 0 1016 816)))))
+    (n::layout-update layout ws (n::layout-windows ws) (n::rect 0 0 1016 816))
+    (boxes (n::layout-arrange layout ws (arranged-windows ws) (n::rect 0 0 1016 816)))))
 
 (defun focus (ws win)
   (setf (n::workspace-focus ws) win)
@@ -30,7 +33,7 @@
   (mapcar #'n::column-windows (n::scrolling-columns (n::workspace-layout ws))))
 
 (defun rect (ws win)
-  (nth (position win (n::workspace-windows ws)) (arrange ws)))
+  (nth (position win (arranged-windows ws)) (arrange ws)))
 
 (test (new-windows-open-right-of-the-focused-column :fixture fresh-config)
   (let* ((ws (make-scrolling-workspace))
@@ -122,7 +125,8 @@
   (let* ((ws (make-scrolling-workspace))
          (a (open-window ws))
          (b (open-window ws)))
-    (is (equal '((512 8 496 800)) (arrange ws (list b))))
+    (setf (n::%window-fullscreen a) :output)
+    (is (equal '((512 8 496 800)) (arrange ws)))
     (is (equal (list (list a) (list b)) (columns ws)))))
 
 (test (closed-windows-leave-their-column :fixture fresh-config)

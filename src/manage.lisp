@@ -120,10 +120,9 @@ NEW-WINDOW-OUTPUT and gets the focus. Only the manage sequence knows both."
   (river-window-v1.propose-dimensions (window-proxy win) (size-width size) (size-height size)))
 
 (defun layout-windows (ws)
-  "The windows the layout of WS arranges: those that do not float, unless they are
-fullscreen. Maximized ones keep their place."
-  (remove-if (lambda (win) (or (window-fullscreen win) (window-floating-p win)))
-             (workspace-windows ws)))
+  "The windows the layout of WS manages: those that do not float. Maximized ones
+keep their place."
+  (remove-if #'window-floating-p (workspace-windows ws)))
 
 (defun place-window (win rect output)
   (position-window win (rect-origin rect) (and output (clip-box rect output)))
@@ -134,8 +133,9 @@ fullscreen. Maximized ones keep their place."
 fullscreen windows, and floating ones are placed when rendering."
   (let* ((area (usable-area output))
          (layout (workspace-layout ws))
-         (arranged (layout-windows ws)))
-    (layout-update layout ws arranged area)
+         (managed (layout-windows ws))
+         (arranged (remove-if #'window-fullscreen managed)))
+    (layout-update layout ws managed area)
     (let ((rects (mapcar #'cons arranged (layout-arrange layout ws arranged area))))
       (dolist (win (workspace-windows ws))
         (case (window-placement win)

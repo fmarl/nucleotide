@@ -124,3 +124,16 @@
       (is (eq (nth 2 (n::output-workspaces right)) (n::window-workspace win)))
       (is (eq left (n::wm-focused-output wm)))
       (is (eq focused (n::workspace-focus (n::output-workspace right)))))))
+
+(test fullscreen-windows-keep-their-place-in-the-layout
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0))
+         (ws (n::output-workspace output))
+         (a (open-window-on ws))
+         (b (open-window-on ws)))
+    (setf (n::workspace-layout ws) (make-instance 'n::scrolling))
+    (with-stubs ((n::propose-size (lambda (win size) (declare (ignore win size)))))
+      (n::manage-layout ws output)
+      (setf (n::%window-fullscreen a) :output)
+      (n::manage-layout ws output))
+    (is (= 504 (n::window-x b)))))
