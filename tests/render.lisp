@@ -68,3 +68,8 @@
     (is (not (n::window-visible-p wm video)))
     (is (n::window-visible-p wm terminal))
     (is (n::window-visible-p wm game))))
+
+(test border-colors-are-premultiplied-32-bit-values
+  (is (equal '(#xffffffff 0 #x80808080 #xffffffff) (n::rgba->uint32 '(255 0 128 255))))
+  (is (equal '(#x80808080 0 0 #x80808080) (n::rgba->uint32 '(255 0 0 128))))
+  (is (equal '(0 0 0 0) (n::rgba->uint32 '(255 255 255 0)))))

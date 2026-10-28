@@ -23,9 +23,13 @@
   :check #'parse-color)
 
 (defun rgba->uint32 (rgba)
-  (mapcar (lambda (x)
-            (round (* x (/ #xffffffff 255))))
-          rgba))
+  "River takes colors premultiplied by alpha."
+  (destructuring-bind (r g b a) rgba
+    (flet ((uint32 (fraction)
+             (round (* fraction #xffffffff))))
+      (let ((alpha (/ a 255)))
+        (list (uint32 (* alpha (/ r 255))) (uint32 (* alpha (/ g 255)))
+              (uint32 (* alpha (/ b 255))) (uint32 alpha))))))
 
 (defparameter *stacking-order*
   '((:tiled nil) (:maximized nil) (:tiled t) (:maximized t)
