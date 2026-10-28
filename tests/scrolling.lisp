@@ -219,7 +219,7 @@
 (test (set-heights-fill-a-column-without-other-windows :fixture fresh-config)
   (let* ((a (make-instance 'n::window))
          (b (make-instance 'n::window))
-         (column (n::make-column (list a b) 1/2 nil (list (cons a 1/4) (cons b 1/4)))))
+         (column (n::make-column (list a b) 1/2 :heights (list (cons a 1/4) (cons b 1/4)))))
     (is (equal '(1/2 1/2) (n::height-fractions column (list a b))))
     (is (equal '(1) (n::height-fractions column (list a))))))
 
@@ -227,7 +227,7 @@
   (let* ((a (make-instance 'n::window))
          (b (make-instance 'n::window))
          (c (make-instance 'n::window))
-         (column (n::make-column (list a b c) 1/2 nil (list (cons a 1/4)))))
+         (column (n::make-column (list a b c) 1/2 :heights (list (cons a 1/4)))))
     (is (null (n::column-heights (n::copy-column column :windows (list b c)))))))
 
 (test (windows-alone-in-their-column-keep-no-height :fixture fresh-config)

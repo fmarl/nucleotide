@@ -26,15 +26,6 @@
             (round (* x (/ #xffffffff 255))))
           rgba))
 
-(defun window-visible-p (wm win)
-  (let ((ws (window-workspace win))
-        (highlight (wm-highlight wm)))
-    (cond ((eq win highlight) t)
-          ((not (workspace-shown-p ws)) nil)
-          ((and highlight (eq ws (wm-active-workspace wm))) nil)
-          ((eq (window-placement win) :tiled) (not (eq (window-clip win) :hidden)))
-          (t t))))
-
 (defparameter *stacking-order*
   '((:tiled nil) (:maximized nil) (:tiled t) (:maximized t)
     (:floating nil) (:floating t) (:fullscreen nil) (:fullscreen t))

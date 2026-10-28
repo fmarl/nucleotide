@@ -14,7 +14,7 @@
 fraction of the column. The others share the rest. A window alone in its
 column has none, as it could not show it.")))
 
-(defun make-column (windows width &optional active heights)
+(defun make-column (windows width &key active heights)
   (make-instance 'column :windows windows :width width :active active
                  :heights (and (rest windows)
                                (remove-if-not (lambda (entry) (member (car entry) windows))
@@ -24,7 +24,7 @@ column has none, as it could not show it.")))
                              (width (column-width column))
                              (active (column-active column))
                              (heights (column-heights column)))
-  (make-column windows width active heights))
+  (make-column windows width :active active :heights heights))
 
 (defclass scrolling (layout)
   ((columns :initform '() :accessor scrolling-columns)

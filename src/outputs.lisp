@@ -25,8 +25,8 @@ OUTPUT relative to RECT to clip it to."
           (t (rect (- (rect-x area) (rect-x rect)) (- (rect-y area) (rect-y rect))
                    (rect-width area) (rect-height area))))))
 
-(defun window-output (wm win)
-  (or (workspace-output (window-workspace win)) (wm-focused-output wm)))
+(defun window-output (win)
+  (workspace-output (window-workspace win)))
 
 (defun output-at (wm point)
   (find-if (lambda (output) (rect-contains-p (output-rect output) point))
@@ -51,7 +51,7 @@ OUTPUT relative to RECT to clip it to."
 
 (defun assign-output (wm output)
   "Give a new OUTPUT the workspaces without an output, or fresh ones."
-  (let ((workspaces (or (drain (wm-orphans wm)) (make-workspaces))))
+  (let ((workspaces (or (shiftf (wm-orphans wm) '()) (make-workspaces))))
     (adopt-workspaces output workspaces)
     (when (member (wm-active-workspace wm) workspaces)
       (setf (output-workspace output) (wm-active-workspace wm)))))

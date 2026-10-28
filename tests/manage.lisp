@@ -13,8 +13,8 @@
          (win (open-window-on (second (n::output-workspaces right)))))
     (setf (n::output-proxy left) :left
           (n::output-proxy right) :right)
-    (is (eq :right (n::fullscreen-output wm win nil)))
-    (is (eq :requested (n::fullscreen-output wm win :requested)))))
+    (is (eq :right (n::fullscreen-output win nil)))
+    (is (eq :requested (n::fullscreen-output win :requested)))))
 
 (test floating-windows-stay-out-of-the-layout
   (let* ((ws (make-instance 'n::workspace :name "test"))

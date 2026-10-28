@@ -24,7 +24,7 @@
 (defun initial-float-offset (wm win)
   "Centered on the parent if that is visible, else on the output."
   (let ((parent (window-parent win))
-        (area (usable-area (window-output wm win))))
+        (area (usable-area (window-output win))))
     (if (and parent (window-visible-p wm parent))
         (point- (point+ (window-origin parent)
                         (centered-offset (window-size win) (window-size parent)))
@@ -66,7 +66,7 @@ does not move in place."
                   +river-window-v1-edges-top+ +river-window-v1-edges-bottom+)))))
 
 (defun place-floating (wm win)
-  (let ((output (window-output wm win))
+  (let ((output (window-output win))
         (anchor (window-anchor win)))
     (when output
       (setf (%window-float-offset win)
@@ -85,7 +85,7 @@ does not move in place."
 
 (defun float-window (wm win &optional (size (window-size win)))
   "Float WIN where it is, at SIZE."
-  (let ((output (window-output wm win)))
+  (let ((output (window-output win)))
     (setf (%window-floating-p win) t
           (%window-float-offset win) (and output (offset-on output win))
           (%window-anchor win) nil
@@ -179,7 +179,7 @@ return the rect of its offset and size."
   (let ((output (output-under wm (window-rect win))))
     (when (and output
                (output-workspace output)
-               (not (eq output (window-output wm win))))
+               (not (eq output (window-output win))))
       (setf (%window-float-offset win) (offset-on output win))
       (move-to-workspace win (output-workspace output))
       (focus-window wm win))))

@@ -71,8 +71,8 @@ did not move in place until the window moves.")
 (defun live (win)
   (and win (not (window-closed-p win)) win))
 
-(defun live-windows (windows &key (key #'identity))
-  (remove-if (lambda (item) (window-closed-p (funcall key item))) windows))
+(defun live-windows (windows)
+  (remove-if #'window-closed-p windows))
 
 (defun window-origin (win)
   (point (window-x win) (window-y win)))
@@ -118,13 +118,7 @@ nothing is highlighted.")
   (print-unreadable-object (ws stream :type t)
     (format stream "~A" (workspace-name ws))))
 
-(defclass submap ()
-  ((bindings :initform '() :accessor submap-bindings)))
-
-(defun make-submap ()
-  (make-instance 'submap))
-
-(defclass proxies ()
+(defclass wm ()
   ((display :initarg :display :accessor wm-display)
    (registry :initform nil :accessor wm-registry)
    (wl-output-versions :initform (make-hash-table) :accessor wm-wl-output-versions)
@@ -135,15 +129,11 @@ nothing is highlighted.")
    (xkb :initform nil :accessor wm-xkb)
    (xkb-seat :initform nil :accessor wm-xkb-seat)
    (input-manager :initform nil :accessor wm-input-manager)
-   (libinput-config :initform nil :accessor wm-libinput-config)))
-
-(defclass runtime ()
-  ((event-loop :initform nil :accessor wm-loop)
+   (libinput-config :initform nil :accessor wm-libinput-config)
+   (event-loop :initform nil :accessor wm-loop)
    (thread :initform nil :accessor wm-thread)
-   (ipc :initform nil :accessor wm-ipc)))
-
-(defclass wm (proxies runtime)
-  ((outputs :initform '() :accessor wm-outputs)
+   (ipc :initform nil :accessor wm-ipc)
+   (outputs :initform '() :accessor wm-outputs)
    (orphans :initarg :orphans :accessor wm-orphans
             :documentation "Workspaces without an output, taken over by the next one.")
    (stash :initform '() :accessor wm-stash
@@ -175,7 +165,6 @@ Manage sequences bring this in line with LOCKED.")
           (mappend #'cdr (wm-stash wm))))
 
 (defun all-windows (wm)
-  "The windows of all workspaces."
   (loop for ws in (wm-workspaces wm) append (workspace-windows ws)))
 
 (defmethod wm-highlight :around ((wm wm))
@@ -232,6 +221,15 @@ and run the clause of each with its arguments, the oldest first."
   "While a highlight is active, the highlighted window is the only visible one
 and has the focus."
   (or (wm-highlight wm) (workspace-focus (wm-active-workspace wm))))
+
+(defun window-visible-p (wm win)
+  (let ((ws (window-workspace win))
+        (highlight (wm-highlight wm)))
+    (cond ((eq win highlight) t)
+          ((not (workspace-shown-p ws)) nil)
+          ((and highlight (eq ws (wm-active-workspace wm))) nil)
+          ((eq (window-placement win) :tiled) (not (eq (window-clip win) :hidden)))
+          (t t))))
 
 (defun wm-active-layout (wm)
   (workspace-layout (wm-active-workspace wm)))

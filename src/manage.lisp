@@ -35,9 +35,9 @@ outside of submaps again, new ones among them."
                   (:leave-submap (submap)
                                  (mapc #'river-xkb-binding-v1.disable (submap-bindings submap)))))
 
-(defun fullscreen-output (wm win request)
+(defun fullscreen-output (win request)
   (or request
-      (let ((output (window-output wm win)))
+      (let ((output (window-output win)))
         (and output (output-proxy output)))))
 
 (defun enter-fullscreen (win output)
@@ -53,7 +53,7 @@ outside of submaps again, new ones among them."
 (defun manage-fullscreens (wm)
   (drain-requests (wm)
                   (:fullscreen (win requested)
-                               (let ((output (fullscreen-output wm win requested)))
+                               (let ((output (fullscreen-output win requested)))
                                  (when output
                                    (enter-fullscreen win output))))
                   (:exit-fullscreen (win)
@@ -63,7 +63,7 @@ outside of submaps again, new ones among them."
 (defun manage-fullscreen-outputs (wm)
   "Follow fullscreen windows whose workspace moved to another output."
   (dolist (win (all-windows wm))
-    (let ((output (and (window-fullscreen win) (window-output wm win))))
+    (let ((output (and (window-fullscreen win) (window-output win))))
       (when (and output (not (eq (window-fullscreen win) (output-proxy output))))
         (enter-fullscreen win (output-proxy output))))))
 

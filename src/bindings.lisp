@@ -3,6 +3,9 @@
 
 (in-package #:nucleotide)
 
+(defstruct submap
+  (bindings '()))
+
 (defgeneric enable-binding (binding)
   (:method ((binding river-xkb-binding-v1))
     (river-xkb-binding-v1.enable binding))
