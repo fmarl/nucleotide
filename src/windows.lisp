@@ -10,6 +10,7 @@
 
 (define-command focus (wm &optional (direction :next))
   "Focus the window in DIRECTION: :LEFT, :RIGHT, :UP or :DOWN."
+  (declare (type direction direction))
   (let* ((ws (wm-active-workspace wm))
          (focused (workspace-focus ws))
          (target (if focused
@@ -21,6 +22,7 @@
 
 (define-command move (wm &optional (direction :next))
   "Move the focused window in DIRECTION: :LEFT, :RIGHT, :UP or :DOWN."
+  (declare (type direction direction))
   (let* ((ws (wm-active-workspace wm))
          (focused (workspace-focus ws)))
     (when focused
@@ -43,6 +45,7 @@
 (define-command set-layout (wm spec)
   "Give the active workspace the layout SPEC, like TILING or (TILING :RATIO 1/2).
 Naming the current layout keeps its state."
+  (declare (type layout-spec spec))
   (unless (and (symbolp spec)
                (find-class spec nil)
                (typep (wm-active-layout wm) spec))
@@ -98,6 +101,7 @@ window gets it back, or picks its own."
 
 (define-command send-to-workspace (wm number)
   "Send the focused window to workspace NUMBER of the focused output."
+  (declare (type workspace-number number))
   (send-focused-to wm (nth-workspace wm (1- number))))
 
 (defun attach-window (wm proxy)

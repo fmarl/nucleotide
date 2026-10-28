@@ -28,12 +28,6 @@
   (let ((rects (boxes (n::monocle-rects 3 (n::rect 0 0 1000 800) 8))))
     (is (equal (make-list 3 :initial-element (list 8 8 984 784)) rects))))
 
-(test layouts-from-specs
-  (is (typep (n::make-layout 'n::monocle) 'n::monocle))
-  (is (= 1/2 (n::tiling-ratio (n::make-layout '(n::tiling :ratio 1/2)))))
-  (signals n::nucleotide-error (n::make-layout 'n::wm))
-  (signals n::nucleotide-error (n::make-layout 'no-such-layout)))
-
 (test tiling-uses-its-ratio-and-the-gap
   (let ((n::*gap* 8))
     (is (equal '((8 8 492 784) (508 8 484 784))
@@ -92,3 +86,12 @@
     (is (eq c (n::layout-neighbor layout ws a :next)))
     (n::layout-move layout ws a :next)
     (is (equal (list c b a) (n::workspace-windows ws)))))
+
+(test layouts-are-made-from-checked-specs
+  (is (typep (n::make-layout 'n::monocle) 'n::monocle))
+  (is (= 1/2 (n::tiling-ratio (n::make-layout '(n::tiling :ratio 1/2)))))
+  (dolist (spec '((n::tiling :ratio 0) (n::tiling :ratio 1) (n::tiling :ratio "1/2")
+                  (n::tiling :size 2) (n::tiling :ratio) (n::tiling . 3) n::wm no-such-layout))
+    (signals n::nucleotide-error (n::make-layout spec) "~S was made" spec))
+  (is (typep 'n::tiling 'n::layout-spec))
+  (is (not (typep '(n::tiling :ratio 9) 'n::layout-spec))))

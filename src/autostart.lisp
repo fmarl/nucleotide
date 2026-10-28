@@ -3,14 +3,16 @@
 
 (in-package #:nucleotide)
 
-(defun check-commands (commands)
-  (unless (and (listp commands) (every #'command-p commands))
-    (nucleotide-error "~S is not a list of commands like (\"waybar\")" commands)))
+(defun check-programs (programs)
+  (unless (and (listp programs) (null (cdr (last programs))))
+    (nucleotide-error "~S is not a list of programs like (\"waybar\")" programs))
+  (dolist (program programs)
+    (check-value program 'program)))
 
 (define-setting *autostart-programs*
     '(("waybar"))
-  :documentation "Commands started once at startup, in the format SPAWN takes."
-  :check #'check-commands)
+  :documentation "Programs started once at startup, in the format SPAWN takes."
+  :check #'check-programs)
 
 (defvar *autostarted* nil)
 
@@ -22,5 +24,5 @@
 
 (define-command spawn (wm &rest command)
   "Start COMMAND, a shell command line or a program and its arguments."
-  (declare (ignore wm))
+  (declare (ignore wm) (type argv command))
   (spawn-program (if (rest command) command (first command))))

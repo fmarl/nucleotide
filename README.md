@@ -65,6 +65,10 @@ Set `*default-layout*` to `'scrolling` or `'(tiling :ratio 1/2)` to change the
 layout of new workspaces, and `*gap*` for the gaps of all layouts. Gaps that
 leave no room on a monitor shrink windows to a single pixel.
 
+Your own layouts subclass `layout` and define methods for `layout-arrange`,
+and for `layout-update`, `layout-neighbor` and `layout-move` as needed. Their
+initargs are the options that `set-layout` and `*default-layout*` take.
+
 ## Monitors
 Every monitor has workspaces 1 to 9. `Super+1` to `Super+9` switch the
 workspace on the focused monitor, and with Ctrl they send the focused window

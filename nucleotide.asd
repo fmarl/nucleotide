@@ -28,6 +28,7 @@
                                      (:file "river")
                                      (:file "eventloop")))
                (:file "util")
+               (:file "values")
                (:file "geometry")
                (:file "json")
                (:file "settings")

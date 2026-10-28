@@ -141,6 +141,7 @@ keep OUTPUT's workspaces so the windows can return to them."
 
 (define-command focus-output (wm &optional (direction :next))
   "Focus the output in DIRECTION: :LEFT, :RIGHT, :PREV or :NEXT."
+  (declare (type horizontal-direction direction))
   (let ((target (neighbor-output wm direction))
         (previous (wm-focused-output wm)))
     (when target
@@ -149,6 +150,7 @@ keep OUTPUT's workspaces so the windows can return to them."
 
 (define-command send-to-output (wm &optional (direction :next))
   "Send the focused window to the output in DIRECTION."
+  (declare (type horizontal-direction direction))
   (let ((target (neighbor-output wm direction)))
     (when target
       (send-focused-to wm (output-workspace target)))))
@@ -156,6 +158,7 @@ keep OUTPUT's workspaces so the windows can return to them."
 (define-command move-workspace-to-output (wm &optional (direction :next))
   "Exchange the windows and layout of the active workspace with those of the
 workspace shown on the neighboring output, and follow them there."
+  (declare (type horizontal-direction direction))
   (let ((target (neighbor-output wm direction))
         (previous (wm-focused-output wm)))
     (when target
@@ -165,6 +168,7 @@ workspace shown on the neighboring output, and follow them there."
 
 (define-command switch-workspace (wm number)
   "Show workspace NUMBER of the focused output."
+  (declare (type workspace-number number))
   (switch-to-workspace wm (nth-workspace wm (1- number))))
 
 (defun attach-output (wm proxy)

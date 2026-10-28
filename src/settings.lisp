@@ -18,13 +18,6 @@ called with its value after the init file loaded."
                                  *settings*))
      ',name))
 
-(defun type-check (type description)
-  "A check that rejects values not of TYPE, explaining it with DESCRIPTION like
-\"a number of pixels like 8\"."
-  (lambda (value)
-    (unless (typep value type)
-      (nucleotide-error "~S is not ~A" value description))))
-
 (defun setting-defaults ()
   (loop for (nil . properties) in *settings*
         collect (funcall (getf properties :default))))

@@ -49,3 +49,17 @@
       (is (equal (list win) (n::workspace-windows (ws wm 3))))
       (is (null (n::workspace-windows (ws wm 1))))
       (is (eq t (n::window-floating-p win))))))
+
+(test rules-are-checked-when-they-are-made
+  (with-rules
+    (dolist (rule '(((:class "mpv") (:float t))
+                    ((:app-id 5) (:float t))
+                    ((:app-id) (:float t))
+                    ((:app-id "mpv") (:floating t))
+                    ((:app-id "mpv") (:workspace 0))
+                    ((:app-id "mpv") (:output 1))
+                    ((:app-id "mpv") (:float))))
+      (signals n::nucleotide-error (n::add-window-rule (first rule) (second rule))
+               "~S was accepted" rule))
+    (finishes (n::rule (:title (n::contains "Picture") :app-id 'string-upcase)
+                       :float nil :workspace 2 :output "DP-1" :fullscreen t))))

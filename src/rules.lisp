@@ -3,10 +3,40 @@
 
 (in-package #:nucleotide)
 
+(defun pattern-p (object)
+  (or (stringp object) (functionp object) (and object (symbolp object))))
+
+(defun match-p (object)
+  (and (plist-p object)
+       (loop for (key pattern) on object by #'cddr
+             always (and (member key '(:app-id :title)) (pattern-p pattern)))))
+
+(define-value-type match "a plist of :app-id and :title patterns like (:app-id \"foot\")"
+  :type (satisfies match-p))
+
+(define-value-type output-name "an output name like \"DP-1\""
+  :type string)
+
+(defparameter *rule-actions*
+  '((:float . t) (:fullscreen . t) (:workspace . workspace-number) (:output . output-name)))
+
+(defun action-type (action)
+  (or (alist-get action *rule-actions*)
+      (nucleotide-error "unknown rule action ~S, expected one of ~S"
+                        action (mapcar #'car *rule-actions*))))
+
+(defun check-rule (match actions)
+  (check-value match 'match)
+  (unless (plist-p actions)
+    (nucleotide-error "~S is not a plist of actions like (:float t)" actions))
+  (loop for (action value) on actions by #'cddr
+        do (check-value value (action-type action))))
+
 (defvar *window-rules* '()
   "List of (MATCH . ACTIONS) plists, applied in order to every new window.")
 
 (defun add-window-rule (match actions)
+  (check-rule match actions)
   (setf *window-rules*
         (append (remove match *window-rules* :key #'car :test #'equal)
                 (list (cons match actions)))))

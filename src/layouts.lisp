@@ -9,20 +9,33 @@
 
 (defclass layout () ())
 
+(define-value-type master-ratio "a ratio between 0 and 1 like 3/5"
+  :type (real (0) (1)))
+
 (defclass tiling (layout)
   ((ratio :initarg :ratio :initform 3/5 :reader tiling-ratio
           :documentation "The part of the width the master window takes.")))
+
+(defmethod initialize-instance :after ((layout tiling) &key)
+  (check-value (tiling-ratio layout) 'master-ratio))
 
 (defclass monocle (layout) ())
 
 (defun make-layout (spec)
   "A layout from SPEC, the name of a layout class or a list of one and its
 initargs like (TILING :RATIO 1/2)."
-  (destructuring-bind (name &rest initargs) (if (listp spec) spec (list spec))
+  (destructuring-bind (name &rest initargs) (if (consp spec) spec (list spec))
     (let ((class (and (symbolp name) (find-class name nil))))
       (unless (and class (subtypep class 'layout))
         (nucleotide-error "~S is not a layout" name))
-      (apply #'make-instance class initargs))))
+      (unless (plist-p initargs)
+        (nucleotide-error "~S is not a plist of options like (:ratio 1/2)" initargs))
+      (handler-case (apply #'make-instance class initargs)
+        (program-error (c)
+          (nucleotide-error "~S: ~A" spec c))))))
+
+(define-value-type layout-spec "a layout like tiling or (tiling :ratio 1/2)"
+  :check make-layout)
 
 (defun step-direction (direction)
   (ecase direction

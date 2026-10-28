@@ -29,6 +29,9 @@
                (every #'digit-char-p (subseq string start end)))
       (values (/ (parse-integer string :start start :end end) 100) sign))))
 
+(define-value-type size-change "a fraction like 1/2 or a size like \"50%\", \"+10%\" or \"-10%\""
+  :type (or real (and string (satisfies parse-percent))))
+
 (defun size-changer (change)
   "A function from a fraction to the one CHANGE makes of it."
   (multiple-value-bind (amount sign) (and (stringp change) (parse-percent change))
@@ -85,6 +88,7 @@ shows, or unset when FUNCTION returns NIL."
 (define-command consume-or-expel (wm direction)
   "Move the focused window out of its column towards DIRECTION, or into the
 neighboring column if it is alone."
+  (declare (type horizontal-direction direction))
   (update-columns wm (lambda (columns win)
                        (consume-or-expel-in columns win direction))))
 
@@ -98,6 +102,7 @@ neighboring column if it is alone."
 (define-command set-column-width (wm change)
   "Change the width of the focused column, as a fraction of the output like 1/2,
 or as in niri with \"50%\", \"+10%\" or \"-10%\"."
+  (declare (type size-change change))
   (let ((changer (size-changer change)))
     (update-focused-column wm (lambda (column)
                                 (copy-column column
@@ -109,10 +114,8 @@ or as in niri with \"50%\", \"+10%\" or \"-10%\"."
   "Change the height of the focused window, as a fraction of its column like
 1/2, or as in niri with \"50%\", \"+10%\" or \"-10%\". The other windows of the
 column share the rest."
+  (declare (type size-change change))
   (update-focused-height wm (size-changer change)))
-
-(add-argument-check 'set-column-width #'size-changer)
-(add-argument-check 'set-window-height #'size-changer)
 
 (define-command cycle-window-height (wm)
   "Give the focused window the next height of *WINDOW-HEIGHTS*."

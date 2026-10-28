@@ -6,6 +6,7 @@
 (define-command toggle-highlight (wm &rest match)
   "Show the most recently focused window that matches MATCH, a plist like the
 one of RULE, alone on the focused output. Run it again to stop."
+  (declare (type match match))
   (setf (wm-highlight wm)
         (unless (wm-highlight wm)
           (find-if (lambda (win) (rule-matches-p match win))
