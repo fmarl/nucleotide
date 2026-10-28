@@ -16,3 +16,13 @@
 (test accel-speed-is-a-little-endian-double
   (is (equalp (octets 0 0 0 0 0 0 #xe0 #x3f) (n::double-octets 0.5)))
   (is (equalp (octets 0 0 0 0 0 0 #xf0 #xbf) (n::double-octets -1))))
+
+(test repeat-and-scroll-settings-fit-the-wire
+  (is (null (n::check-key-repeat nil)))
+  (is (null (n::check-key-repeat '(25 600))))
+  (signals n::nucleotide-error (n::check-key-repeat '(25 3000000000)))
+  (signals n::nucleotide-error (n::check-key-repeat '(-1 600)))
+  (signals n::nucleotide-error (n::check-key-repeat '(25)))
+  (is (null (n::check-scroll-factor 0.5)))
+  (signals n::nucleotide-error (n::check-scroll-factor 1e9))
+  (signals n::nucleotide-error (n::check-scroll-factor -1)))

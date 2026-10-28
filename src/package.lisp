@@ -44,6 +44,7 @@
    #:*default-column-width*
    #:*default-layout*
    #:*gap*
+   #:*key-repeat*
    #:*libinput-settings*
    #:*menu-command*
    #:*move-button*
@@ -51,6 +52,7 @@
    #:*pointer-modifiers*
    #:*repl-port*
    #:*resize-button*
+   #:*scroll-factor*
    #:*warp-pointer*
    #:*window-heights*
    ;; Commands

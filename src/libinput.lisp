@@ -79,8 +79,34 @@ how to encode its value: the name of an enum, or :DOUBLE.")
 (define-handler (wm (device river-libinput-device-v1) :removed) ()
   (river-libinput-device-v1.destroy device))
 
+(defun check-key-repeat (value)
+  (unless (typep value '(or null (cons (and wire-int unsigned-byte)
+                                  (cons (and wire-int unsigned-byte) null))))
+    (nucleotide-error "~S is not NIL or a rate and a delay like (25 600)" value)))
+
+(define-setting *key-repeat* nil
+  :documentation "NIL to keep the default of river, or (RATE DELAY): key repeats per
+second, 0 for none, and the milliseconds until they start. Keyboards get it when
+they appear."
+  :check #'check-key-repeat)
+
+(defun check-scroll-factor (value)
+  (unless (typep value '(or null (and wire-fixed (real 0))))
+    (nucleotide-error "~S is not NIL or a factor like 0.5" value)))
+
+(define-setting *scroll-factor* nil
+  :documentation "NIL to keep the default of river, or how much faster pointers scroll,
+like 0.5 or 2. Pointers get it when they appear."
+  :check #'check-scroll-factor)
+
 (define-handler (wm (manager river-input-manager-v1) :input-device) (device)
   (forward-events wm device))
+
+(define-handler (wm (device river-input-device-v1) :type) (type)
+  (cond ((and *key-repeat* (= type +river-input-device-v1-type-keyboard+))
+         (apply #'river-input-device-v1.set-repeat-info device *key-repeat*))
+        ((and *scroll-factor* (= type +river-input-device-v1-type-pointer+))
+         (river-input-device-v1.set-scroll-factor device *scroll-factor*))))
 
 (define-handler (wm (device river-input-device-v1) :removed) ()
   (river-input-device-v1.destroy device))
