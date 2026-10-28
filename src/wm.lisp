@@ -116,6 +116,7 @@ and size of the seat and of programs started afterwards."
   (let ((win (find-window wm window)))
     (when (and win (window-visible-p wm win) (not (wm-highlight wm)))
       (focus-window wm win)
+      (request wm :interaction)
       (mark-dirty wm))))
 
 (define-handler (wm (seat river-seat-v1) :pointer-position) (x y)

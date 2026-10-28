@@ -561,6 +561,38 @@ they were made, with *BINDINGS-LAYOUT* at LAYOUT."
   (remove-if-not (lambda (name) (member name '("focus_window" "clear_focus") :test #'equal))
                  (mapcar #'second requests)))
 
+(defun connect-wm-with-layer-shell (display socket)
+  "A WM with a layer shell, an output, a seat and two windows, after its first
+manage sequence."
+  (let ((wm (connect-wm display socket)))
+    (deliver display socket 2 "wl_registry" "global" 2 "river_layer_shell_v1" 1)
+    (deliver display socket +window-manager+ "river_window_manager_v1" "output" +output+)
+    (deliver display socket +output+ "river_output_v1" "dimensions" 1000 800)
+    (let ((*error-output* (make-broadcast-stream)))
+      (deliver display socket +window-manager+ "river_window_manager_v1" "seat" +seat+))
+    (deliver display socket +window-manager+ "river_window_manager_v1" "window" +window+)
+    (deliver display socket +window-manager+ "river_window_manager_v1" "window" +new-window+)
+    (run-sequence display socket "manage_start")
+    (received socket display)
+    wm))
+
+(defun layer-focus (display socket wm event)
+  (deliver display socket (n::proxy-id (n::wm-layer-shell-seat wm))
+           "river_layer_shell_seat_v1" event))
+
+(test (non-exclusive-layer-surfaces-keep-the-focus-until-it-moves :fixture fresh-config)
+  (with-fake-server (display socket)
+    (let ((wm (connect-wm-with-layer-shell display socket)))
+      (layer-focus display socket wm "focus_non_exclusive")
+      (run-sequence display socket "manage_start")
+      (is (null (focus-requests (received socket display))))
+      (deliver display socket +seat+ "river_seat_v1" "window_interaction" +new-window+)
+      (run-sequence display socket "manage_start")
+      (is (equal '("focus_window") (focus-requests (received socket display))))
+      (n::focus wm :right)
+      (run-sequence display socket "manage_start")
+      (is (equal '("focus_window") (focus-requests (received socket display)))))))
+
 (test (dialogs-of-the-highlighted-window-show-with-it :fixture fresh-config)
   (with-fake-server (display socket)
     (let* ((wm (connect-wm-with-window display socket))

@@ -178,9 +178,15 @@ fullscreen windows, and floating ones are placed when rendering."
       (run-event-hooks :workspace-changed ws))))
 
 (defun manage-focus (wm)
+  "A layer shell surface with non-exclusive focus keeps it until the focus moves
+to another window or a window is clicked."
   (let ((focused (wm-focus wm))
-        (seat (wm-seat wm)))
-    (when (and seat (not (wm-layer-shell-focus wm)))
+        (seat (wm-seat wm))
+        (clicked (take-requests wm '(:interaction))))
+    (when (and seat (ecase (wm-layer-shell-focus wm)
+                      ((nil) t)
+                      (:non-exclusive (or clicked (not (eq focused (wm-last-focus wm)))))
+                      (:exclusive nil)))
       (if focused
           (river-seat-v1.focus-window seat (window-proxy focused))
           (river-seat-v1.clear-focus seat)))
