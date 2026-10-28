@@ -32,7 +32,7 @@
 
 (defun shown-workspace (wm win)
   "The workspace WIN appears on: the active one while it is highlighted."
-  (if (eq win (wm-highlight wm))
+  (if (highlighted-p wm win)
       (wm-active-workspace wm)
       (window-workspace win)))
 

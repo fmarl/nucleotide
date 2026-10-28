@@ -55,3 +55,24 @@
     (is (eq left (n::wm-focused-output wm)))
     (is (equalp (n::point 0 0) (n::window-origin win)))
     (is (equalp (n::size 1000 800) proposed))))
+
+(test only-floating-dialogs-belong-to-a-window
+  (let* ((ws (make-instance 'n::workspace :name "test"))
+         (root (open-window-on ws))
+         (dialog (open-window-on ws))
+         (nested (open-window-on ws))
+         (tiled (open-window-on ws))
+         (a (open-window-on ws))
+         (b (open-window-on ws)))
+    (dolist (win (list dialog nested a b))
+      (setf (n::%window-floating-p win) t))
+    (setf (n::%window-parent dialog) root
+          (n::%window-parent nested) dialog
+          (n::%window-parent tiled) root
+          (n::%window-parent a) b
+          (n::%window-parent b) a)
+    (is (n::dialog-of-p root root))
+    (is (n::dialog-of-p nested root))
+    (is (not (n::dialog-of-p tiled root)))
+    (is (not (n::dialog-of-p a root)))
+    (is (not (n::dialog-of-p dialog nil)))))

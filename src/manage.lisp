@@ -91,26 +91,32 @@ outside of submaps again, new ones among them."
 
 (defun place-new-window (wm win)
   "Without a workspace rule, WIN opens with its shown parent or on
-NEW-WINDOW-OUTPUT and gets the focus. Only the manage sequence knows both."
+NEW-WINDOW-OUTPUT and gets the focus. A dialog of the highlighted window joins
+it. Only the manage sequence knows all of them."
   (let* ((output (new-window-output wm))
          (rule (rule-workspace wm (window-actions win) output))
          (parent (window-parent win))
+         (highlight (wm-highlight wm))
+         (joins-highlight (and (not rule) (dialog-of-p win highlight)))
          (ws (cond (rule)
+                   (joins-highlight (window-workspace highlight))
                    ((and parent (workspace-shown-p (window-workspace parent)))
                     (window-workspace parent))
                    (output (output-workspace output))
                    (t (window-workspace win)))))
     (unless (eq ws (window-workspace win))
       (move-to-workspace win ws))
-    (when (or (not rule) (eq rule (wm-active-workspace wm)))
-      (focus-window wm win))))
+    (cond (joins-highlight (setf (workspace-focus ws) win))
+          ((or (not rule) (eq rule (wm-active-workspace wm)))
+           (focus-window wm win)))))
 
 (defun manage-new-windows (wm)
+  "Rules come first, so that placing a window knows whether it floats."
   (dolist (win (all-windows wm))
     (unless (window-rules-applied-p win)
       (setf (%window-rules-applied-p win) t)
-      (place-new-window wm win)
       (apply-window-rules wm win)
+      (place-new-window wm win)
       (configure-window win)
       (run-event-hooks :window-opened win)))
   (drain-requests (wm)

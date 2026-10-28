@@ -218,15 +218,34 @@ and run the clause of each with its arguments, the oldest first."
                  collect `(,kind (destructuring-bind ,lambda-list (cdr ,request)
                                    ,@body)))))))
 
+(defun dialog-of-p (win root)
+  "Whether WIN is ROOT or a floating dialog of it, also through other dialogs."
+  (labels ((walk (current seen)
+             (cond ((null current) nil)
+                   ((eq current root) t)
+                   ((or (member current seen) (not (window-floating-p current))) nil)
+                   (t (walk (window-parent current) (cons current seen))))))
+    (and root win (walk win '()))))
+
+(defun highlighted-p (wm win)
+  (let ((highlight (wm-highlight wm)))
+    (and highlight
+         (eq (window-workspace win) (window-workspace highlight))
+         (dialog-of-p win highlight))))
+
 (defun wm-focus (wm)
-  "While a highlight is active, the highlighted window is the only visible one
-and has the focus."
-  (or (wm-highlight wm) (workspace-focus (wm-active-workspace wm))))
+  "While a highlight is active, the highlighted window or one of its dialogs has
+the focus."
+  (let ((highlight (wm-highlight wm)))
+    (if highlight
+        (let ((focus (workspace-focus (window-workspace highlight))))
+          (if (highlighted-p wm focus) focus highlight))
+        (workspace-focus (wm-active-workspace wm)))))
 
 (defun window-visible-p (wm win)
   (let ((ws (window-workspace win))
         (highlight (wm-highlight wm)))
-    (cond ((eq win highlight) t)
+    (cond ((highlighted-p wm win) t)
           ((not (workspace-shown-p ws)) nil)
           ((and highlight (eq ws (wm-active-workspace wm))) nil)
           ((eq (window-placement win) :tiled) (not (eq (window-clip win) :hidden)))

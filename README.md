@@ -32,7 +32,7 @@ river takes the keyboard layout from `XKB_DEFAULT_LAYOUT`,
 | `Super+Shift+F` | Toggle fullscreen |
 | `Super+M` | Toggle maximized: cover the monitor except for bars |
 | `Super+Shift+Space` | Toggle floating |
-| `Super+Space E` | Show Emacs alone on the focused monitor, or stop |
+| `Super+Space E` | Show Emacs and its dialogs alone on the focused monitor, or stop |
 | `Super+Space C` | Reload the init file |
 | `Super+Space R` | Open or close the REPL |
 | `Super+Space Q` | Quit the session |
