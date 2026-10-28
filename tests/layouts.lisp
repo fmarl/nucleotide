@@ -54,12 +54,41 @@
     (is (null (n::layout-neighbor layout (workspace-with 'a) 'a :next)))))
 
 (test moving-swaps-with-the-neighbor
-  (let* ((layout (n::make-layout 'n::monocle))
-         (ws (workspace-with 'a 'b 'c)))
-    (n::layout-move layout ws 'c :next)
-    (is (equal '(c b a) (n::workspace-windows ws)))))
+  (let* ((ws (make-instance 'n::workspace :name "test"))
+         (c (open-window-on ws))
+         (b (open-window-on ws))
+         (a (open-window-on ws)))
+    (n::layout-move (n::make-layout 'n::monocle) ws c :next)
+    (is (equal (list c b a) (n::workspace-windows ws)))))
 
 (test the-successor-is-another-window
   (let ((layout (n::make-layout 'n::tiling)))
     (is (eq 'b (n::layout-successor layout (workspace-with 'a 'b) 'a)))
     (is (null (n::layout-successor layout (workspace-with 'a) 'a)))))
+
+(test moving-passes-floating-windows-by
+  (let* ((ws (make-instance 'n::workspace :name "test"))
+         (c (open-window-on ws))
+         (dialog (open-window-on ws))
+         (a (open-window-on ws)))
+    (setf (n::%window-floating-p dialog) t)
+    (n::layout-move (n::make-layout 'n::tiling) ws a :next)
+    (is (equal (list c dialog a) (n::workspace-windows ws)))
+    (n::layout-move (n::make-layout 'n::tiling) ws dialog :next)
+    (is (equal (list c dialog a) (n::workspace-windows ws)))))
+
+(defclass reversed-test-layout (n::layout)
+  ())
+
+(defmethod n::layout-neighbor ((layout reversed-test-layout) ws win direction)
+  (n::cyclic-neighbor win (reverse (n::workspace-windows ws)) direction))
+
+(test moving-follows-the-neighbors-of-the-layout
+  (let* ((ws (make-instance 'n::workspace :name "test"))
+         (c (open-window-on ws))
+         (b (open-window-on ws))
+         (a (open-window-on ws))
+         (layout (make-instance 'reversed-test-layout)))
+    (is (eq c (n::layout-neighbor layout ws a :next)))
+    (n::layout-move layout ws a :next)
+    (is (equal (list c b a) (n::workspace-windows ws)))))

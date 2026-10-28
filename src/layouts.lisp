@@ -52,23 +52,30 @@ LAYOUT can keep their place.")
   (:documentation "A rect for each of WINDOWS, those of LAYOUT-UPDATE that are not
 fullscreen, without changing LAYOUT."))
 
+(defun cyclic-neighbor (item list direction)
+  (let ((pos (position item list)))
+    (when (and pos (rest list))
+      (nth (mod (+ pos (step-direction direction)) (length list)) list))))
+
 (defgeneric layout-neighbor (layout workspace win direction)
   (:documentation "The window next to WIN in DIRECTION, one of :LEFT, :RIGHT,
 :UP and :DOWN (or :PREV and :NEXT), or NIL.")
   (:method (layout workspace win direction)
     (declare (ignore layout))
-    (let* ((windows (workspace-windows workspace))
-           (pos (position win windows)))
-      (when (and pos (rest windows))
-        (nth (mod (+ pos (step-direction direction)) (length windows))
-             windows)))))
+    (cyclic-neighbor win (workspace-windows workspace) direction)))
 
 (defgeneric layout-move (layout workspace win direction)
   (:documentation "Move WIN one step in DIRECTION within WORKSPACE.")
   (:method (layout workspace win direction)
-    (let ((other (layout-neighbor layout workspace win direction)))
-      (when other
-        (swap-windows workspace win other)))))
+    (unless (window-floating-p win)
+      (let ((other (loop for other = (layout-neighbor layout workspace win direction)
+                         then (layout-neighbor layout workspace other direction)
+                         repeat (length (workspace-windows workspace))
+                         while (and other (not (eq other win)))
+                         unless (window-floating-p other)
+                         return other)))
+        (when other
+          (swap-windows workspace win other))))))
 
 (defgeneric layout-successor (layout workspace win)
   (:documentation "The window to focus when WIN leaves WORKSPACE.")
