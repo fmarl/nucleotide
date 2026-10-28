@@ -243,11 +243,16 @@ the focus."
         (workspace-focus (wm-active-workspace wm)))))
 
 (defun window-visible-p (wm win)
+  "River shows fullscreen windows above all others, so one hides while another
+window of its output has the focus."
   (let ((ws (window-workspace win))
-        (highlight (wm-highlight wm)))
+        (highlight (wm-highlight wm))
+        (focus (wm-focus wm)))
     (cond ((highlighted-p wm win) t)
           ((not (workspace-shown-p ws)) nil)
           ((and highlight (eq ws (wm-active-workspace wm))) nil)
+          ((and (window-fullscreen win) focus (not (eq focus win)))
+           (not (eq (window-fullscreen win) (wm-focused-output wm))))
           ((eq (window-placement win) :tiled) (not (eq (window-clip win) :hidden)))
           (t t))))
 

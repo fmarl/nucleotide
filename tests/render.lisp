@@ -52,3 +52,19 @@
       (n::focus-window wm maximized)
       (is (equal (list maximized floating fullscreen)
                  (last (bottom-up fullscreen focused floating maximized tiled) 3))))))
+
+(test fullscreen-windows-hide-while-another-window-of-their-output-has-the-focus
+  (let* ((wm (make-test-wm))
+         (left (add-output wm 0))
+         (right (add-output wm 1000))
+         (video (open-window-on (n::output-workspace left)))
+         (terminal (open-window-on (n::output-workspace left)))
+         (game (open-window-on (n::output-workspace right))))
+    (setf (n::%window-fullscreen video) left
+          (n::%window-fullscreen game) right)
+    (n::focus-window wm video)
+    (is (n::window-visible-p wm video))
+    (n::focus-window wm terminal)
+    (is (not (n::window-visible-p wm video)))
+    (is (n::window-visible-p wm terminal))
+    (is (n::window-visible-p wm game))))

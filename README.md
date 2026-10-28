@@ -86,6 +86,10 @@ tiled window makes it float.
 Windows get a border instead of their own title bar. Those that insist on
 drawing one can be moved and resized with it, and their maximize button works.
 
+river shows fullscreen windows above all others. So that the focused window is
+never covered, a fullscreen window hides while another window on its monitor
+has the focus, and comes back with the focus.
+
 ## Waybar
 nucleotide speaks the IPC of niri and sets `NIRI_SOCKET` for the programs it
 starts. waybar's `niri/workspaces` and `niri/window` modules then show the
