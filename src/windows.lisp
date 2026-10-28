@@ -58,6 +58,44 @@ Naming the current layout keeps its state."
             (t (request wm :fullscreen win nil)))
       (mark-dirty wm))))
 
+(defun inform-maximized (wm win)
+  "Tell WIN in the next manage sequence whether it ends up maximized."
+  (cancel-requests wm '(:inform-maximized) :about win)
+  (request wm :inform-maximized win))
+
+(defun maximize (wm win)
+  "Let WIN cover the usable area of its output. This ends a pointer op on it."
+  (unless (window-maximized-p win)
+    (end-pointer-op wm win)
+    (setf (%window-maximized-p win) t
+          (%window-restore-size win) (and (not (window-fullscreen win))
+                                          (plusp (window-width win))
+                                          (plusp (window-height win))
+                                          (window-size win))
+          (%window-pending-size win) nil)
+    (inform-maximized wm win)))
+
+(defun unmaximize (wm win)
+  "End the maximized state of WIN and return the size it had, if known. A floating
+window gets it back, or picks its own."
+  (when (window-maximized-p win)
+    (let ((restored (window-restore-size win)))
+      (setf (%window-maximized-p win) nil
+            (%window-restore-size win) nil)
+      (when (window-floating-p win)
+        (setf (%window-pending-size win) (or restored (size 0 0))))
+      (inform-maximized wm win)
+      restored)))
+
+(define-command toggle-maximize (wm)
+  "Let the focused window cover the usable area of its output, or end that."
+  (let ((win (wm-focus wm)))
+    (when win
+      (if (window-maximized-p win)
+          (unmaximize wm win)
+          (maximize wm win))
+      (mark-dirty wm))))
+
 (define-command send-to-workspace (wm number)
   "Send the focused window to workspace NUMBER of the focused output."
   (send-focused-to wm (nth-workspace wm (1- number))))
@@ -72,8 +110,7 @@ Naming the current layout keeps its state."
   (remove-window win)
   (setf (%window-closed-p win) t)
   (forget-window-requests wm win)
-  (when (and (wm-op wm) (eq (op-win (wm-op wm)) win))
-    (setf (op-state (wm-op wm)) :end))
+  (end-pointer-op wm win)
   (river-node-v1.destroy (window-node win))
   (river-window-v1.destroy (window-proxy win))
   (run-event-hooks :window-closed win))
@@ -107,3 +144,17 @@ Naming the current layout keeps its state."
 
 (define-handler (wm (win window) :exit-fullscreen-requested) ()
   (request wm :exit-fullscreen win))
+
+(define-handler (wm (win window) :maximize-requested) ()
+  (maximize wm win))
+
+(define-handler (wm (win window) :unmaximize-requested) ()
+  (unmaximize wm win))
+
+(define-handler (wm (win window) :pointer-move-requested) (seat)
+  (when (and (eq seat (wm-seat wm)) (window-visible-p wm win))
+    (start-pointer-op wm win :move)))
+
+(define-handler (wm (win window) :pointer-resize-requested) (seat edges)
+  (when (and (eq seat (wm-seat wm)) (window-visible-p wm win))
+    (start-pointer-op wm win :resize edges)))

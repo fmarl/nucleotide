@@ -9,6 +9,29 @@
   (width 0 :type integer :read-only t)
   (height 0 :type integer :read-only t))
 
+(defstruct (point (:constructor point (x y)))
+  (x 0 :type integer :read-only t)
+  (y 0 :type integer :read-only t))
+
+(defstruct (size (:constructor size (width height)))
+  (width 0 :type integer :read-only t)
+  (height 0 :type integer :read-only t))
+
+(defun point+ (a b)
+  (point (+ (point-x a) (point-x b)) (+ (point-y a) (point-y b))))
+
+(defun point- (a b)
+  (point (- (point-x a) (point-x b)) (- (point-y a) (point-y b))))
+
+(defun rect-at (origin size)
+  (rect (point-x origin) (point-y origin) (size-width size) (size-height size)))
+
+(defun rect-origin (rect)
+  (point (rect-x rect) (rect-y rect)))
+
+(defun rect-size (rect)
+  (size (rect-width rect) (rect-height rect)))
+
 (defun rect-list (rect)
   (list (rect-x rect) (rect-y rect) (rect-width rect) (rect-height rect)))
 
@@ -19,8 +42,13 @@
   (+ (rect-y rect) (rect-height rect)))
 
 (defun rect-center (rect)
-  (list (+ (rect-x rect) (floor (rect-width rect) 2))
-        (+ (rect-y rect) (floor (rect-height rect) 2))))
+  (point (+ (rect-x rect) (floor (rect-width rect) 2))
+         (+ (rect-y rect) (floor (rect-height rect) 2))))
+
+(defun centered-offset (inner outer)
+  "The offset that centers the size INNER in the size OUTER."
+  (point (floor (- (size-width outer) (size-width inner)) 2)
+         (floor (- (size-height outer) (size-height inner)) 2)))
 
 (defun inset (rect gap)
   (rect (+ (rect-x rect) gap) (+ (rect-y rect) gap)

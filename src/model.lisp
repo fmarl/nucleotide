@@ -48,12 +48,18 @@
          :documentation "NIL, :HIDDEN, or the rect to clip to.")
    (floating :initform nil :reader window-floating-p :writer (setf %window-floating-p))
    (float-offset :initform nil :reader window-float-offset :writer (setf %window-float-offset)
-                 :documentation "Position relative to the output's usable area, NIL
+                 :documentation "The point relative to the output's usable area, NIL
 until a floating window is placed.")
+   (anchor :initform nil :reader window-anchor :writer (setf %window-anchor)
+           :documentation "The anchor of the last resize. It keeps the edges the resize
+did not move in place until the window moves.")
    (fullscreen :initform nil :reader window-fullscreen :writer (setf %window-fullscreen)
                :documentation "The output proxy while fullscreen, else NIL.")
-   (pending-dimensions :initform nil :reader window-pending-dimensions
-                       :writer (setf %window-pending-dimensions))
+   (maximized :initform nil :reader window-maximized-p :writer (setf %window-maximized-p))
+   (restore-size :initform nil :reader window-restore-size :writer (setf %window-restore-size)
+                 :documentation "The size a maximized window had, NIL if unknown.")
+   (pending-size :initform nil :reader window-pending-size :writer (setf %window-pending-size)
+                 :documentation "The size to propose to a floating window.")
    (rules-applied :initform nil :reader window-rules-applied-p :writer (setf %window-rules-applied-p))))
 
 (defmethod print-object ((win window) stream)
@@ -66,13 +72,28 @@ until a floating window is placed.")
 (defun live-windows (windows &key (key #'identity))
   (remove-if (lambda (item) (window-closed-p (funcall key item))) windows))
 
-(defun window-rect (win)
-  (rect (window-x win) (window-y win) (window-width win) (window-height win)))
+(defun window-origin (win)
+  (point (window-x win) (window-y win)))
 
-(defun position-window (win x y clip)
-  (setf (%window-x win) x
-        (%window-y win) y
+(defun window-size (win)
+  (size (window-width win) (window-height win)))
+
+(defun window-rect (win)
+  (rect-at (window-origin win) (window-size win)))
+
+(defun position-window (win origin clip)
+  (setf (%window-x win) (point-x origin)
+        (%window-y win) (point-y origin)
         (%window-clip win) clip))
+
+(defun window-placement (win)
+  "How WIN is placed: :FULLSCREEN, :MAXIMIZED, :FLOATING or :TILED, the first that
+applies. The states are independent, so a window returns to the next one when it
+leaves one of them."
+  (cond ((window-fullscreen win) :fullscreen)
+        ((window-maximized-p win) :maximized)
+        ((window-floating-p win) :floating)
+        (t :tiled)))
 
 (defmethod window-parent :around ((win window))
   (live (call-next-method)))

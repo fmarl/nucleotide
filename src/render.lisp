@@ -32,14 +32,19 @@
     (cond ((eq win highlight) t)
           ((not (workspace-shown-p ws)) nil)
           ((and highlight (eq ws (wm-active-workspace wm))) nil)
-          ((or (window-fullscreen win) (window-floating-p win)) t)
-          (t (not (eq (window-clip win) :hidden))))))
+          ((eq (window-placement win) :tiled) (not (eq (window-clip win) :hidden)))
+          (t t))))
+
+(defparameter *stacking-order*
+  '((:tiled nil) (:maximized nil) (:tiled t) (:maximized t)
+    (:floating nil) (:floating t) (:fullscreen nil) (:fullscreen t))
+  "The placement of windows and whether they have the focus, from the bottom up. A
+focused tiled window comes above maximized ones, which keep their place in its
+layout.")
 
 (defun stacking-rank (wm win)
-  (+ (cond ((window-fullscreen win) 4)
-           ((window-floating-p win) 2)
-           (t 0))
-     (if (eq win (wm-focus wm)) 1 0)))
+  (position (list (window-placement win) (eq win (wm-focus wm))) *stacking-order*
+            :test #'equal))
 
 (defun clip-box-arguments (win)
   "The set_clip_box arguments for WIN. An empty box disables clipping."
@@ -53,7 +58,7 @@
 (defun place-floating-windows (wm windows)
   "River sends the dimensions of windows only in render sequences."
   (dolist (win windows)
-    (when (and (window-floating-p win) (plusp (window-width win)))
+    (when (and (eq (window-placement win) :floating) (plusp (window-width win)))
       (place-floating wm win))))
 
 (defun render-window (wm win)

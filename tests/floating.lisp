@@ -33,9 +33,9 @@
           (n::%window-y parent) 100
           (n::%window-width parent) 600
           (n::%window-height parent) 400)
-    (is (equal '(200 150) (n::initial-float-offset wm dialog)))
+    (is (equalp (n::point 200 150) (n::initial-float-offset wm dialog)))
     (setf (n::%window-clip parent) :hidden)
-    (is (equal '(300 250) (n::initial-float-offset wm dialog)))))
+    (is (equalp (n::point 300 250) (n::initial-float-offset wm dialog)))))
 
 (test closing-a-dialog-focuses-its-parent
   (let* ((ws (make-instance 'n::workspace :name "test"))
@@ -69,5 +69,55 @@
           (n::%window-height win) 300)
     (n::settle-floating wm win)
     (is (eq (n::output-workspace right) (n::window-workspace win)))
-    (is (equal '(200 100) (n::window-float-offset win)))
+    (is (equalp (n::point 200 100) (n::window-float-offset win)))
     (is (eq right (n::wm-focused-output wm)))))
+
+(defun maximized-and-back (win)
+  (let ((wm (make-test-wm)))
+    (n::maximize wm win)
+    (setf (n::%window-fullscreen win) nil)
+    (n::unmaximize wm win)
+    (n::window-pending-size win)))
+
+(test floating-windows-get-their-size-back-after-maximizing
+  (let* ((wm (make-test-wm))
+         (win (open-window-on (ws wm 1))))
+    (setf (n::%window-floating-p win) t
+          (n::%window-width win) 400
+          (n::%window-height win) 300)
+    (is (equalp (n::size 400 300) (maximized-and-back win)))
+    (setf (n::%window-width win) 1000
+          (n::%window-height win) 800
+          (n::%window-fullscreen win) :output)
+    (is (equalp (n::size 0 0) (maximized-and-back win)))))
+
+(test a-window-without-a-size-has-none-to-restore
+  (let* ((wm (make-test-wm))
+         (win (open-window-on (ws wm 1))))
+    (n::maximize wm win)
+    (is (null (n::window-restore-size win)))))
+
+(test a-held-window-gets-the-size-it-is-held-at
+  (let* ((wm (make-test-wm))
+         (win (open-window-on (ws wm 1))))
+    (setf (n::%window-floating-p win) t
+          (n::%window-maximized-p win) t
+          (n::%window-width win) 1000
+          (n::%window-height win) 800)
+    (let ((rect (n::take-hold wm win)))
+      (is (equalp (n::size 1000 800) (n::rect-size rect)))
+      (is (equalp (n::size 1000 800) (n::window-pending-size win))))))
+
+(test floating-a-maximized-window-restores-its-size
+  (let* ((wm (make-test-wm))
+         (win (open-window-on (ws wm 1))))
+    (setf (n::%window-width win) 400
+          (n::%window-height win) 300)
+    (n::maximize wm win)
+    (setf (n::%window-width win) 1000
+          (n::%window-height win) 800)
+    (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
+      (n::toggle-floating wm))
+    (is (n::window-floating-p win))
+    (is (not (n::window-maximized-p win)))
+    (is (equalp (n::size 400 300) (n::window-pending-size win)))))

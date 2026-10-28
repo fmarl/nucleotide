@@ -90,7 +90,7 @@ keep OUTPUT's workspaces so the windows can return to them."
 (defun follow-focus (wm previous-output)
   (let ((output (wm-focused-output wm)))
     (when (and *warp-pointer* output (not (eq output previous-output)))
-      (apply #'request wm :warp (rect-center (output-rect output))))
+      (request wm :warp (rect-center (output-rect output))))
     (mark-dirty wm)))
 
 (defun switch-to-workspace (wm ws)

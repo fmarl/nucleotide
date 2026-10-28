@@ -35,6 +35,7 @@
   (bind "Super+Ctrl+Comma" (move-workspace-to-output :left))
   (bind "Super+Ctrl+Period" (move-workspace-to-output :right))
   (bind "Super+Shift+F" toggle-fullscreen)
+  (bind "Super+M" toggle-maximize)
   (bind "Super+Q" close-window)
   (loop for n from 1 to 9
         do (set-binding (format nil "Super+~D" n) `(switch-workspace ,n))

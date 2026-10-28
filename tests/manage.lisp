@@ -21,21 +21,26 @@
          (tiled (open-window-on ws))
          (dialog (open-window-on ws)))
     (setf (n::%window-floating-p dialog) t)
-    (is (equal (list tiled) (n::tiled-windows ws)))))
+    (is (equal (list tiled) (n::layout-windows ws)))))
 
-(test pending-dimensions-only-resize-floating-windows
+(test pending-sizes-only-resize-floating-windows
   (let* ((wm (make-test-wm))
          (tiled (open-window-on (ws wm 1)))
          (floating (open-window-on (ws wm 1)))
+         (maximized (open-window-on (ws wm 1)))
          (proposed '()))
     (setf (n::%window-floating-p floating) t
-          (n::%window-pending-dimensions tiled) '(400 300)
-          (n::%window-pending-dimensions floating) '(500 200))
-    (with-stubs ((n::propose-dimensions
-                  (lambda (win width height) (push (list win width height) proposed))))
-      (n::manage-pending-dimensions wm))
-    (is (equal (list (list floating 500 200)) proposed))
-    (is (null (n::window-pending-dimensions tiled)))))
+          (n::%window-floating-p maximized) t
+          (n::%window-maximized-p maximized) t
+          (n::%window-pending-size tiled) (n::size 400 300)
+          (n::%window-pending-size floating) (n::size 500 200)
+          (n::%window-pending-size maximized) (n::size 0 0))
+    (with-stubs ((n::propose-size
+                  (lambda (win size) (push (list win size) proposed))))
+      (n::manage-pending-sizes wm))
+    (is (equalp (list (list floating (n::size 500 200))) proposed))
+    (is (null (n::window-pending-size tiled)))
+    (is (null (n::window-pending-size maximized)))))
 
 (test closed-windows-drop-out-of-every-reference
   (let* ((wm (make-test-wm))

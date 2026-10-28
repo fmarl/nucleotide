@@ -8,7 +8,7 @@
           +river-window-v1-edges-left+ +river-window-v1-edges-right+))
 
 (defconstant +window-capabilities+
-  +river-window-v1-capabilities-fullscreen+)
+  (logior +river-window-v1-capabilities-fullscreen+ +river-window-v1-capabilities-maximize+))
 
 (defun manage-bindings (wm)
   (drain-requests (wm)
@@ -59,6 +59,13 @@
       (when (and output (not (eq (window-fullscreen win) (output-proxy output))))
         (enter-fullscreen win (output-proxy output))))))
 
+(defun manage-maximized (wm)
+  (drain-requests (wm)
+                  (:inform-maximized (win)
+                                     (if (window-maximized-p win)
+                                         (river-window-v1.inform-maximized (window-proxy win))
+                                         (river-window-v1.inform-unmaximized (window-proxy win))))))
+
 (defun configure-window (win)
   (river-window-v1.set-tiled (window-proxy win)
                              (if (window-floating-p win)
@@ -77,31 +84,37 @@
   (drain-requests (wm)
                   (:configure (win) (configure-window win))))
 
-(defun propose-dimensions (win width height)
-  (river-window-v1.propose-dimensions (window-proxy win) width height))
+(defun propose-size (win size)
+  (river-window-v1.propose-dimensions (window-proxy win) (size-width size) (size-height size)))
 
-(defun tiled-windows (ws)
+(defun layout-windows (ws)
+  "The windows the layout of WS arranges: those that do not float, unless they are
+fullscreen. Maximized ones keep their place."
   (remove-if (lambda (win) (or (window-fullscreen win) (window-floating-p win)))
              (workspace-windows ws)))
 
 (defun place-window (win rect output)
-  (position-window win (rect-x rect) (rect-y rect) (and output (clip-box rect output)))
-  (propose-dimensions win (rect-width rect) (rect-height rect)))
+  (position-window win (rect-origin rect) (and output (clip-box rect output)))
+  (propose-size win (rect-size rect)))
 
 (defun manage-layout (ws output)
-  (let ((area (usable-area output))
-        (tiled (tiled-windows ws))
-        (layout (workspace-layout ws)))
-    (layout-update layout ws tiled area)
-    (loop for win in tiled
-          for rect in (layout-arrange layout ws tiled area)
-          do (place-window win rect output))))
+  "Place the tiled and maximized windows of WS, which OUTPUT shows. River places
+fullscreen windows, and floating ones are placed when rendering."
+  (let* ((area (usable-area output))
+         (layout (workspace-layout ws))
+         (arranged (layout-windows ws)))
+    (layout-update layout ws arranged area)
+    (let ((rects (mapcar #'cons arranged (layout-arrange layout ws arranged area))))
+      (dolist (win (workspace-windows ws))
+        (case (window-placement win)
+          (:tiled (place-window win (cdr (assoc win rects)) output))
+          (:maximized (place-window win area output)))))))
 
 (defun manage-warp (wm)
-  (let ((warp (first (last (take-requests wm '(:warp)))))
+  (let ((target (second (first (last (take-requests wm '(:warp))))))
         (seat (wm-seat wm)))
-    (when (and warp seat (supports-p seat 3))
-      (apply #'river-seat-v1.pointer-warp seat (rest warp)))))
+    (when (and target seat (supports-p seat 3))
+      (river-seat-v1.pointer-warp seat (point-x target) (point-y target)))))
 
 (defun note-focus (wm focused)
   (unless (eq focused (wm-last-focus wm))
@@ -129,18 +142,22 @@
       (river-layer-shell-output-v1.set-default (output-layer-shell output)))))
 
 (defun manage (wm)
+  "The steps depend on their order: window states settle before pointer ops start
+or end, ops before the layout places windows, and the layout before pending
+sizes, focus and IPC see the result."
   (manage-bindings wm)
   (manage-closes wm)
   (manage-submap wm)
   (manage-new-windows wm)
   (manage-fullscreens wm)
   (manage-fullscreen-outputs wm)
+  (manage-maximized wm)
   (manage-pointer-op wm)
   (dolist (output (wm-outputs wm))
     (when (and (output-workspace output) (plusp (rect-width (output-rect output))))
       (manage-layout (output-workspace output) output)))
   (manage-highlight wm)
-  (manage-pending-dimensions wm)
+  (manage-pending-sizes wm)
   (manage-layer-shell wm)
   (manage-focus wm)
   (manage-warp wm)

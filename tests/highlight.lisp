@@ -37,3 +37,21 @@
       (n::send-focused-to wm (ws wm 3)))
     (is (eq (ws wm 3) (n::window-workspace focused)))
     (is (eq (ws wm 2) (n::window-workspace highlighted)))))
+
+(test a-highlighted-maximized-window-covers-the-focused-output
+  (let* ((wm (make-test-wm))
+         (left (add-output wm 0))
+         (right (add-output wm 1000))
+         (win (open-window-on (second (n::output-workspaces right))))
+         (proposed nil))
+    (setf (n::%window-maximized-p win) t
+          (n::%window-x win) 1200
+          (n::%window-y win) 100
+          (n::wm-highlight wm) win)
+    (with-stubs ((n::propose-size (lambda (win size)
+                                    (declare (ignore win))
+                                    (setf proposed size))))
+      (n::manage-highlight wm))
+    (is (eq left (n::wm-focused-output wm)))
+    (is (equalp (n::point 0 0) (n::window-origin win)))
+    (is (equalp (n::size 1000 800) proposed))))

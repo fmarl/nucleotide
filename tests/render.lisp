@@ -38,11 +38,17 @@
   (let* ((wm (make-test-wm))
          (ws (n::output-workspace (add-output wm 0)))
          (tiled (open-window-on ws))
+         (maximized (open-window-on ws))
          (floating (open-window-on ws))
          (fullscreen (open-window-on ws))
          (focused (open-window-on ws)))
-    (setf (n::%window-floating-p floating) t
+    (setf (n::%window-maximized-p maximized) t
+          (n::%window-floating-p floating) t
           (n::%window-fullscreen fullscreen) :output)
-    (is (equal '(0 2 4 1)
-               (mapcar (lambda (win) (n::stacking-rank wm win))
-                       (list tiled floating fullscreen focused))))))
+    (flet ((bottom-up (&rest windows)
+             (sort windows #'< :key (lambda (win) (n::stacking-rank wm win)))))
+      (is (equal (list tiled maximized focused floating fullscreen)
+                 (bottom-up fullscreen focused floating maximized tiled)))
+      (n::focus-window wm maximized)
+      (is (equal (list maximized floating fullscreen)
+                 (last (bottom-up fullscreen focused floating maximized tiled) 3))))))

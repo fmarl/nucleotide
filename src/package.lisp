@@ -80,6 +80,7 @@
    #:toggle-full-width
    #:toggle-fullscreen
    #:toggle-highlight
+   #:toggle-maximize
    #:toggle-repl
    ;; Layouts
    #:layout
