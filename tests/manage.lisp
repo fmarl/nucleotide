@@ -11,10 +11,9 @@
          (left (add-output wm 0))
          (right (add-output wm 1000))
          (win (open-window-on (second (n::output-workspaces right)))))
-    (setf (n::output-proxy left) :left
-          (n::output-proxy right) :right)
-    (is (eq :right (n::fullscreen-output win nil)))
-    (is (eq :requested (n::fullscreen-output win :requested)))))
+    (is (eq right (n::fullscreen-output wm win nil)))
+    (is (eq left (n::fullscreen-output wm win left)))
+    (is (eq right (n::fullscreen-output wm win (make-instance 'n::output :proxy nil))))))
 
 (test floating-windows-stay-out-of-the-layout
   (let* ((ws (make-instance 'n::workspace :name "test"))
@@ -70,6 +69,7 @@
 
 (test requests-run-oldest-first-and-toggling-cancels-them
   (let* ((wm (make-test-wm))
+         (output (add-output wm 0))
          (win (open-window-on (ws wm 1)))
          (calls '()))
     (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm))))
@@ -80,9 +80,9 @@
       (is (null (n::requests wm '(:fullscreen :exit-fullscreen))))
       (setf (n::%window-fullscreen win) :output)
       (n::request wm :exit-fullscreen win)
-      (n::request wm :fullscreen win :other)
+      (n::request wm :fullscreen win output)
       (n::manage-fullscreens wm))
-    (is (equal (list (list :exit win) (list :enter win :other)) (reverse calls)))
+    (is (equal (list (list :exit win) (list :enter win output)) (reverse calls)))
     (is (null (n::wm-requests wm)))))
 
 (test dialogs-open-on-the-output-that-shows-their-parent

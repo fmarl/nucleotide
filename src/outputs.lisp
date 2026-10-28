@@ -201,7 +201,7 @@ workspace shown on the neighboring output, and follow them there."
 (define-handler (wm (output output) :removed) ()
   (unassign-output wm output)
   (dolist (win (all-windows wm))
-    (when (eq (window-fullscreen win) (output-proxy output))
+    (when (eq (window-fullscreen win) output)
       (request wm :exit-fullscreen win)))
   (mark-dirty wm)
   (when (output-wl-output output)

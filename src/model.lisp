@@ -54,7 +54,7 @@ until a floating window is placed.")
            :documentation "The anchor of the last resize. It keeps the edges the resize
 did not move in place until the window moves.")
    (fullscreen :initform nil :reader window-fullscreen :writer (setf %window-fullscreen)
-               :documentation "The output proxy while fullscreen, else NIL.")
+               :documentation "The output while fullscreen, else NIL.")
    (maximized :initform nil :reader window-maximized-p :writer (setf %window-maximized-p))
    (restore-size :initform nil :reader window-restore-size :writer (setf %window-restore-size)
                  :documentation "The size a maximized window had, NIL if unknown.")

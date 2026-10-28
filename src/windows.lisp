@@ -142,7 +142,7 @@ workspace."
         (%window-max-height win) max-height))
 
 (define-handler (wm (win window) :fullscreen-requested) (output)
-  (request wm :fullscreen win output))
+  (request wm :fullscreen win (and output (find output (wm-outputs wm) :key #'output-proxy))))
 
 (define-handler (wm (win window) :exit-fullscreen-requested) ()
   (request wm :exit-fullscreen win))
