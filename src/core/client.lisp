@@ -159,7 +159,8 @@
           (t
            (request-arg (list name) (list type) (list name))))))
 
-(defmacro define-request ((interface name opcode &key destructor) &body arg-specs)
+(defmacro define-request ((interface name opcode &key destructor (since 1)) &body arg-specs)
+  "Proxies bound below version SINCE refuse the request."
   (let* ((proxy (gensym "PROXY"))
          (new-var (gensym "NEW-PROXY"))
          (interface-class (gensym "INTERFACE-CLASS"))
@@ -172,6 +173,10 @@
       (nucleotide-error "only one new_id arg is supported"))
     `(defun ,(intern (concatenate 'string (symbol-name interface) "." (symbol-name name)))
          (,proxy ,@(mappend #'request-arg-parameters args))
+       ,@(when (> since 1)
+           `((unless (supports-p ,proxy ,since)
+               (nucleotide-error "~S needs version ~D of ~S, which is bound at version ~D"
+                                 ',name ,since ,proxy (proxy-version ,proxy)))))
        (let ((,new-var ,(first new-proxy-forms)))
          (declare (ignorable ,new-var))
          (send-request ,proxy ,opcode ',(mappend #'request-arg-types args)

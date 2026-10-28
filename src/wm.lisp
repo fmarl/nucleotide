@@ -6,11 +6,11 @@
 (defvar *wm* nil)
 
 (defparameter *bound-globals*
-  '((river-window-manager-v1 4 wm-river)
+  '((river-window-manager-v1 5 wm-river)
     (river-layer-shell-v1 1 wm-layer-shell)
-    (river-xkb-bindings-v1 2 wm-xkb)
-    (river-input-manager-v1 1 wm-input-manager)
-    (river-libinput-config-v1 1 wm-libinput-config))
+    (river-xkb-bindings-v1 3 wm-xkb)
+    (river-input-manager-v1 2 wm-input-manager)
+    (river-libinput-config-v1 2 wm-libinput-config))
   "The globals we bind: proxy class, highest version we support, and the WM
 accessor that holds the proxy.")
 
@@ -24,7 +24,9 @@ accessor that holds the proxy.")
 
 (define-command exit-session (wm)
   "End the river session."
-  (river-window-manager-v1.exit-session (wm-river wm)))
+  (if (supports-p (wm-river wm) 4)
+      (river-window-manager-v1.exit-session (wm-river wm))
+      (notify "this river cannot end the session, quit it yourself")))
 
 (define-handler (wm (river river-window-manager-v1) :window) (proxy)
   (attach-window wm proxy))

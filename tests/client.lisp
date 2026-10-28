@@ -124,3 +124,17 @@
                     (n::log-message :info "hidden"))))
     (is (search "warn: shown" (with-output-to-string (*error-output*)
                                 (n::log-message :warn "shown"))))))
+
+(n::define-request (test-object newer 0 :since 2))
+
+(test requests-need-the-version-that-introduced-them
+  (let ((display (make-test-display))
+        (sent '()))
+    (with-stubs ((n::send-request (lambda (proxy &rest request)
+                                    (declare (ignore request))
+                                    (push proxy sent))))
+      (let ((old (n::make-proxy display 'test-object :version 1))
+            (new (n::make-proxy display 'test-object :version 2)))
+        (signals n::nucleotide-error (test-object.newer old))
+        (test-object.newer new)
+        (is (equal (list new) sent))))))

@@ -56,10 +56,11 @@
                    ,(parse-enum-value (xml:attribute entry "value")))))
 
 (defun request-form (class request opcode)
-  (let ((header (list* class (lispify (xml:attribute request "name")) opcode
-                       (when (equal (xml:attribute request "type") "destructor")
-                         '(:destructor t)))))
-    `(define-request ,header
+  (let ((since (xml:attribute request "since"))
+        (destructor (equal (xml:attribute request "type") "destructor")))
+    `(define-request (,class ,(lispify (xml:attribute request "name")) ,opcode
+                             ,@(when destructor '(:destructor t))
+                             ,@(when since `(:since ,(parse-integer since))))
        ,@(mapcar #'request-arg-spec (xml:children-named request "arg")))))
 
 (defun event-form (class event opcode)

@@ -148,7 +148,7 @@ and the requests it sent so far."
         (is (equal '(("wl_registry" "bind")) (names requests)))
         (let ((body (fourth (first requests))))
           (is (equal "river_window_manager_v1" (n::get-wl-string body 4)))
-          (is (= 4 (n::u32ref body (- (length body) 8))))))
+          (is (= 5 (n::u32ref body (- (length body) 8))))))
       (is (= +window-manager+ (n::proxy-id (n::wm-river wm)))))))
 
 (test (a-new-window-is-configured-placed-and-focused-in-one-manage-sequence

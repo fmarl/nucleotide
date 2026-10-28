@@ -15,6 +15,7 @@
       <arg name=\"scale\" type=\"fixed\"/>
       <arg name=\"parent\" type=\"object\" interface=\"test_thing_v1\"/>
     </request>
+    <request name=\"newer\" since=\"2\"/>
     <event name=\"title\"><arg name=\"title\" type=\"string\"/></event>
     <enum name=\"edges\" bitfield=\"true\">
       <entry name=\"top\" value=\"1\"/>
@@ -36,7 +37,8 @@
                (n::define-request (n::test-thing-v1 n::get-child 1)
                  (n::id (:new-id n::test-child-v1))
                  (n::scale :fixed)
-                 (n::parent (:object))))
+                 (n::parent (:object)))
+               (n::define-request (n::test-thing-v1 n::newer 2 :since 2)))
              (forms 'n::define-request))))
 
 (test events-use-keywords
