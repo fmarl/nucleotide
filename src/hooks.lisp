@@ -20,13 +20,20 @@ window or NIL, and :WORKSPACE-CHANGED with the active workspace."
                            *hooks*))
   function)
 
-(defvar *failed-hooks* '())
+(defvar *failures* '())
+
+(defun call-reporting-failure (key function arguments control &rest control-arguments)
+  "Apply FUNCTION to ARGUMENTS, or return NIL if it fails. The first failure for
+KEY is a notification about what CONTROL and CONTROL-ARGUMENTS describe, later
+ones go to the log."
+  (handler-case (apply function arguments)
+    (error (c)
+      (if (member key *failures* :test #'equal)
+          (log-message :error "~? failed: ~A" control control-arguments c)
+          (progn (push key *failures*)
+                 (notify "~? failed: ~A" control control-arguments c)))
+      nil)))
 
 (defun run-event-hooks (event &rest args)
   (dolist (function (alist-get event *hooks*))
-    (handler-case (apply function args)
-      (error (c)
-        (cond ((member function *failed-hooks*)
-               (log-message :error "~(~S~) hook failed: ~A" event c))
-              (t (push function *failed-hooks*)
-                 (notify "~(~S~) hook failed: ~A" event c)))))))
+    (call-reporting-failure function function args "~(~S~) hook" event)))

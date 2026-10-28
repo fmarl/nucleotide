@@ -43,8 +43,9 @@
 
 (defmacro rule ((&rest match) &rest actions)
   "Apply ACTIONS to new windows whose properties match MATCH, a plist of
-:APP-ID and :TITLE patterns: a string to compare with, or a predicate.
-ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
+:APP-ID and :TITLE patterns: a string to compare with, or a predicate. A
+predicate that fails matches nothing. ACTIONS: :FLOAT T or NIL, :WORKSPACE
+number, :OUTPUT name, :FULLSCREEN T."
   `(add-window-rule (list ,@match) (list ,@actions)))
 
 (defun contains (substring)
@@ -52,9 +53,9 @@ ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
   (lambda (string) (search substring string)))
 
 (defun pattern-matches-p (pattern value)
-  (etypecase pattern
-    (string (equal pattern value))
-    (function (and value (funcall pattern value)))))
+  (if (stringp pattern)
+      (equal pattern value)
+      (and value (call-reporting-failure pattern pattern (list value) "a window rule pattern"))))
 
 (defun rule-matches-p (match win)
   (loop for (key pattern) on match by #'cddr

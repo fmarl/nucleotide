@@ -139,6 +139,11 @@ old configuration stays, except for functions and handlers the file redefined
 before the error. A few settings, like `*num-of-workspaces*`, only take effect
 after a restart.
 
+Mistakes like a binding with a wrong argument, e.g. `(switch-workspace 0)`, or a
+rule with an unknown property keep the file from loading, and a notification
+says why. A function of a rule, a hook or a binding that fails while
+nucleotide runs is reported once in a notification and afterwards in the log.
+
 ## REPL
 `Super+Space R` opens a Slynk listener on `localhost:4005`. It accepts one
 connection and then stops listening. Pressing the key again closes it early

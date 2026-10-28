@@ -65,12 +65,16 @@
 (defun all-bindings (wm)
   (append (wm-bindings wm) (mappend #'submap-bindings (wm-submaps wm))))
 
+(defun binding-action (wm action)
+  (lambda ()
+    (call-reporting-failure action #'run-command (list wm action) "~(~S~)" action)))
+
 (defun install-all-keybinds (wm)
   (if (wm-xkb wm)
       (let ((submaps (make-hash-table :test #'equal)))
         (dolist (entry *bindings*)
           (destructuring-bind ((first &optional second) . action) entry
-            (let ((run (lambda () (run-command wm action))))
+            (let ((run (binding-action wm action)))
               (if second
                   (bind-key-chord wm (prefix-submap wm submaps first)
                                   (car second) (cdr second) run)

@@ -7,7 +7,7 @@
   (uiop:xdg-config-home "nucleotide" "init.lisp"))
 
 (defun config-variables ()
-  (list* '*commands* '*bindings* '*window-rules* '*hooks* '*failed-hooks*
+  (list* '*commands* '*bindings* '*window-rules* '*hooks* '*failures*
          (mapcar #'car *settings*)))
 
 (defun default-config ()
