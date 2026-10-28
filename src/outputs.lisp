@@ -10,6 +10,9 @@
   :documentation "Open new windows on the output under the pointer rather than on
 the focused one.")
 
+(defun output-ready-p (output)
+  (plusp (rect-width (output-rect output))))
+
 (defun usable-area (output)
   (let ((usable (output-usable output)))
     (if (and usable (plusp (rect-width usable)))

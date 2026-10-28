@@ -21,7 +21,7 @@ one of RULE, alone on the focused output. Run it again to stop."
 (defun manage-highlight (wm)
   (let ((win (wm-highlight wm))
         (output (wm-focused-output wm)))
-    (when (and win output)
+    (when (and win output (output-ready-p output))
       (case (window-placement win)
         (:tiled (place-window win (inset (usable-area output) *gap*) nil))
         (:maximized (place-window win (usable-area output) nil))))))
