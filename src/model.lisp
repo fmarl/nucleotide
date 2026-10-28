@@ -58,6 +58,8 @@ did not move in place until the window moves.")
    (maximized :initform nil :reader window-maximized-p :writer (setf %window-maximized-p))
    (restore-size :initform nil :reader window-restore-size :writer (setf %window-restore-size)
                  :documentation "The size a maximized window had, NIL if unknown.")
+   (decoration-hint :initform nil :reader window-decoration-hint
+                    :writer (setf %window-decoration-hint))
    (pending-size :initform nil :reader window-pending-size :writer (setf %window-pending-size)
                  :documentation "The size to propose to a floating window.")
    (rules-applied :initform nil :reader window-rules-applied-p :writer (setf %window-rules-applied-p))))

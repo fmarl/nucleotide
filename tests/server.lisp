@@ -248,6 +248,16 @@ and the requests it sent so far."
         (is (n::window-floating-p win))
         (is (equalp (n::point 108 -42) (n::window-float-offset win)))))))
 
+(test (windows-that-only-draw-their-own-decorations-get-to :fixture fresh-config)
+  (with-fake-server (display socket)
+    (connect-wm-with-window display socket)
+    (deliver display socket +window+ "river_window_v1" "decoration_hint" 0)
+    (run-sequence display socket "manage_start")
+    (is (member "use_csd" (requests-to +window+ (received socket display)) :test #'equal))
+    (deliver display socket +window+ "river_window_v1" "decoration_hint" 2)
+    (run-sequence display socket "manage_start")
+    (is (member "use_ssd" (requests-to +window+ (received socket display)) :test #'equal))))
+
 (test (maximized-windows-cover-the-output-and-keep-their-place :fixture fresh-config)
   (with-fake-server (display socket)
     (let* ((wm (connect-wm-with-window display socket))

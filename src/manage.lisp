@@ -67,11 +67,14 @@
                                          (river-window-v1.inform-unmaximized (window-proxy win))))))
 
 (defun configure-window (win)
+  "Only windows that support nothing else draw their own decorations."
   (river-window-v1.set-tiled (window-proxy win)
                              (if (window-floating-p win)
                                  +river-window-v1-edges-none+
                                  +all-edges+))
-  (river-window-v1.use-ssd (window-proxy win))
+  (if (eql (window-decoration-hint win) +river-window-v1-decoration-hint-only-supports-csd+)
+      (river-window-v1.use-csd (window-proxy win))
+      (river-window-v1.use-ssd (window-proxy win)))
   (river-window-v1.set-capabilities (window-proxy win) +window-capabilities+))
 
 (defun manage-new-windows (wm)

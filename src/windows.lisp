@@ -151,6 +151,11 @@ window gets it back, or picks its own."
 (define-handler (wm (win window) :unmaximize-requested) ()
   (unmaximize wm win))
 
+(define-handler (wm (win window) :decoration-hint) (hint)
+  (setf (%window-decoration-hint win) hint)
+  (when (window-rules-applied-p win)
+    (request wm :configure win)))
+
 (define-handler (wm (win window) :pointer-move-requested) (seat)
   (when (and (eq seat (wm-seat wm)) (window-visible-p wm win))
     (start-pointer-op wm win :move)))
