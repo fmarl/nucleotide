@@ -499,3 +499,15 @@ opened while the pointer is on the right one."
                    (names requests)))
         (is (equal '(40 300) (list (n::u32ref repeat 0) (n::u32ref repeat 4))))
         (is (= 128 (n::u32ref scroll 0)))))))
+
+(test (a-reset-connection-counts-as-disconnected :fixture fresh-config)
+  (with-fake-server (display socket)
+    (n::wl-display.sync display)
+    (sb-bsd-sockets:socket-close socket)
+    (signals n::wl-disconnected
+             (n::fill-read-buffer (n::display-connection display)))))
+
+(test (writing-to-a-closed-connection-counts-as-disconnected :fixture fresh-config)
+  (with-fake-server (display socket)
+    (sb-bsd-sockets:socket-close socket)
+    (signals n::wl-disconnected (n::wl-display.sync display))))

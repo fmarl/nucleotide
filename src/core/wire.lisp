@@ -92,6 +92,22 @@
     (fill buffer 0 :start (+ offset 4 len) :end (+ offset 4 (pad4 len)))
     (+ offset 4 (pad4 len))))
 
+(defmacro retrying-interrupted (&body body)
+  "The value of BODY, a socket operation, repeated while signals interrupt it.
+Every other failure ends the connection."
+  `(loop (handler-case (return (progn ,@body))
+           (sb-bsd-sockets:interrupted-error ())
+           (sb-bsd-sockets:socket-error () (error 'wl-disconnected)))))
+
+(defun receive (connection count)
+  (let ((n (retrying-interrupted
+            (nth-value 1 (sb-bsd-sockets:socket-receive (connection-socket connection)
+                                                        (connection-scratch connection)
+                                                        count)))))
+    (if (and n (plusp n))
+        n
+        (error 'wl-disconnected))))
+
 (defun fill-read-buffer (connection)
   (let ((rbuf (connection-rbuf connection)))
     (when (plusp (connection-rstart connection))
@@ -103,13 +119,7 @@
     (let ((space (- +read-buffer-size+ (connection-rend connection))))
       (when (zerop space)
         (error 'wl-protocol-error :format-control "wire read buffer overflow"))
-      (multiple-value-bind (buffer n)
-          (sb-bsd-sockets:socket-receive
-           (connection-socket connection) (connection-scratch connection)
-           (min space (length (connection-scratch connection))))
-        (declare (ignore buffer))
-        (when (or (null n) (zerop n))
-          (error 'wl-disconnected))
+      (let ((n (receive connection (min space (length (connection-scratch connection))))))
         (replace rbuf (connection-scratch connection)
                  :start1 (connection-rend connection) :end2 n)
         (incf (connection-rend connection) n)))))
@@ -152,7 +162,7 @@
         (buffer (connection-wbuf connection))
         (sent 0))
     (loop while (< sent end)
-          do (incf sent (sb-bsd-sockets:socket-send
-                         socket
-                         (if (zerop sent) buffer (subseq buffer sent end))
-                         (- end sent))))))
+          do (incf sent (retrying-interrupted
+                         (sb-bsd-sockets:socket-send
+                          socket (if (zerop sent) buffer (subseq buffer sent end))
+                          (- end sent) :nosignal t))))))
