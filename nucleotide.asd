@@ -93,3 +93,13 @@
   :perform (asdf:test-op (o c)
                          (unless (uiop:symbol-call '#:fiveam '#:run! :nucleotide)
                            (error "nucleotide tests failed"))))
+
+(asdf:defsystem #:nucleotide/integration
+  :description "Tests of nucleotide against a river without a display"
+  :license "GPL-3.0-or-later"
+  :depends-on (#:nucleotide #:fiveam)
+  :pathname "tests"
+  :components ((:file "integration"))
+  :perform (asdf:test-op (o c)
+                         (unless (uiop:symbol-call '#:fiveam '#:run! :nucleotide/integration)
+                           (error "nucleotide integration tests failed"))))

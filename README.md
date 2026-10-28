@@ -158,7 +158,9 @@ open the port if others can read it. SLY reads the same file, so
 ## Development
 Inside `guix shell -m manifest.scm`, `make` builds `./nucleotide`, which you
 start with `river -c ./nucleotide`. `make check` runs the tests and `make lint`
-the linter.
+the linter. `make integration` runs nucleotide against a river without a
+display and needs river, weston and wlr-randr, e.g.
+`guix shell -m manifest.scm river weston wlr-randr -- make integration`.
 
 `sbcl --load dev.lisp` runs nucleotide from source with a listener that stays
 open. REPL code that touches the window manager has to run in its thread, so
