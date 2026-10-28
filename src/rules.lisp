@@ -73,14 +73,13 @@ number, :OUTPUT name, :FULLSCREEN T."
           :initial-value '()))
 
 (defun rule-workspace (wm actions output)
-  "The workspace ACTIONS send a window to, counting numbered ones on OUTPUT."
-  (let ((number (getf actions :workspace))
-        (output-name (getf actions :output)))
-    (cond (number (nth-workspace wm (1- number) output))
-          (output-name
-           (let ((output (find output-name (wm-outputs wm)
-                               :key #'output-name :test #'equal)))
-             (and output (output-workspace output)))))))
+  "The workspace ACTIONS send a window to, counting numbered ones on the output
+they name or else on OUTPUT."
+  (let ((named (let ((name (getf actions :output)))
+                 (and name (find name (wm-outputs wm) :key #'output-name :test #'equal))))
+        (number (getf actions :workspace)))
+    (cond (number (nth-workspace wm (1- number) (or named output)))
+          (named (output-workspace named)))))
 
 (defun apply-float-rule (win actions)
   (multiple-value-bind (present float) (get-properties actions '(:float))

@@ -63,3 +63,16 @@
                "~S was accepted" rule))
     (finishes (n::rule (:title (n::contains "Picture") :app-id 'string-upcase)
                        :float nil :workspace 2 :output "DP-1" :fullscreen t))))
+
+(test rules-count-workspaces-on-the-output-they-name
+  (let* ((wm (make-test-wm))
+         (a (add-output wm 0 :name "A"))
+         (b (add-output wm 1000 :name "B")))
+    (flet ((target (&rest actions)
+             (n::rule-workspace wm actions a)))
+      (is (eq (second (n::output-workspaces b)) (target :workspace 2 :output "B")))
+      (is (eq (n::output-workspace b) (target :output "B")))
+      (is (eq (second (n::output-workspaces a)) (target :workspace 2 :output "C")))
+      (is (eq (second (n::output-workspaces a)) (target :workspace 2)))
+      (is (null (target :output "C")))
+      (is (null (target :float t))))))
