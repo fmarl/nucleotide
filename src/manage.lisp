@@ -10,9 +10,17 @@
 (defconstant +window-capabilities+
   (logior +river-window-v1-capabilities-fullscreen+ +river-window-v1-capabilities-maximize+))
 
+(defun manage-binding-layouts (wm)
+  (drain-requests (wm)
+                  (:configure-binding (binding)
+                                      (when *bindings-layout*
+                                        (river-xkb-binding-v1.set-layout-override
+                                         binding *bindings-layout*)))))
+
 (defun manage-bindings (wm)
   "No binding is enabled while the session is locked. Unlocking enables those
 outside of submaps again, new ones among them."
+  (manage-binding-layouts wm)
   (let ((new (mapcar #'second (take-requests wm '(:enable-binding))))
         (locked (wm-locked wm)))
     (cond ((eq locked (wm-bindings-locked wm))

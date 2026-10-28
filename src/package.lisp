@@ -37,6 +37,7 @@
    #:use-defaults
    ;; Settings
    #:*autostart-programs*
+   #:*bindings-layout*
    #:*border-focused*
    #:*border-unfocused*
    #:*border-width*

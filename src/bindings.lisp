@@ -37,10 +37,20 @@
   (push (on-press binding action) (wm-bindings wm))
   (request wm :enable-binding binding))
 
+(define-setting *bindings-layout* nil
+  :documentation "NIL to match key bindings with the active keyboard layout, or the
+index of the layout to match them with, like 0. Only keys of that layout can
+then be bound."
+  :check (type-check '(or null (unsigned-byte 32)) "NIL or a layout index like 0"))
+
+(defun make-key-binding (wm keysym modifiers)
+  (let ((binding (river-xkb-bindings-v1.get-xkb-binding (wm-xkb wm) (wm-seat wm)
+                                                        keysym modifiers)))
+    (request wm :configure-binding binding)
+    binding))
+
 (defun bind-key (wm keysym modifiers action)
-  (add-binding wm (river-xkb-bindings-v1.get-xkb-binding (wm-xkb wm) (wm-seat wm)
-                                                         keysym modifiers)
-               action))
+  (add-binding wm (make-key-binding wm keysym modifiers) action))
 
 (defun bind-pointer (wm button modifiers action)
   (add-binding wm (river-seat-v1.get-pointer-binding (wm-seat wm) button modifiers)
@@ -48,8 +58,7 @@
 
 (defun bind-key-chord (wm submap keysym modifiers action)
   "Bindings of a submap are only enabled while the submap is active."
-  (push (on-press (river-xkb-bindings-v1.get-xkb-binding (wm-xkb wm) (wm-seat wm)
-                                                         keysym modifiers)
+  (push (on-press (make-key-binding wm keysym modifiers)
                   (lambda ()
                     (leave-submap wm)
                     (funcall action)))
@@ -85,7 +94,7 @@
 
 (defun uninstall-all-keybinds (wm)
   (setf (wm-active-submap wm) nil)
-  (cancel-requests wm '(:enable-binding :enter-submap :leave-submap))
+  (cancel-requests wm '(:configure-binding :enable-binding :enter-submap :leave-submap))
   (mapc #'destroy-binding (all-bindings wm))
   (setf (wm-bindings wm) '()
         (wm-submaps wm) '()))

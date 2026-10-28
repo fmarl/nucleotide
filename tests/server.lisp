@@ -536,6 +536,27 @@ opened while the pointer is on the right one."
                  (requests-to +window+ (received socket display))))
       (is (= 1 (length opened))))))
 
+(defun bindings-layout-requests (layout)
+  "The requests to a key and to a chord key in the first manage sequence after
+they were made, with *BINDINGS-LAYOUT* at LAYOUT."
+  (setf n::*bindings-layout* layout)
+  (n::bind "Super+Q" n::close-window)
+  (n::bind "Super+Space M" (n::set-layout n::monocle))
+  (with-fake-server (display socket)
+    (connect-wm display socket)
+    (deliver display socket 2 "wl_registry" "global" 2 "river_xkb_bindings_v1" 2)
+    (deliver display socket +window-manager+ "river_window_manager_v1" "seat" +seat+)
+    (let ((created (received socket display)))
+      (run-sequence display socket "manage_start")
+      (let ((requests (received socket display)))
+        (list (requests-to (key-binding created #x71) requests)
+              (requests-to (key-binding created #x6d) requests))))))
+
+(test (bindings-can-keep-to-one-layout :fixture fresh-config)
+  (is (equal '(("enable") ()) (bindings-layout-requests nil)))
+  (is (equal '(("set_layout_override" "enable") ("set_layout_override"))
+             (bindings-layout-requests 0))))
+
 (defun focus-requests (requests)
   (remove-if-not (lambda (name) (member name '("focus_window" "clear_focus") :test #'equal))
                  (mapcar #'second requests)))

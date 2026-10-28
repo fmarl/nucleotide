@@ -20,7 +20,10 @@ keys start alacritty and bemenu, and waybar starts with the session.
 
 river takes the keyboard layout from `XKB_DEFAULT_LAYOUT`,
 `XKB_DEFAULT_VARIANT` and `XKB_DEFAULT_OPTIONS`, e.g.
-`XKB_DEFAULT_LAYOUT=de river -c nucleotide`.
+`XKB_DEFAULT_LAYOUT=de river -c nucleotide`. With several layouts, like
+`us,ru`, key bindings follow the active one. Set `*bindings-layout*` to `0` to
+match them with the first layout, so that they keep working while another one
+is active. Only keys of that layout can then be bound.
 
 ## Keys
 | Keys | Action |
