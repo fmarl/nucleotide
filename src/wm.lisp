@@ -59,6 +59,39 @@ accessor that holds the proxy.")
   (river-window-manager-v1.destroy river)
   (event-loop-stop (wm-loop wm)))
 
+(defun check-cursor-theme (value)
+  (unless (typep value '(or null (cons string (cons (and wire-int unsigned-byte) null))))
+    (nucleotide-error "~S is not NIL or a theme and a size like (\"Adwaita\" 24)" value)))
+
+(define-setting *cursor-theme* nil
+  :documentation "NIL for the default of river, or (NAME SIZE): the XCursor theme
+and size of the seat and of programs started afterwards."
+  :check #'check-cursor-theme)
+
+(defparameter *river-cursor-theme* '("default" 24)
+  "The theme river uses until it gets another one.")
+
+(defvar *inherited-cursor-environment* :unread
+  "XCURSOR_THEME and XCURSOR_SIZE as nucleotide found them.")
+
+(defun export-cursor-theme ()
+  (when (eq *inherited-cursor-environment* :unread)
+    (setf *inherited-cursor-environment*
+          (mapcar #'uiop:getenv '("XCURSOR_THEME" "XCURSOR_SIZE"))))
+  (loop for variable in '("XCURSOR_THEME" "XCURSOR_SIZE")
+        for value in (if *cursor-theme*
+                         (mapcar #'princ-to-string *cursor-theme*)
+                         *inherited-cursor-environment*)
+        do (if value
+               (sb-posix:setenv variable value 1)
+               (sb-posix:unsetenv variable))))
+
+(defun set-cursor-theme (wm)
+  (let ((seat (wm-seat wm)))
+    (when (and seat (supports-p seat 2))
+      (apply #'river-seat-v1.set-xcursor-theme seat
+             (or *cursor-theme* *river-cursor-theme*)))))
+
 (defun attach-seat (wm proxy)
   (when (wm-seat wm)
     (log-message :warn "multiple seats are not supported yet")
@@ -73,6 +106,7 @@ accessor that holds the proxy.")
     (let ((xkb-seat (river-xkb-bindings-v1.get-seat (wm-xkb wm) proxy)))
       (setf (wm-xkb-seat wm) xkb-seat)
       (forward-events wm xkb-seat)))
+  (set-cursor-theme wm)
   (install-all-keybinds wm))
 
 (define-handler (wm (seat river-seat-v1) :window-interaction) (window)
@@ -129,6 +163,7 @@ accessor that holds the proxy.")
              (sb-thread:thread-alive-p (wm-thread *wm*)))
     (nucleotide-error "a WM is already running, call (stop-wm) first"))
   (load-user-config)
+  (export-cursor-theme)
   (let* ((display (wl-display-connect display-name))
          (wm (make-wm display)))
     (wl-display-roundtrip display)

@@ -41,6 +41,7 @@
    #:*border-unfocused*
    #:*border-width*
    #:*column-widths*
+   #:*cursor-theme*
    #:*default-column-width*
    #:*default-layout*
    #:*gap*

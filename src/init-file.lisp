@@ -52,6 +52,8 @@ file, or :ERROR, which keeps the current configuration."
 (define-command reload-config (wm)
   "Load the init file again, starting from the defaults."
   (unless (eq (load-user-config) :error)
+    (export-cursor-theme)
+    (set-cursor-theme wm)
     (when (wm-seat wm)
       (uninstall-all-keybinds wm)
       (install-all-keybinds wm))
