@@ -43,6 +43,7 @@
            (win (titled-win "mpv" "video")))
       (n::add-window (ws wm 1) win)
       (n::rule (:app-id "mpv") :float t :workspace 3)
+      (n::place-new-window wm win)
       (n::apply-window-rules wm win)
       (is (eq (ws wm 3) (n::window-workspace win)))
       (is (equal (list win) (n::workspace-windows (ws wm 3))))

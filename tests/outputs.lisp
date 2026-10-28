@@ -115,3 +115,12 @@
     (is (eq :hidden (n::clip-box (n::rect 1008 8 496 784) output)))
     (is (equal '(-504 0 1000 800)
                (n::rect-list (n::clip-box (n::rect 504 0 1000 800) output))))))
+
+(test points-on-a-shared-edge-belong-to-the-right-output
+  (let* ((wm (make-test-wm))
+         (left (add-output wm 0))
+         (right (add-output wm 1000)))
+    (is (eq left (n::output-at wm (n::point 999 0))))
+    (is (eq right (n::output-at wm (n::point 1000 0))))
+    (is (null (n::output-at wm (n::point 1000 800))))
+    (is (null (n::output-at wm (n::point 2000 0))))))

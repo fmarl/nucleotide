@@ -49,6 +49,7 @@
    #:*menu-command*
    #:*move-button*
    #:*num-of-workspaces*
+   #:*open-on-pointer-output*
    #:*pointer-modifiers*
    #:*repl-port*
    #:*resize-button*

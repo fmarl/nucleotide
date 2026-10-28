@@ -84,3 +84,43 @@
       (n::manage-fullscreens wm))
     (is (equal (list (list :exit win) (list :enter win :other)) (reverse calls)))
     (is (null (n::wm-requests wm)))))
+
+(test dialogs-open-on-the-output-that-shows-their-parent
+  (let* ((wm (make-test-wm))
+         (left (add-output wm 0))
+         (right (add-output wm 1000))
+         (parent (open-window-on (n::output-workspace left)))
+         (dialog (open-window-on (n::output-workspace left))))
+    (setf (n::%window-parent dialog) parent
+          (n::wm-pointer-position wm) (n::point 1500 400))
+    (n::place-new-window wm dialog)
+    (is (eq (n::output-workspace left) (n::window-workspace dialog)))
+    (is (eq left (n::wm-focused-output wm)))
+    (is (null (n::workspace-windows (n::output-workspace right))))))
+
+(test dialogs-of-hidden-windows-open-under-the-pointer
+  (let* ((wm (make-test-wm))
+         (left (add-output wm 0))
+         (right (add-output wm 1000))
+         (parent (open-window-on (second (n::output-workspaces left))))
+         (dialog (open-window-on (n::output-workspace left))))
+    (setf (n::%window-parent dialog) parent
+          (n::wm-pointer-position wm) (n::point 1500 400))
+    (n::place-new-window wm dialog)
+    (is (eq (n::output-workspace right) (n::window-workspace dialog)))
+    (is (eq right (n::wm-focused-output wm)))))
+
+(test workspace-rules-count-on-the-output-under-the-pointer-and-keep-the-focus
+  (with-rules
+    (let* ((wm (make-test-wm))
+           (left (add-output wm 0))
+           (right (add-output wm 1000))
+           (focused (open-window-on (n::output-workspace right)))
+           (win (titled-win "mpv" "video")))
+      (n::add-window (n::output-workspace left) win :focus nil)
+      (n::rule (:app-id "mpv") :workspace 3)
+      (setf (n::wm-pointer-position wm) (n::point 1500 400))
+      (n::place-new-window wm win)
+      (is (eq (nth 2 (n::output-workspaces right)) (n::window-workspace win)))
+      (is (eq left (n::wm-focused-output wm)))
+      (is (eq focused (n::workspace-focus (n::output-workspace right)))))))

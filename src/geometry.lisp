@@ -60,6 +60,10 @@
        (<= (rect-right inner) (rect-right outer))
        (<= (rect-bottom inner) (rect-bottom outer))))
 
+(defun rect-contains-p (rect point)
+  (and (<= (rect-x rect) (point-x point)) (< (point-x point) (rect-right rect))
+       (<= (rect-y rect) (point-y point)) (< (point-y point) (rect-bottom rect))))
+
 (defun overlap-area (a b)
   (flet ((span (start end other-start other-end)
            (max 0 (- (min end other-end) (max start other-start)))))

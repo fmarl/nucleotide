@@ -41,10 +41,11 @@ ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
           *window-rules*
           :initial-value '()))
 
-(defun rule-workspace (wm actions)
+(defun rule-workspace (wm actions output)
+  "The workspace ACTIONS send a window to, counting numbered ones on OUTPUT."
   (let ((number (getf actions :workspace))
         (output-name (getf actions :output)))
-    (cond (number (nth-workspace wm (1- number)))
+    (cond (number (nth-workspace wm (1- number) output))
           (output-name
            (let ((output (find output-name (wm-outputs wm)
                                :key #'output-name :test #'equal)))
@@ -56,17 +57,12 @@ ACTIONS: :FLOAT T or NIL, :WORKSPACE number, :OUTPUT name, :FULLSCREEN T."
                               (and float t)
                               (and (auto-float-p win) t)))))
 
-(defun apply-workspace-rule (wm win actions)
-  (let ((ws (rule-workspace wm actions)))
-    (when (and ws (not (eq ws (window-workspace win))))
-      (move-to-workspace win ws))))
-
 (defun apply-fullscreen-rule (wm win actions)
   (when (getf actions :fullscreen)
     (request wm :fullscreen win nil)))
 
 (defun apply-window-rules (wm win)
+  "PLACE-NEW-WINDOW applies the workspace rules."
   (let ((actions (window-actions win)))
     (apply-float-rule win actions)
-    (apply-workspace-rule wm win actions)
     (apply-fullscreen-rule wm win actions)))

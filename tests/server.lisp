@@ -90,6 +90,8 @@
 (defconstant +window+ #xff000000)
 (defconstant +output+ #xff000001)
 (defconstant +seat+ #xff000002)
+(defconstant +right-output+ #xff000003)
+(defconstant +new-window+ #xff000004)
 
 (defun connect-wm (display socket)
   (let ((wm (n::make-wm display)))
@@ -160,6 +162,39 @@ and the requests it sent so far."
         (is (equal '("river_window_manager_v1" "manage_finish") (car (last (names requests))))))
       (let ((win (n::wm-focus wm)))
         (is (equal '(8 8) (list (n::window-x win) (n::window-y win))))))))
+
+(defun open-window-with-pointer-right (display socket)
+  "A WM with a focused window on the left of two outputs, after a new window
+opened while the pointer is on the right one."
+  (let ((wm (connect-wm-with-window display socket)))
+    (run-sequence display socket "manage_start")
+    (deliver display socket +window-manager+ "river_window_manager_v1" "output" +right-output+)
+    (deliver display socket +right-output+ "river_output_v1" "position" 1000 0)
+    (deliver display socket +right-output+ "river_output_v1" "dimensions" 1000 800)
+    (deliver display socket +seat+ "river_seat_v1" "pointer_position" 1500 400)
+    (deliver display socket +window-manager+ "river_window_manager_v1" "window" +new-window+)
+    (run-sequence display socket "manage_start")
+    wm))
+
+(test (a-new-window-opens-on-the-output-under-the-pointer :fixture fresh-config)
+  (with-fake-server (display socket)
+    (let* ((wm (open-window-with-pointer-right display socket))
+           (win (n::wm-focus wm))
+           (left (n::output-workspace (first (n::wm-outputs wm))))
+           (right (second (n::wm-outputs wm))))
+      (is (= +new-window+ (n::proxy-id (n::window-proxy win))))
+      (is (eq (n::output-workspace right) (n::window-workspace win)))
+      (is (eq right (n::wm-focused-output wm)))
+      (is (equal '(1008 8) (list (n::window-x win) (n::window-y win))))
+      (is (= +window+ (n::proxy-id (n::window-proxy (n::workspace-focus left))))))))
+
+(test (a-new-window-can-open-on-the-focused-output :fixture fresh-config)
+  (setf n::*open-on-pointer-output* nil)
+  (with-fake-server (display socket)
+    (let* ((wm (open-window-with-pointer-right display socket))
+           (win (n::wm-focus wm)))
+      (is (= +new-window+ (n::proxy-id (n::window-proxy win))))
+      (is (eq (first (n::wm-outputs wm)) (n::wm-focused-output wm))))))
 
 (test (closing-a-window-destroys-its-proxies :fixture fresh-config)
   (with-fake-server (display socket)

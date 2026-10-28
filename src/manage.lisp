@@ -85,10 +85,31 @@ outside of submaps again, new ones among them."
       (river-window-v1.use-ssd (window-proxy win)))
   (river-window-v1.set-capabilities (window-proxy win) +window-capabilities+))
 
+(defun new-window-output (wm)
+  (or (and *open-on-pointer-output* (pointer-output wm))
+      (wm-focused-output wm)))
+
+(defun place-new-window (wm win)
+  "Without a workspace rule, WIN opens with its shown parent or on
+NEW-WINDOW-OUTPUT and gets the focus. Only the manage sequence knows both."
+  (let* ((output (new-window-output wm))
+         (rule (rule-workspace wm (window-actions win) output))
+         (parent (window-parent win))
+         (ws (cond (rule)
+                   ((and parent (workspace-shown-p (window-workspace parent)))
+                    (window-workspace parent))
+                   (output (output-workspace output))
+                   (t (window-workspace win)))))
+    (unless (eq ws (window-workspace win))
+      (move-to-workspace win ws))
+    (when (or (not rule) (eq rule (wm-active-workspace wm)))
+      (focus-window wm win))))
+
 (defun manage-new-windows (wm)
   (dolist (win (all-windows wm))
     (unless (window-rules-applied-p win)
       (setf (%window-rules-applied-p win) t)
+      (place-new-window wm win)
       (apply-window-rules wm win)
       (configure-window win)
       (run-event-hooks :window-opened win)))

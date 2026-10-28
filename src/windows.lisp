@@ -101,9 +101,10 @@ window gets it back, or picks its own."
   (send-focused-to wm (nth-workspace wm (1- number))))
 
 (defun attach-window (wm proxy)
+  "Until PLACE-NEW-WINDOW moves and focuses it, the window waits on the active
+workspace."
   (let ((win (make-instance 'window :proxy proxy :node (river-window-v1.get-node proxy))))
-    (add-window (wm-active-workspace wm) win)
-    (focus-window wm win)
+    (add-window (wm-active-workspace wm) win :focus nil)
     (forward-events wm proxy win)))
 
 (defun detach-window (wm win)

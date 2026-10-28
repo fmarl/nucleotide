@@ -6,6 +6,10 @@
 (define-setting *warp-pointer* t
   :documentation "Move the pointer to an output when the focus moves there.")
 
+(define-setting *open-on-pointer-output* t
+  :documentation "Open new windows on the output under the pointer rather than on
+the focused one.")
+
 (defun usable-area (output)
   (let ((usable (output-usable output)))
     (if (and usable (plusp (rect-width usable)))
@@ -24,14 +28,20 @@ OUTPUT relative to RECT to clip it to."
 (defun window-output (wm win)
   (or (workspace-output (window-workspace win)) (wm-focused-output wm)))
 
+(defun output-at (wm point)
+  (find-if (lambda (output) (rect-contains-p (output-rect output) point))
+           (wm-outputs wm)))
+
+(defun pointer-output (wm)
+  (let ((point (wm-pointer-position wm)))
+    (and point (output-at wm point))))
+
 (defun workspace-shown-p (ws)
   (let ((output (workspace-output ws)))
     (and output (eq ws (output-workspace output)))))
 
-(defun nth-workspace (wm n)
-  "The Nth workspace of the focused output."
-  (let ((output (wm-focused-output wm)))
-    (nth n (if output (output-workspaces output) (wm-orphans wm)))))
+(defun nth-workspace (wm n &optional (output (wm-focused-output wm)))
+  (nth n (if output (output-workspaces output) (wm-orphans wm))))
 
 (defun adopt-workspaces (output workspaces)
   (dolist (ws workspaces)

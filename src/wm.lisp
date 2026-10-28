@@ -74,6 +74,9 @@ accessor that holds the proxy.")
       (focus-window wm win)
       (mark-dirty wm))))
 
+(define-handler (wm (seat river-seat-v1) :pointer-position) (x y)
+  (setf (wm-pointer-position wm) (point x y)))
+
 (define-handler (wm (seat river-xkb-bindings-seat-v1) :ate-unbound-key) ()
   (leave-submap wm))
 
