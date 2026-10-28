@@ -15,4 +15,5 @@
     (asdf:load-system "slynk/mrepl"))
   (format t "~&nucleotide build: slynk baked in, toggle the REPL with Super+Space r~%"))
 
-(sb-ext:save-lisp-and-die "nucleotide" :executable t :compression t :toplevel #'nucleotide::main)
+(sb-ext:save-lisp-and-die "nucleotide" :executable t :compression t :save-runtime-options t
+                          :toplevel #'nucleotide::main)

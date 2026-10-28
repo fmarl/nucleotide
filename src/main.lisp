@@ -30,10 +30,14 @@ Skip the failing event instead, or else end only the failing thread."
   (stop-ipc *wm*)
   (if (loop-failure (wm-loop *wm*)) 1 0))
 
+(defparameter *version* #.(asdf:component-version (asdf:find-system "nucleotide")))
+
 (defun main ()
   (sb-ext:disable-debugger)
   (confine-thread-errors)
-  (let ((code (run)))
+  (let ((code (if (member "--version" (rest sb-ext:*posix-argv*) :test #'string=)
+                  (progn (format t "nucleotide ~A~%" *version*) 0)
+                  (run))))
     (finish-output)
     (finish-output *error-output*)
     (sb-ext:exit :code code :abort t)))
