@@ -42,6 +42,13 @@ accessor that holds the proxy.")
   (unwind-protect (render wm)
     (river-window-manager-v1.render-finish river)))
 
+(define-handler (wm (river river-window-manager-v1) :session-locked) ()
+  (setf (wm-locked wm) t)
+  (leave-submap wm))
+
+(define-handler (wm (river river-window-manager-v1) :session-unlocked) ()
+  (setf (wm-locked wm) nil))
+
 (define-handler (wm (river river-window-manager-v1) :unavailable) ()
   (log-message :error "river reports the WM role as unavailable (is another WM running?)"))
 

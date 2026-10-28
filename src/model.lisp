@@ -158,7 +158,13 @@ nothing is highlighted.")
    (last-workspace :initform nil :accessor wm-last-workspace)
    (pointer-window :initform nil :accessor wm-pointer-window)
    (op :initform nil :accessor wm-op)
-   (bindings :initform '() :accessor wm-bindings)
+   (bindings :initform '() :accessor wm-bindings
+             :documentation "The bindings outside of SUBMAPS.")
+   (submaps :initform '() :accessor wm-submaps)
+   (locked :initform nil :accessor wm-locked)
+   (bindings-locked :initform nil :accessor wm-bindings-locked
+                    :documentation "Whether the bindings are disabled for a locked session.
+Manage sequences bring this in line with LOCKED.")
    (requests :initform '() :accessor wm-requests
              :documentation "What the next manage sequence does, the newest first.")))
 

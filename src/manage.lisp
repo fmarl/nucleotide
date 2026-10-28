@@ -11,8 +11,16 @@
   (logior +river-window-v1-capabilities-fullscreen+ +river-window-v1-capabilities-maximize+))
 
 (defun manage-bindings (wm)
-  (drain-requests (wm)
-                  (:enable-binding (binding) (enable-binding binding))))
+  "No binding is enabled while the session is locked. Unlocking enables those
+outside of submaps again, new ones among them."
+  (let ((new (mapcar #'second (take-requests wm '(:enable-binding))))
+        (locked (wm-locked wm)))
+    (cond ((eq locked (wm-bindings-locked wm))
+           (unless locked
+             (mapc #'enable-binding new)))
+          (locked (mapc #'disable-binding (all-bindings wm)))
+          (t (mapc #'enable-binding (wm-bindings wm))))
+    (setf (wm-bindings-locked wm) locked)))
 
 (defun manage-closes (wm)
   (drain-requests (wm)
