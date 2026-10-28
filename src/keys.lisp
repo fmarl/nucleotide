@@ -13,6 +13,12 @@
               thereis (probe-file (merge-pathnames "xkbcommon/xkbcommon-keysyms.h" dir)))
         (error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
 
+  (defun header-codepoint (line)
+    "The character of a comment like /* U+20AC EURO SIGN */. Inexact ones look
+like /*(U+...)*/ or /*<U+...>*/."
+    (let ((start (search "/* U+" line)))
+      (and start (parse-integer line :start (+ start 5) :radix 16 :junk-allowed t))))
+
   (defun keysym-header-entries (pathname)
     (with-open-file (in pathname)
       (loop for line = (read-line in nil)
@@ -21,12 +27,21 @@
             collect (destructuring-bind (name value &rest comment)
                         (remove "" (uiop:split-string (subseq line 16)) :test #'string=)
                       (declare (ignore comment))
-                      (cons name (parse-integer value :start 2 :radix 16)))))))
+                      (list name (parse-integer value :start 2 :radix 16)
+                            (header-codepoint line)))))))
 
 (defun keysym-table (entries)
   (let ((table (make-hash-table :test #'equal)))
-    (loop for (name . keysym) in entries
+    (loop for (name keysym) in entries
           do (setf (gethash name table) keysym))
+    table))
+
+(defun codepoint-table (entries)
+  (let ((table (make-hash-table)))
+    (loop for (nil keysym codepoint) in entries
+          when codepoint
+          do (setf (gethash codepoint table)
+                   (min keysym (gethash codepoint table keysym))))
     table))
 
 (defun keysym-table-ignoring-case (keysyms)
@@ -48,13 +63,18 @@ letters, like Greek_alpha, as in xkb_keysym_from_name."
   (let ((entries (keysym-header-entries (keysym-header-pathname))))
     `(progn
        (defparameter *keysyms* (keysym-table ',entries))
-       (defparameter *keysyms-ignoring-case* (keysym-table-ignoring-case *keysyms*)))))
+       (defparameter *keysyms-ignoring-case* (keysym-table-ignoring-case *keysyms*))
+       (defparameter *codepoint-keysyms* (codepoint-table ',entries)))))
 
 (define-keysyms)
 
 (defun char-keysym (char)
+  "The keysym of CHAR as in xkb_utf32_to_keysym, like EuroSign for €: river
+matches bindings with the keysyms of the layout."
   (let ((code (char-code char)))
-    (if (< code #x100) code (logior #x1000000 code))))
+    (cond ((or (<= #x20 code #x7e) (<= #xa0 code #xff)) code)
+          ((gethash code *codepoint-keysyms*))
+          (t (logior #x1000000 code)))))
 
 (defun keysym-from-name (name)
   (or (gethash name *keysyms*)

@@ -20,7 +20,7 @@
   (is (equal '(#x2c . 64) (n::parse-key "Super+Comma")))
   (is (equal '(#x5b . 64) (n::parse-key "Super+BracketLeft")))
   (is (equal '(#x1008ff14 . 0) (n::parse-key "XF86AudioPlay")))
-  (is (equal '(#x10020ac . 0) (n::parse-key (string (code-char #x20ac)))))
+  (is (equal '(#x20ac . 0) (n::parse-key (string (code-char #x20ac)))))
   (is (equal '(#xe0 . 0) (n::parse-key "AGRAVE")))
   (is (equal '(#xc0 . 0) (n::parse-key "Agrave")))
   (is (equal '(#xfe80 . 0) (n::parse-key "DEAD_A")))
@@ -69,3 +69,8 @@
   (is (action "Super+Ctrl+3"))
   (is (equal (action "Super+3") (action "Super+Shift+3")))
   (is (equal (action "Super+Ctrl+3") (action "Super+Ctrl+Shift+3"))))
+
+(test characters-prefer-the-keysyms-that-layouts-produce
+  (is (equal '(#x61 #xe4 #xdf #x20ac #x6c4 #x7e1 #x101f642)
+             (mapcar (lambda (key) (car (n::parse-key key)))
+                     '("a" "Ä" "ß" "€" "Д" "α" "🙂")))))
