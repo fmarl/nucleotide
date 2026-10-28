@@ -28,7 +28,7 @@ Skip the failing event instead, or else end only the failing thread."
       (return-from run 1)))
   (sb-thread:join-thread (wm-thread *wm*) :default nil)
   (stop-ipc *wm*)
-  0)
+  (if (loop-failure (wm-loop *wm*)) 1 0))
 
 (defun main ()
   (sb-ext:disable-debugger)

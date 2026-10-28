@@ -49,8 +49,15 @@ accessor that holds the proxy.")
 (define-handler (wm (river river-window-manager-v1) :session-unlocked) ()
   (setf (wm-locked wm) nil))
 
+(define-condition wm-role-unavailable (wl-error) ()
+  (:report "river reports the WM role as unavailable (is another WM running?)"))
+
 (define-handler (wm (river river-window-manager-v1) :unavailable) ()
-  (log-message :error "river reports the WM role as unavailable (is another WM running?)"))
+  (error 'wm-role-unavailable))
+
+(define-handler (wm (river river-window-manager-v1) :finished) ()
+  (river-window-manager-v1.destroy river)
+  (event-loop-stop (wm-loop wm)))
 
 (defun attach-seat (wm proxy)
   (when (wm-seat wm)
@@ -138,17 +145,6 @@ accessor that holds the proxy.")
         (notify "no IPC: ~A" c)))
     (run-autostart)))
 
-(defun stop-wm ()
-  "Stop the window manager that START-WM started."
-  (when *wm*
-    (let ((thread (wm-thread *wm*)))
-      (when (sb-thread:thread-alive-p thread)
-        (event-loop-stop (wm-loop *wm*))
-        (sb-thread:join-thread thread :default nil)))
-    (stop-ipc *wm*)
-    (wl-display-disconnect (wm-display *wm*))
-    (setf *wm* nil)))
-
 (defmacro in-wm (&body body)
   "Run BODY in the WM thread (asynchronously). REPL threads must never touch
 proxies directly, so wrap all proxy access in this."
@@ -156,3 +152,19 @@ proxies directly, so wrap all proxy access in this."
      (unless *wm*
        (nucleotide-error "nucleotide is not running"))
      (event-loop-post (wm-loop *wm*) (lambda () ,@body))))
+
+(defun stop-wm ()
+  "Stop the window manager that START-WM started. River has a second to answer
+the stop request, and the event loop may have ended already."
+  (when *wm*
+    (let ((thread (wm-thread *wm*)))
+      (handler-case
+          (progn
+            (in-wm (river-window-manager-v1.stop (wm-river *wm*)))
+            (sb-thread:join-thread thread :default nil :timeout 1)
+            (event-loop-stop (wm-loop *wm*)))
+        (nucleotide-error ()))
+      (sb-thread:join-thread thread :default nil))
+    (stop-ipc *wm*)
+    (wl-display-disconnect (wm-display *wm*))
+    (setf *wm* nil)))

@@ -14,7 +14,8 @@ event is logged and skipped.")
   (lock (sb-thread:make-mutex :name "nucleotide event loop"))
   wake-read-fd
   wake-write-fd
-  (running-p t))
+  (running-p t)
+  failure)
 
 (defun make-event-loop (display)
   (multiple-value-bind (read-fd write-fd) (sb-posix:pipe)
@@ -91,7 +92,8 @@ end the loop."
                                        (sb-sys:serve-event))
                     (wl-error (c)
                       (unless (typep c 'wl-disconnected)
-                        (log-message :error "~A" c))
+                        (log-message :error "~A" c)
+                        (setf (loop-failure loop) c))
                       (setf (loop-running-p loop) nil))
                     (error (c)
                       (log-message :error "event loop: ~A" c))))

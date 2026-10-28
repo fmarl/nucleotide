@@ -47,8 +47,8 @@
 (defmacro with-fake-server ((display socket) &body body)
   `(call-with-fake-server (lambda (,display ,socket) ,@body)))
 
-(defun deliver (display socket object interface event &rest args)
-  "Send EVENT with ARGS, integers or strings, and let nucleotide handle it."
+(defun send-event (socket object interface event &rest args)
+  "Send EVENT with ARGS, integers or strings."
   (let* ((buffer (buffer 512))
          (end (reduce (lambda (offset arg)
                         (if (stringp arg)
@@ -60,8 +60,12 @@
           (n::u32ref buffer 4) (logior (ash end 16)
                                        (position event (message-names interface :event)
                                                  :test #'equal)))
-    (sb-bsd-sockets:socket-send socket (subseq buffer 0 end) end)
-    (n::dispatch-event display)))
+    (sb-bsd-sockets:socket-send socket (subseq buffer 0 end) end)))
+
+(defun deliver (display socket object interface event &rest args)
+  "Send EVENT with ARGS and let nucleotide handle it."
+  (apply #'send-event socket object interface event args)
+  (n::dispatch-event display))
 
 (defun received (socket display)
   "The requests sent since the last call, as (interface request object body)."
@@ -195,6 +199,26 @@ opened while the pointer is on the right one."
            (win (n::wm-focus wm)))
       (is (= +new-window+ (n::proxy-id (n::window-proxy win))))
       (is (eq (first (n::wm-outputs wm)) (n::wm-focused-output wm))))))
+
+(test (an-unavailable-wm-role-ends-the-event-loop-as-a-failure :fixture fresh-config)
+  (with-fake-server (display socket)
+    (connect-wm display socket)
+    (let ((loop (n::make-event-loop display))
+          (*error-output* (make-broadcast-stream)))
+      (send-event socket +window-manager+ "river_window_manager_v1" "unavailable")
+      (n::run-event-loop loop)
+      (is (typep (n::loop-failure loop) 'n::wm-role-unavailable)))))
+
+(test (a-finished-window-manager-is-destroyed-and-ends-the-event-loop
+       :fixture fresh-config)
+  (with-fake-server (display socket)
+    (let ((wm (connect-wm display socket))
+          (loop (n::make-event-loop display)))
+      (setf (n::wm-loop wm) loop)
+      (send-event socket +window-manager+ "river_window_manager_v1" "finished")
+      (n::run-event-loop loop)
+      (is (null (n::loop-failure loop)))
+      (is (equal '(("river_window_manager_v1" "destroy")) (names (received socket display)))))))
 
 (test (closing-a-window-destroys-its-proxies :fixture fresh-config)
   (with-fake-server (display socket)
