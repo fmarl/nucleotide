@@ -20,10 +20,8 @@ keys start alacritty and bemenu, and waybar starts with the session.
 
 river takes the keyboard layout from `XKB_DEFAULT_LAYOUT`,
 `XKB_DEFAULT_VARIANT` and `XKB_DEFAULT_OPTIONS`, e.g.
-`XKB_DEFAULT_LAYOUT=de river -c nucleotide`. With several layouts, like
-`us,ru`, key bindings follow the active one. Set `*bindings-layout*` to `0` to
-match them with the first layout, so that they keep working while another one
-is active. Only keys of that layout can then be bound.
+`XKB_DEFAULT_LAYOUT=de river -c nucleotide`. With several layouts, set
+`*bindings-layout*` to `0` to keep the bindings on the first one.
 
 ## Keys
 | Keys | Action |
@@ -35,12 +33,10 @@ is active. Only keys of that layout can then be bound.
 | `Super+Shift+F` | Toggle fullscreen |
 | `Super+M` | Toggle maximized: cover the monitor except for bars |
 | `Super+Shift+Space` | Toggle floating |
-| `Super+Space E` | Show Emacs and its dialogs alone on the focused monitor, or stop |
+| `Super+Space E` | Show Emacs alone on the focused monitor, or stop |
 | `Super+Space C` | Reload the init file |
 | `Super+Space R` | Open or close the REPL |
 | `Super+Space Q` | Quit the session |
-
-While a screen locker like swaylock runs, all key and mouse bindings are off.
 
 ## Layouts
 `Super+Space` followed by `T`, `M` or `S` switches the workspace to tiling,
@@ -65,37 +61,25 @@ focused column.
 
 In tiling and monocle, `H`/`K` and `L`/`J` step through the windows instead.
 Set `*default-layout*` to `'scrolling` or `'(tiling :ratio 1/2)` to change the
-layout of new workspaces, and `*gap*` for the gaps of all layouts. Gaps that
-leave no room on a monitor shrink windows to a single pixel.
+layout of new workspaces, and `*gap*` for the gaps of all layouts.
 
-Your own layouts subclass `layout` and define methods for `layout-arrange`,
-and for `layout-update`, `layout-neighbor` and `layout-move` as needed. Their
-initargs are the options that `set-layout` and `*default-layout*` take.
+Your own layouts subclass `layout` and define `layout-arrange`. Their initargs
+are the options of `set-layout`.
 
 ## Monitors
 Every monitor has workspaces 1 to 9. `Super+1` to `Super+9` switch the
 workspace on the focused monitor, and with Ctrl they send the focused window
-there. Both also work with Shift held, for keyboards that send the digits
-shifted. `Super+,` and `Super+.` focus the monitor to the left or right. Add
+there. `Super+,` and `Super+.` focus the monitor to the left or right. Add
 Shift to send the window there, or Ctrl to swap the workspace with the one
 shown there.
 
-New windows open on the monitor under the pointer, dialogs on the one that
-shows their parent. With `*open-on-pointer-output*` set to `nil`, new windows
-open on the focused monitor.
+New windows open on the monitor under the pointer, or on the focused one with
+`*open-on-pointer-output*` set to `nil`.
 
 ## Floating windows
-Dialogs and windows with a fixed size float, centered on their parent or on
-the monitor. Drag a window with `Super` and the left mouse button to move it,
-also to another monitor, or with the right button to resize it. Dragging a
-tiled window makes it float.
-
-Windows get a border instead of their own title bar. Those that insist on
-drawing one can be moved and resized with it, and their maximize button works.
-
-river shows fullscreen windows above all others. So that the focused window is
-never covered, a fullscreen window hides while another window on its monitor
-has the focus, and comes back with the focus.
+Dialogs and windows with a fixed size float. Drag a window with `Super` and the
+left mouse button to move it, or with the right button to resize it. Windows
+get a border instead of their own title bar.
 
 ## Waybar
 nucleotide speaks the IPC of niri and sets `NIRI_SOCKET` for the programs it
@@ -137,30 +121,20 @@ ignored if it or its directory is writable by others.
 ```
 
 Reloading starts from scratch: whatever the file no longer defines disappears,
-and settings it no longer sets return to their defaults. If loading fails, the
-old configuration stays, except for functions and handlers the file redefined
-before the error. A few settings, like `*num-of-workspaces*`, only take effect
-after a restart.
-
-Mistakes like a binding with a wrong argument, e.g. `(switch-workspace 0)`, or a
-rule with an unknown property keep the file from loading, and a notification
-says why. A function of a rule, a hook or a binding that fails while
-nucleotide runs is reported once in a notification and afterwards in the log.
+and settings it no longer sets return to their defaults. If loading fails, a
+notification says why and the old configuration stays. A few settings, like
+`*num-of-workspaces*`, only take effect after a restart.
 
 ## REPL
-`Super+Space R` opens a Slynk listener on `localhost:4005`. It accepts one
-connection and then stops listening. Pressing the key again closes it early
-without ending an open SLY session. Only clients that know the secret in
-`~/.sly-secret` get in. nucleotide creates that file with mode 600 and won't
-open the port if others can read it. SLY reads the same file, so
+`Super+Space R` opens a Slynk listener on `localhost:4005` for one connection.
+Only clients that know the secret in `~/.sly-secret` get in, so
 `M-x sly-connect` works without further setup.
 
 ## Development
 Inside `guix shell -m manifest.scm`, `make` builds `./nucleotide`, which you
 start with `river -c ./nucleotide`. `make check` runs the tests and `make lint`
-the linter. `make integration` runs nucleotide against a river without a
-display and needs river, weston and wlr-randr, e.g.
-`guix shell -m manifest.scm river weston wlr-randr -- make integration`.
+the linter. `make integration` runs nucleotide in a headless river and needs
+river, weston and wlr-randr.
 
 `sbcl --load dev.lisp` runs nucleotide from source with a listener that stays
 open. REPL code that touches the window manager has to run in its thread, so
