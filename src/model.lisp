@@ -62,7 +62,8 @@ did not move in place until the window moves.")
                     :writer (setf %window-decoration-hint))
    (pending-size :initform nil :reader window-pending-size :writer (setf %window-pending-size)
                  :documentation "The size to propose to a floating window.")
-   (rules-applied :initform nil :reader window-rules-applied-p :writer (setf %window-rules-applied-p))))
+   (rules-applied :initform nil :reader window-rules-applied-p
+                  :writer (setf %window-rules-applied-p))))
 
 (defmethod print-object ((win window) stream)
   (print-unreadable-object (win stream :type t :identity t)

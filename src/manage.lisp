@@ -38,8 +38,9 @@ outside of submaps again, new ones among them."
   (drain-requests (wm)
                   (:enter-submap (submap)
                                  (mapc #'river-xkb-binding-v1.enable (submap-bindings submap))
-                                 (when (wm-xkb-seat wm)
-                                   (river-xkb-bindings-seat-v1.ensure-next-key-eaten (wm-xkb-seat wm))))
+                                 (let ((seat (wm-xkb-seat wm)))
+                                   (when seat
+                                     (river-xkb-bindings-seat-v1.ensure-next-key-eaten seat))))
                   (:leave-submap (submap)
                                  (mapc #'river-xkb-binding-v1.disable (submap-bindings submap)))))
 
