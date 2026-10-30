@@ -4,7 +4,7 @@
 (asdf:defsystem #:nucleotide
   :description "A hackable window manager for the river Wayland compositor"
   :license "GPL-3.0-or-later"
-  :version "0.5.0"
+  :version "0.5.1"
   :depends-on (#:sb-bsd-sockets #:sb-concurrency #:sb-posix)
   :pathname "src"
   :serial t
