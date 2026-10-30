@@ -36,6 +36,13 @@ like /*(U+...)*/ or /*<U+...>*/."
           do (setf (gethash name table) keysym))
     table))
 
+(defun keysym-name-table (entries)
+  (let ((table (make-hash-table)))
+    (loop for (name keysym) in entries
+          unless (gethash keysym table)
+          do (setf (gethash keysym table) name))
+    table))
+
 (defun codepoint-table (entries)
   (let ((table (make-hash-table)))
     (loop for (nil keysym codepoint) in entries
@@ -64,33 +71,45 @@ letters, like Greek_alpha, as in xkb_keysym_from_name."
     `(progn
        (defparameter *keysyms* (keysym-table ',entries))
        (defparameter *keysyms-ignoring-case* (keysym-table-ignoring-case *keysyms*))
+       (defparameter *keysym-names* (keysym-name-table ',entries))
        (defparameter *codepoint-keysyms* (codepoint-table ',entries)))))
 
 (define-keysyms)
+
+(defconstant +unicode-keysym+ #x1000000)
+
+(defun latin-1-printable-p (code)
+  (or (<= #x20 code #x7e) (<= #xa0 code #xff)))
 
 (defun char-keysym (char)
   "The keysym of CHAR as in xkb_utf32_to_keysym, like EuroSign for €: river
 matches bindings with the keysyms of the layout."
   (let ((code (char-code char)))
-    (cond ((or (<= #x20 code #x7e) (<= #xa0 code #xff)) code)
+    (cond ((latin-1-printable-p code) code)
           ((gethash code *codepoint-keysyms*))
-          (t (logior #x1000000 code)))))
+          (t (logior +unicode-keysym+ code)))))
+
+(defun keysym-char (keysym)
+  (let ((code (- keysym +unicode-keysym+)))
+    (cond ((latin-1-printable-p keysym) (code-char keysym))
+          ((<= #x100 code #x10ffff) (code-char code)))))
 
 (defun keysym-from-name (name)
   (or (gethash name *keysyms*)
       (cdr (gethash name *keysyms-ignoring-case*))))
 
 (defparameter *modifier-names*
-  `(("Shift" . ,+river-seat-v1-modifiers-shift+)
+  `(("Super" . ,+river-seat-v1-modifiers-mod4+)
+    ("Mod4" . ,+river-seat-v1-modifiers-mod4+)
+    ("Mod" . ,+river-seat-v1-modifiers-mod4+)
     ("Ctrl" . ,+river-seat-v1-modifiers-ctrl+)
     ("Control" . ,+river-seat-v1-modifiers-ctrl+)
     ("Alt" . ,+river-seat-v1-modifiers-mod1+)
     ("Mod1" . ,+river-seat-v1-modifiers-mod1+)
+    ("Shift" . ,+river-seat-v1-modifiers-shift+)
     ("Mod3" . ,+river-seat-v1-modifiers-mod3+)
-    ("Super" . ,+river-seat-v1-modifiers-mod4+)
-    ("Mod4" . ,+river-seat-v1-modifiers-mod4+)
-    ("Mod" . ,+river-seat-v1-modifiers-mod4+)
-    ("Mod5" . ,+river-seat-v1-modifiers-mod5+)))
+    ("Mod5" . ,+river-seat-v1-modifiers-mod5+))
+  "The first name of a modifier is its display name.")
 
 (defun split (string separator)
   (remove "" (uiop:split-string string :separator separator) :test #'string=))
@@ -117,6 +136,21 @@ matches bindings with the keysyms of the layout."
     (unless parts
       (nucleotide-error "~S is not a key" key))
     (cons (key-keysym (car (last parts))) (parse-modifiers (butlast parts)))))
+
+(defun keysym-display-name (keysym)
+  (let ((char (keysym-char keysym)))
+    (cond ((eql char #\Space) "Space")
+          (char (string (char-upcase char)))
+          ((gethash keysym *keysym-names*))
+          (t (format nil "0x~X" keysym)))))
+
+(defun key-display-name (key)
+  (destructuring-bind (keysym . modifiers) key
+    (format nil "~{~A+~}~A"
+            (loop for (name . bit) in (remove-duplicates *modifier-names* :key #'cdr :from-end t)
+                  when (logtest modifiers bit)
+                  collect name)
+            (keysym-display-name keysym))))
 
 (defun parse-key-sequence (keys)
   (let ((sequence (mapcar #'parse-key (split keys " "))))

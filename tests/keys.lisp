@@ -32,6 +32,18 @@
   (signals n::nucleotide-error (n::parse-key "Super+NoSuchKey"))
   (signals n::nucleotide-error (n::parse-key "")))
 
+(test key-display-names
+  (is (equal "Super+Space" (n::key-display-name (n::parse-key "Mod4+space"))))
+  (is (equal "Super+Ctrl+Shift+C" (n::key-display-name (n::parse-key "Shift+Super+Ctrl+c"))))
+  (is (equal "Super+[" (n::key-display-name (n::parse-key "Super+BracketLeft"))))
+  (is (equal "Return" (n::key-display-name (n::parse-key "Return"))))
+  (is (equal "XF86AudioPlay" (n::key-display-name (n::parse-key "XF86AudioPlay"))))
+  (is (equal "EuroSign" (n::key-display-name (n::parse-key (string (code-char #x20ac))))))
+  (is (equal (string (code-char #x531))
+             (n::key-display-name (n::parse-key "armenian_AYB"))))
+  (is (equal "Super+0x1000001"
+             (n::key-display-name (n::parse-key (format nil "Super+~C" (code-char 1)))))))
+
 (test key-sequences
   (is (equal '((#x20 . 64) (#x74 . 0)) (n::parse-key-sequence "Super+Space T")))
   (signals n::nucleotide-error (n::parse-key-sequence "A B C")))

@@ -86,6 +86,16 @@ nucleotide speaks the IPC of niri and sets `NIRI_SOCKET` for the programs it
 starts. waybar's `niri/workspaces` and `niri/window` modules then show the
 workspaces and the title of the focused window.
 
+The request `"KeyChordStream"` sends `{"KeyChordChanged":{"keys":"Super+Space"}}`
+when a chord starts and `"keys":null` when it ends. `examples/waybar/key-chords`
+shows it in a custom module:
+
+```json
+"custom/chord": {
+    "exec": "/path/to/key-chords"
+}
+```
+
 ## Configuration
 At startup nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp` into the
 `nucleotide.user` package, which sees the symbols that `nucleotide` exports.

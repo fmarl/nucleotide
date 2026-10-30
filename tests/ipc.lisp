@@ -53,7 +53,7 @@
       (is (eq target (n::wm-active-workspace wm)))
       (is (search "Err" (first (n::handle-ipc-request wm client (focus-request 0)))))
       (is (search "Err" (first (n::handle-ipc-request wm client (json:parse "\"Version\"")))))
-      (is (not (n::ipc-client-subscribed-p client))))))
+      (is (null (n::ipc-client-subscription client))))))
 
 (test focus-workspace-requests-ignore-workspaces-without-output
   (let* ((wm (make-test-wm))
@@ -83,7 +83,7 @@
       (is (= 3 (length replies)))
       (is (search "WorkspacesChanged" (second replies)))
       (is (search "WindowsChanged" (third replies)))
-      (is (n::ipc-client-subscribed-p client)))))
+      (is (equal "EventStream" (n::ipc-client-subscription client))))))
 
 (test requests-with-wrong-types-or-bytes-get-errors
   (let ((wm (make-test-wm))
@@ -186,6 +186,36 @@
         (is (search (format nil "\"active_window_id\":~D" (n::window-id first-win)) workspaces))
         (is (search "WindowsChanged" windows))
         (is (null (read-reply stream)))))))
+
+(test key-chord-subscribers-see-the-prefix
+  (let ((wm (make-test-wm)))
+    (add-output wm 0 :name "eDP-1")
+    (with-ipc-connection (stream wm ipc)
+      (write-line "\"KeyChordStream\"" stream)
+      (finish-output stream)
+      (is (equal n::*ipc-ok* (read-reply stream)))
+      (is (equal "{\"KeyChordChanged\":{\"keys\":null}}" (read-reply stream)))
+      (setf (n::wm-active-submap wm) (n::make-submap :keys "Super+Space"))
+      (n::ipc-update wm)
+      (is (equal "{\"KeyChordChanged\":{\"keys\":\"Super+Space\"}}" (read-reply stream)))
+      (n::ipc-update wm)
+      (is (null (read-reply stream)))
+      (open-window-on (n::output-workspace (first (n::wm-outputs wm))))
+      (n::ipc-update wm)
+      (is (null (read-reply stream)))
+      (setf (n::wm-active-submap wm) nil)
+      (n::ipc-update wm)
+      (is (equal "{\"KeyChordChanged\":{\"keys\":null}}" (read-reply stream)))
+      (is (null (read-reply stream))))))
+
+(test event-stream-subscribers-get-no-key-chords
+  (let ((wm (make-test-wm)))
+    (add-output wm 0 :name "eDP-1")
+    (with-ipc-connection (stream wm ipc)
+      (subscribe stream)
+      (setf (n::wm-active-submap wm) (n::make-submap :keys "Super+Space"))
+      (n::ipc-update wm)
+      (is (null (read-reply stream))))))
 
 (test clients-that-stop-reading-are-dropped
   (let* ((wm (make-test-wm))

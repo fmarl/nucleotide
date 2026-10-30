@@ -4,6 +4,7 @@
 (in-package #:nucleotide)
 
 (defstruct submap
+  (keys "")
   (bindings '()))
 
 (defgeneric enable-binding (binding)
@@ -66,7 +67,7 @@ then be bound."
 
 (defun prefix-submap (wm submaps prefix)
   (or (gethash prefix submaps)
-      (let ((submap (make-submap)))
+      (let ((submap (make-submap :keys (key-display-name prefix))))
         (bind-key wm (car prefix) (cdr prefix) (lambda () (enter-submap wm submap)))
         (push submap (wm-submaps wm))
         (setf (gethash prefix submaps) submap))))

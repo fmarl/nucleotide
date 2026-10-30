@@ -7,14 +7,14 @@
   path
   listener
   (clients '())
-  (last-events '()))
+  (last-events (make-hash-table :test #'equal)))
 
 (defstruct (ipc-client (:constructor make-ipc-client (socket)))
   "A client is closed once its SOCKET is NIL."
   socket
   handler
   (input (make-array 0 :element-type '(unsigned-byte 8)) :type octets)
-  subscribed-p)
+  subscription)
 
 (defconstant +ipc-max-request+ 65536)
 
@@ -80,6 +80,15 @@ and then shows the window that its workspace's active_window_id names."
                                 :object ("workspaces" . ,(niri-workspaces wm)))))
         (json:encode `(:object ("WindowsChanged" :object ("windows" . ,(niri-windows wm)))))))
 
+(defun key-chord-events (wm)
+  (let ((submap (wm-active-submap wm)))
+    (list (json:encode `(:object ("KeyChordChanged"
+                                  :object ("keys" . ,(if submap (submap-keys submap) :null))))))))
+
+(defparameter *ipc-streams*
+  '(("EventStream" . niri-events)
+    ("KeyChordStream" . key-chord-events)))
+
 (defun ipc-error (message)
   (json:encode `(:object ("Err" . ,message))))
 
@@ -111,13 +120,15 @@ and then shows the window that its workspace's active_window_id names."
           ((typep index '(integer 1)) (nth-workspace wm (1- index))))))
 
 (defun handle-ipc-request (wm client request)
-  "Act on REQUEST and return the reply lines. EventStream subscribes CLIENT,
-FocusWorkspace switches the workspace."
-  (let* ((reference (json:lookup request "Action" "FocusWorkspace" "reference"))
+  "Act on REQUEST and return the reply lines. The requests of *IPC-STREAMS*
+subscribe CLIENT, FocusWorkspace switches the workspace."
+  (let* ((stream (assoc request *ipc-streams* :test #'equal))
+         (reference (json:lookup request "Action" "FocusWorkspace" "reference"))
          (ws (and reference (referenced-workspace wm reference))))
-    (cond ((equal request "EventStream")
-           (setf (ipc-client-subscribed-p client) t)
-           (cons *ipc-ok* (niri-events wm)))
+    (cond (stream
+           (destructuring-bind (name . function) stream
+             (setf (ipc-client-subscription client) name)
+             (cons *ipc-ok* (funcall function wm))))
           ((null reference) (list (ipc-error "unsupported request")))
           ((null ws) (list (ipc-error "no such workspace")))
           (t (end-highlight wm)
@@ -204,18 +215,23 @@ IPC-LISTEN."
     (close-ipc (wm-ipc wm))
     (setf (wm-ipc wm) nil)))
 
+(defun changed-events (events last-events)
+  "EVENTS from the first one that differs from LAST-EVENTS."
+  (loop for tail on events
+        for last = last-events then (rest last)
+        unless (equal (first tail) (first last))
+        return tail))
+
 (defun ipc-update (wm)
   "Send subscribers every event from the first one that changed."
   (let ((ipc (wm-ipc wm)))
     (when ipc
-      (let* ((events (niri-events wm))
-             (changed (loop for tail on events
-                            for last in (or (ipc-last-events ipc) '(nil nil))
-                            unless (equal (first tail) last)
-                            return tail)))
-        (setf (ipc-last-events ipc) events
-              (ipc-clients ipc) (remove-if-not #'ipc-client-socket (ipc-clients ipc)))
-        (dolist (client (ipc-clients ipc))
-          (when (ipc-client-subscribed-p client)
-            (dolist (event changed)
-              (ipc-send client event))))))))
+      (setf (ipc-clients ipc) (remove-if-not #'ipc-client-socket (ipc-clients ipc)))
+      (loop for (name . function) in *ipc-streams*
+            for events = (funcall function wm)
+            for changed = (changed-events events (gethash name (ipc-last-events ipc)))
+            do (setf (gethash name (ipc-last-events ipc)) events)
+            (dolist (client (ipc-clients ipc))
+              (when (equal name (ipc-client-subscription client))
+                (dolist (event changed)
+                  (ipc-send client event))))))))
