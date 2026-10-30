@@ -63,9 +63,6 @@ In tiling and monocle, `H`/`K` and `L`/`J` step through the windows instead.
 Set `*default-layout*` to `'scrolling` or `'(tiling :ratio 1/2)` to change the
 layout of new workspaces, and `*gap*` for the gaps of all layouts.
 
-Your own layouts subclass `layout` and define `layout-arrange`. Their initargs
-are the options of `set-layout`.
-
 ## Monitors
 Every monitor has workspaces 1 to 9. `Super+1` to `Super+9` switch the
 workspace on the focused monitor, and with Ctrl they send the focused window
@@ -82,23 +79,13 @@ left mouse button to move it, or with the right button to resize it. Windows
 get a border instead of their own title bar.
 
 ## Waybar
-nucleotide speaks the IPC of niri and sets `NIRI_SOCKET` for the programs it
-starts. waybar's `niri/workspaces` and `niri/window` modules then show the
-workspaces and the title of the focused window.
+waybar's `niri/workspaces` and `niri/window` modules show the workspaces and
+the title of the focused window.
 
-The request `"WhichKeyStream"` sends
-`{"WhichKeyChanged":{"keys":"Super+Space","bindings":[{"key":"T","description":"tiling"},...]}}`
-when a chord starts and `"keys":null` when it ends. The description is the one
-given to `bind`, like
-`(bind "Super+Space T" (set-layout tiling) :description "tiling")`, or else the
-action as written.
-
-With `*which-key-delay*` set to milliseconds, like `500`, holding
-`*which-key-modifier*` (`"Super"`) that long without pressing a binding sends the
-bindings of the held modifiers the same way, like `"keys":"Super"`. Chord
-prefixes among them come as `{"key":"Space","prefix":true}`.
-
-`examples/waybar/which-key` shows the keys in a custom module. It needs `jq`:
+`examples/waybar/which-key` is a module that shows which keys come next after
+a prefix like `Super+Space`. With `*which-key-delay*` set to milliseconds, like
+`500`, it also shows the bindings of `Super` when you hold it that long. It
+needs `jq`:
 
 ```json
 "custom/which-key": {
@@ -107,13 +94,14 @@ prefixes among them come as `{"key":"Space","prefix":true}`.
 }
 ```
 
-While keys are shown the module has the class `active`.
+While keys are shown the module has the class `active`. Bindings show their
+action unless you give them a name:
+`(bind "Super+Space T" (set-layout tiling) :description "tiling")`.
 
 ## Configuration
-At startup nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp` into the
-`nucleotide.user` package, which sees the symbols that `nucleotide` exports.
-Without it you get the default keys from `src/defaults.lisp`. The file is
-ignored if it or its directory is writable by others.
+At startup nucleotide loads `~/.config/nucleotide/init.lisp`. Without it you
+get the default keys. The file is ignored if it or its directory is writable
+by others.
 
 ```lisp
 (use-defaults)
@@ -153,12 +141,4 @@ notification says why and the old configuration stays. A few settings, like
 Only clients that know the secret in `~/.sly-secret` get in, so
 `M-x sly-connect` works without further setup.
 
-## Development
-Inside `guix shell -m manifest.scm`, `make` builds `./nucleotide`, which you
-start with `river -c ./nucleotide`. `make check` runs the tests and `make lint`
-the linter. `make integration` runs nucleotide in a headless river and needs
-river, weston and wlr-randr.
-
-`sbcl --load dev.lisp` runs nucleotide from source with a listener that stays
-open. REPL code that touches the window manager has to run in its thread, so
-wrap it in `in-wm`, e.g. `(in-wm (reload-config *wm*))`.
+For working on nucleotide itself, see [HACKING.md](HACKING.md).
