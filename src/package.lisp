@@ -57,6 +57,8 @@
    #:*resize-button*
    #:*scroll-factor*
    #:*warp-pointer*
+   #:*which-key-delay*
+   #:*which-key-modifier*
    #:*window-heights*
    ;; Commands
    #:center-column

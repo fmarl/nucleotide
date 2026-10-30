@@ -86,15 +86,28 @@ nucleotide speaks the IPC of niri and sets `NIRI_SOCKET` for the programs it
 starts. waybar's `niri/workspaces` and `niri/window` modules then show the
 workspaces and the title of the focused window.
 
-The request `"KeyChordStream"` sends `{"KeyChordChanged":{"keys":"Super+Space"}}`
-when a chord starts and `"keys":null` when it ends. `examples/waybar/key-chords`
-shows it in a custom module:
+The request `"WhichKeyStream"` sends
+`{"WhichKeyChanged":{"keys":"Super+Space","bindings":[{"key":"T","description":"tiling"},...]}}`
+when a chord starts and `"keys":null` when it ends. The description is the one
+given to `bind`, like
+`(bind "Super+Space T" (set-layout tiling) :description "tiling")`, or else the
+action as written.
+
+With `*which-key-delay*` set to milliseconds, like `500`, holding
+`*which-key-modifier*` (`"Super"`) that long without pressing a binding sends the
+bindings of the held modifiers the same way, like `"keys":"Super"`. Chord
+prefixes among them come as `{"key":"Space","prefix":true}`.
+
+`examples/waybar/which-key` shows the keys in a custom module. It needs `jq`:
 
 ```json
-"custom/chord": {
-    "exec": "/path/to/key-chords"
+"custom/which-key": {
+    "exec": "/path/to/which-key",
+    "return-type": "json"
 }
 ```
+
+While keys are shown the module has the class `active`.
 
 ## Configuration
 At startup nucleotide loads `$XDG_CONFIG_HOME/nucleotide/init.lisp` into the

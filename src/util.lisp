@@ -44,3 +44,15 @@ contain arguments (\"alacritty -e htop\"). A list is used as argv directly."
 
 (defun alist-set (key value alist)
   (acons key value (alist-remove key alist)))
+
+(defun group-by (key list)
+  "Alist from the KEYs of the elements of LIST to those elements, both in the
+order of LIST."
+  (let ((groups '()))
+    (dolist (element list)
+      (let* ((k (funcall key element))
+             (group (or (assoc k groups :test #'equal)
+                        (first (push (list k) groups)))))
+        (push element (cdr group))))
+    (loop for (k . elements) in (reverse groups)
+          collect (cons k (reverse elements)))))

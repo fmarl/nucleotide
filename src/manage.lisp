@@ -203,6 +203,7 @@ to another window or a window is clicked."
 or end, ops before the layout places windows, and the layout before pending
 sizes, focus and IPC see the result."
   (manage-bindings wm)
+  (manage-modifiers-watch wm)
   (manage-closes wm)
   (manage-submap wm)
   (manage-new-windows wm)

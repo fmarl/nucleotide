@@ -1,0 +1,14 @@
+#!/usr/bin/env zsh
+
+zmodload zsh/net/socket
+zsocket $NIRI_SOCKET || exit 1
+print -u $REPLY '"WhichKeyStream"'
+${JQ:-jq} --unbuffered -c '
+  .WhichKeyChanged // empty
+  | if .keys == null then {text: ""}
+    else {class: "active",
+          text: (["<b>\(.keys | @html)</b>"]
+                 + [.bindings[]
+                    | "<b>\(.key | @html)</b> <span alpha=\"60%\">\(.description // "…" | @html)</span>"]
+                 | join("   "))}
+    end' <&$REPLY

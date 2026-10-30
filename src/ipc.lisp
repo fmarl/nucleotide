@@ -80,14 +80,30 @@ and then shows the window that its workspace's active_window_id names."
                                 :object ("workspaces" . ,(niri-workspaces wm)))))
         (json:encode `(:object ("WindowsChanged" :object ("windows" . ,(niri-windows wm)))))))
 
-(defun key-chord-events (wm)
-  (let ((submap (wm-active-submap wm)))
-    (list (json:encode `(:object ("KeyChordChanged"
-                                  :object ("keys" . ,(if submap (submap-keys submap) :null))))))))
+(defun which-key-bindings (entries)
+  (loop for entry in entries
+        collect `(:object ("key" . ,(key-entry-key entry))
+                          ,(if (key-entry-prefix-p entry)
+                               '("prefix" . :true)
+                               `("description" . ,(key-entry-label entry))))))
+
+(defun which-key-events (wm)
+  "The pending chord, or else the modifiers which-key shows."
+  (let ((submap (wm-active-submap wm))
+        (modifiers (which-key-shown (wm-which-key wm))))
+    (multiple-value-bind (keys entries)
+        (cond (submap (values (submap-keys submap) (submap-entries submap)))
+              (modifiers (values (format nil "~{~A~^+~}" (modifier-display-names modifiers))
+                                 (alist-get modifiers (wm-modifier-entries wm))))
+              (t (values nil '())))
+      (list (json:encode `(:object ("WhichKeyChanged"
+                                    :object ("keys" . ,(or keys :null))
+                                    ,@(when keys
+                                        `(("bindings" . ,(which-key-bindings entries)))))))))))
 
 (defparameter *ipc-streams*
   '(("EventStream" . niri-events)
-    ("KeyChordStream" . key-chord-events)))
+    ("WhichKeyStream" . which-key-events)))
 
 (defun ipc-error (message)
   (json:encode `(:object ("Err" . ,message))))

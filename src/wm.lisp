@@ -47,7 +47,8 @@ accessor that holds the proxy.")
 
 (define-handler (wm (river river-window-manager-v1) :session-locked) ()
   (setf (wm-locked wm) t)
-  (leave-submap wm))
+  (leave-submap wm)
+  (dismiss-which-key wm))
 
 (define-handler (wm (river river-window-manager-v1) :session-unlocked) ()
   (setf (wm-locked wm) nil))

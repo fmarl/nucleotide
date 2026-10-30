@@ -38,8 +38,19 @@
 (def-fixture fresh-config ()
   (with-fresh-config (&body)))
 
+(defun keybind (keys)
+  (find (n::parse-key-sequence keys) n::*bindings* :key #'n::keybind-keys :test #'equal))
+
+(defun entry-pairs (entries)
+  "ENTRIES as (key . label), and (key) for a prefix."
+  (loop for entry in entries
+        collect (if (n::key-entry-prefix-p entry)
+                    (list (n::key-entry-key entry))
+                    (cons (n::key-entry-key entry) (n::key-entry-label entry)))))
+
 (defun action (keys)
-  (cdr (assoc (n::parse-key-sequence keys) n::*bindings* :test #'equal)))
+  (let ((keybind (keybind keys)))
+    (and keybind (n::keybind-action keybind))))
 
 (defun make-test-wm ()
   (let ((workspaces (let ((n::*num-of-workspaces* 4)) (n::make-workspaces))))

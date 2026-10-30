@@ -142,6 +142,7 @@ nothing is highlighted.")
           :documentation "Alist from the name of a removed output to its workspaces.")
    (active-workspace :initarg :active-workspace :accessor wm-active-workspace)
    (active-submap :initform nil :accessor wm-active-submap)
+   (which-key :initform (make-which-key) :reader wm-which-key)
    (layer-shell-focus :initform nil :accessor wm-layer-shell-focus)
    (highlight :initform nil :accessor wm-highlight)
    (focus-history :initform '() :accessor wm-focus-history
@@ -154,6 +155,8 @@ nothing is highlighted.")
    (bindings :initform '() :accessor wm-bindings
              :documentation "The bindings outside of SUBMAPS.")
    (submaps :initform '() :accessor wm-submaps)
+   (modifier-entries :initform '() :accessor wm-modifier-entries
+                     :documentation "MODIFIER-ENTRIES of the installed bindings.")
    (locked :initform nil :accessor wm-locked)
    (bindings-locked :initform nil :accessor wm-bindings-locked
                     :documentation "Whether the bindings are disabled for a locked session.

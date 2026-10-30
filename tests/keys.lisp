@@ -70,6 +70,20 @@
   (is (equal '(n::toggle-floating) (action "Super+Space")))
   (is (= 1 (length n::*bindings*))))
 
+(test (bindings-are-described-by-their-description-or-action :fixture fresh-config)
+  (flet ((description (keys)
+           (n::keybind-label (keybind keys))))
+    (n::bind "Super+Space T" (n::set-layout n::tiling) :description "tiling")
+    (n::bind "Super+Space E" (n::toggle-highlight :app-id "Emacs"))
+    (n::bind "Super+Space Q" n::exit-session)
+    (is (equal "tiling" (description "Super+Space T")))
+    (is (equal "toggle-highlight :app-id \"Emacs\"" (description "Super+Space E")))
+    (is (equal "exit-session" (description "Super+Space Q")))
+    (n::bind "Super+Space T" (n::set-layout n::monocle))
+    (is (equal "set-layout monocle" (description "Super+Space T")))
+    (signals n::nucleotide-error
+             (n::bind "Super+Space M" (n::set-layout n::monocle) :description 'monocle))))
+
 (test (unbind :fixture fresh-config)
   (n::bind "Super+Q" n::close-window)
   (n::unbind "Super+Q")

@@ -187,17 +187,18 @@
         (is (search "WindowsChanged" windows))
         (is (null (read-reply stream)))))))
 
-(test key-chord-subscribers-see-the-prefix
+(test which-key-subscribers-see-the-prefix
   (let ((wm (make-test-wm)))
     (add-output wm 0 :name "eDP-1")
     (with-ipc-connection (stream wm ipc)
-      (write-line "\"KeyChordStream\"" stream)
+      (write-line "\"WhichKeyStream\"" stream)
       (finish-output stream)
       (is (equal n::*ipc-ok* (read-reply stream)))
-      (is (equal "{\"KeyChordChanged\":{\"keys\":null}}" (read-reply stream)))
+      (is (equal "{\"WhichKeyChanged\":{\"keys\":null}}" (read-reply stream)))
       (setf (n::wm-active-submap wm) (n::make-submap :keys "Super+Space"))
       (n::ipc-update wm)
-      (is (equal "{\"KeyChordChanged\":{\"keys\":\"Super+Space\"}}" (read-reply stream)))
+      (is (equal "{\"WhichKeyChanged\":{\"keys\":\"Super+Space\",\"bindings\":[]}}"
+                 (read-reply stream)))
       (n::ipc-update wm)
       (is (null (read-reply stream)))
       (open-window-on (n::output-workspace (first (n::wm-outputs wm))))
@@ -205,10 +206,29 @@
       (is (null (read-reply stream)))
       (setf (n::wm-active-submap wm) nil)
       (n::ipc-update wm)
-      (is (equal "{\"KeyChordChanged\":{\"keys\":null}}" (read-reply stream)))
+      (is (equal "{\"WhichKeyChanged\":{\"keys\":null}}" (read-reply stream)))
       (is (null (read-reply stream))))))
 
-(test event-stream-subscribers-get-no-key-chords
+(test which-key-subscribers-see-the-keys-that-end-the-chord
+  (let ((wm (make-test-wm)))
+    (add-output wm 0 :name "eDP-1")
+    (with-ipc-connection (stream wm ipc)
+      (write-line "\"WhichKeyStream\"" stream)
+      (finish-output stream)
+      (read-reply stream)
+      (read-reply stream)
+      (setf (n::wm-active-submap wm)
+            (n::make-submap :keys "Super+Space"
+                            :entries (list (n::make-key-entry "T" "tiling")
+                                           (n::make-key-entry "Q" "<quit>"))))
+      (n::ipc-update wm)
+      (is (equal (concatenate 'string
+                              "{\"WhichKeyChanged\":{\"keys\":\"Super+Space\",\"bindings\":["
+                              "{\"key\":\"T\",\"description\":\"tiling\"},"
+                              "{\"key\":\"Q\",\"description\":\"<quit>\"}]}}")
+                 (read-reply stream))))))
+
+(test event-stream-subscribers-get-no-which-key
   (let ((wm (make-test-wm)))
     (add-output wm 0 :name "eDP-1")
     (with-ipc-connection (stream wm ipc)

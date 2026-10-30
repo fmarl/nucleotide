@@ -111,6 +111,11 @@ matches bindings with the keysyms of the layout."
     ("Mod5" . ,+river-seat-v1-modifiers-mod5+))
   "The first name of a modifier is its display name.")
 
+(defconstant +all-modifiers+
+  (logior +river-seat-v1-modifiers-shift+ +river-seat-v1-modifiers-ctrl+
+          +river-seat-v1-modifiers-mod1+ +river-seat-v1-modifiers-mod3+
+          +river-seat-v1-modifiers-mod4+ +river-seat-v1-modifiers-mod5+))
+
 (defun split (string separator)
   (remove "" (uiop:split-string string :separator separator) :test #'string=))
 
@@ -144,13 +149,14 @@ matches bindings with the keysyms of the layout."
           ((gethash keysym *keysym-names*))
           (t (format nil "0x~X" keysym)))))
 
+(defun modifier-display-names (modifiers)
+  (loop for (name . bit) in (remove-duplicates *modifier-names* :key #'cdr :from-end t)
+        when (logtest modifiers bit)
+        collect name))
+
 (defun key-display-name (key)
   (destructuring-bind (keysym . modifiers) key
-    (format nil "~{~A+~}~A"
-            (loop for (name . bit) in (remove-duplicates *modifier-names* :key #'cdr :from-end t)
-                  when (logtest modifiers bit)
-                  collect name)
-            (keysym-display-name keysym))))
+    (format nil "~{~A+~}~A" (modifier-display-names modifiers) (keysym-display-name keysym))))
 
 (defun parse-key-sequence (keys)
   (let ((sequence (mapcar #'parse-key (split keys " "))))
@@ -158,30 +164,57 @@ matches bindings with the keysyms of the layout."
       (nucleotide-error "~S is not a key or a prefix and a key" keys))
     sequence))
 
+(defstruct (keybind (:constructor make-keybind (keys action description)))
+  "KEYS are a key or a prefix and a key, each (keysym . modifiers)."
+  keys
+  action
+  description)
+
+(defun keybind-first-key (keybind)
+  (first (keybind-keys keybind)))
+
+(defun keybind-chord-key (keybind)
+  "The key after the prefix of a chord, or NIL."
+  (second (keybind-keys keybind)))
+
+(defun keybind-label (keybind)
+  "The description of KEYBIND, or its action as written in the init file."
+  (or (keybind-description keybind)
+      (let ((*package* (find-package '#:nucleotide.user))
+            (*print-case* :downcase)
+            (*print-pretty* nil))
+        (format nil "~{~S~^ ~}" (keybind-action keybind)))))
+
 (defvar *bindings* '()
-  "Alist from key sequences, lists of (keysym . modifiers), to actions.")
+  "The keybinds in the order they were bound.")
 
 (defun prefix-p (a b)
   (and (< (length a) (length b)) (equal a (subseq b 0 (length a)))))
 
-(defun set-binding (keys action)
+(define-value-type description "a string like \"tiling\""
+  :type (or null string))
+
+(defun set-binding (keys action &key description)
   "Like BIND with an evaluated ACTION. Replaces bindings of the same keys and of
 chords that share their prefix with KEYS."
   (let ((sequence (parse-key-sequence keys))
         (action (normalize-action action)))
+    (check-value description 'description)
     (setf *bindings*
           (append (remove-if (lambda (other)
                                (or (equal other sequence)
                                    (prefix-p other sequence)
                                    (prefix-p sequence other)))
-                             *bindings* :key #'car)
-                  (list (cons sequence action))))
+                             *bindings* :key #'keybind-keys)
+                  (list (make-keybind sequence action description))))
     keys))
 
-(defmacro bind (keys action)
-  "Bind KEYS, like \"Super+Q\" or \"Super+Space T\", to ACTION, like (focus :left)."
-  `(set-binding ,keys ',action))
+(defmacro bind (keys action &key description)
+  "Bind KEYS, like \"Super+Q\" or \"Super+Space T\", to ACTION, like (focus :left).
+DESCRIPTION, like \"tiling\", names ACTION for which-key."
+  `(set-binding ,keys ',action :description ,description))
 
 (defun unbind (keys)
   "Remove the binding of KEYS."
-  (setf *bindings* (remove (parse-key-sequence keys) *bindings* :key #'car :test #'equal)))
+  (setf *bindings* (remove (parse-key-sequence keys) *bindings*
+                           :key #'keybind-keys :test #'equal)))

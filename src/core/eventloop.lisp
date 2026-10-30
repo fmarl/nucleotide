@@ -14,8 +14,47 @@ event is logged and skipped.")
   (lock (sb-thread:make-mutex :name "nucleotide event loop"))
   wake-read-fd
   wake-write-fd
+  (timers '())
+  thread
   (running-p t)
   failure)
+
+(defstruct (loop-timer (:constructor make-loop-timer (deadline function)))
+  deadline
+  function)
+
+(defun check-loop-thread (loop)
+  (let ((thread (loop-thread loop)))
+    (unless (or (null thread) (eq thread sb-thread:*current-thread*))
+      (nucleotide-error "timers of ~S changed from ~S, which does not run it"
+                        loop sb-thread:*current-thread*))))
+
+(defun event-loop-schedule (loop seconds function)
+  "Call FUNCTION in LOOP after SECONDS."
+  (check-loop-thread loop)
+  (let ((timer (make-loop-timer (+ (get-internal-real-time)
+                                   (round (* seconds internal-time-units-per-second)))
+                                function)))
+    (setf (loop-timers loop)
+          (merge 'list (list timer) (loop-timers loop) #'< :key #'loop-timer-deadline))
+    timer))
+
+(defun event-loop-cancel (loop timer)
+  (check-loop-thread loop)
+  (setf (loop-timers loop) (remove timer (loop-timers loop))))
+
+(defun next-timeout (loop)
+  "Seconds until the next timer is due, or NIL."
+  (let ((timer (first (loop-timers loop))))
+    (and timer
+         (max 0 (/ (- (loop-timer-deadline timer) (get-internal-real-time))
+                   internal-time-units-per-second)))))
+
+(defun run-due-timers (loop)
+  (loop for timer = (first (loop-timers loop))
+        while (and timer (<= (loop-timer-deadline timer) (get-internal-real-time)))
+        do (pop (loop-timers loop))
+           (call-reporting-errors (loop-timer-function timer))))
 
 (defun make-event-loop (display)
   (multiple-value-bind (read-fd write-fd) (sb-posix:pipe)
@@ -70,7 +109,8 @@ end the loop."
         do (call-reporting-errors thunk)))
 
 (defun run-event-loop (loop)
-  (setf (display-thread (loop-display loop)) sb-thread:*current-thread*)
+  (setf (display-thread (loop-display loop)) sb-thread:*current-thread*
+        (loop-thread loop) sb-thread:*current-thread*)
   (let* ((display (loop-display loop))
          (socket-fd (sb-bsd-sockets:socket-file-descriptor
                      (connection-socket (display-connection display))))
@@ -89,7 +129,8 @@ end the loop."
     (unwind-protect
          (loop while (loop-running-p loop)
                do (handler-case (progn (dispatch-buffered display)
-                                       (sb-sys:serve-event))
+                                       (sb-sys:serve-event (next-timeout loop))
+                                       (run-due-timers loop))
                     (wl-error (c)
                       (unless (typep c 'wl-disconnected)
                         (log-message :error "~A" c)
