@@ -1,144 +1,110 @@
 # Hacking on nucleotide
 
 ## Getting started
-The build and test tools are in `manifest.scm`:
-
 ```sh
 guix shell -m manifest.scm
 make              # builds ./nucleotide, start it with river -c ./nucleotide
 make check        # unit tests
-make lint         # recompiles everything, fails on any compiler warning
-make fmt          # indents all Lisp files the way SLY does
+make lint         # recompiles everything, fails on any warning
+make fmt          # indents the Lisp files like SLY does
 ```
 
 `make integration` runs nucleotide in a headless river. It needs river, weston
-(for `weston-simple-shm`) and wlr-randr on your `PATH`. These are not in the
-manifest, and without them the tests are skipped, not failed.
+and wlr-randr, which aren't in the manifest. Without them the tests are
+skipped.
 
-For live hacking, `sbcl --load dev.lisp` runs nucleotide from source and keeps
-a Slynk listener open on port 4005. Connect with `M-x sly-connect`, change a
-function, recompile it, and the running window manager picks it up.
+`sbcl --load dev.lisp` runs nucleotide from source with a Slynk listener on
+port 4005. Connect with `M-x sly-connect`, recompile a function and the
+running WM uses it.
 
-Only the WM thread may talk to river. From the REPL, wrap anything that
-touches windows, outputs or proxies in `in-wm`:
+Only the WM thread may talk to river, so wrap REPL code that touches windows,
+outputs or proxies in `in-wm`:
 
 ```lisp
 (in-wm (reload-config *wm*))
 ```
 
-Requests from any other thread raise an error instead of corrupting the
-connection.
+## Layout of the code
+`src/core/` is a Wayland client written from scratch, no libwayland, no FFI.
+`scanner.lisp` turns the XML files in `protocol/` into Lisp at compile time:
 
-## How the code is laid out
-The files load in the order listed in `nucleotide.asd`.
+- a function per request, like `river-window-v1.close`
+- events as keywords, like `:manage-start`
+- enum constants, like `+river-seat-v1-modifiers-mod4+`
 
-`src/core/` is a small Wayland client written from scratch. There is no
-libwayland and no FFI. `wire.lisp` and `client.lisp` handle the socket and
-message encoding, and `scanner.lisp` reads the protocol XML files in
-`protocol/` at compile time. `river.lisp` is just five `define-protocol` lines.
-From those you get:
+The XML files are also the documentation for what each request does.
+`eventloop.lisp` runs the WM thread: Wayland messages, thunks from `in-wm`
+and timers.
 
-- a function per request, named `interface.request`, like
-  `river-window-v1.close` or `river-window-manager-v1.manage-dirty`
-- events as keywords, like `:manage-start` or `:modifiers-update`
-- enum constants like `+river-seat-v1-modifiers-mod4+`
-
-What a request or event does is documented in the XML files in `protocol/`.
-
-`eventloop.lisp` runs the loop on the WM thread: incoming Wayland messages,
-thunks posted from other threads (that is what `in-wm` uses) and timers.
-
-Everything else in `src/` is the window manager:
+The rest of `src/` is the window manager, loaded in the order of
+`nucleotide.asd`:
 
 | Files | What's in them |
 |---|---|
 | `model.lisp` | The `wm` class and the window and output state |
-| `events.lisp`, `wm.lisp` | `define-handler`, and the handlers for river's events |
+| `events.lisp`, `wm.lisp` | `define-handler` and the handlers for river's events |
 | `manage.lisp`, `render.lisp` | What we send river in each manage and render sequence |
-| `workspaces.lisp`, `outputs.lisp` | Workspaces per monitor, and what happens when monitors come and go |
-| `layouts.lisp`, `scrolling*.lisp` | Tiling and monocle, and the niri-like scrolling layout |
-| `floating.lisp`, `highlight.lisp`, `windows.lisp` | Floating windows, the highlight, window commands |
-| `settings.lisp`, `commands.lisp`, `keys.lisp`, `bindings.lisp` | The pieces users configure |
-| `hooks.lisp`, `rules.lisp`, `init-file.lisp`, `defaults.lisp` | Hooks, window rules, loading the init file, the default config |
-| `ipc.lisp`, `which-key.lisp` | The niri-compatible IPC socket and which-key |
-| `repl.lisp`, `main.lisp` | The on-demand Slynk server and the executable's entry point |
+| `workspaces.lisp`, `outputs.lisp` | Workspaces, and monitors coming and going |
+| `layouts.lisp`, `scrolling*.lisp` | Tiling, monocle and scrolling |
+| `floating.lisp`, `highlight.lisp`, `windows.lisp` | Floating, the highlight, window commands |
+| `settings.lisp`, `commands.lisp`, `keys.lisp`, `bindings.lisp` | What users configure |
+| `hooks.lisp`, `rules.lisp`, `init-file.lisp`, `defaults.lisp` | Hooks, rules, the init file, the defaults |
+| `ipc.lisp`, `which-key.lisp` | The niri IPC socket and which-key |
+| `repl.lisp`, `main.lisp` | The Slynk server and the entry point |
 
 ## How a change reaches the screen
-river accepts changes from the window manager only in sequences:
+river takes changes from the window manager only during a manage sequence.
+Anything else is a protocol error and river drops the connection. So it goes
+like this:
 
-1. river sends events, like a new window, a key press or a changed modifier.
-   Each one lands in a handler defined with `define-handler`.
-2. Handlers only update our own state. If something has to be sent to river,
-   they queue it with `(request wm :kind args...)`.
-3. When river is done sending, it starts a manage sequence with
-   `:manage-start`. That runs `manage` in `manage.lisp`, which goes through
-   fixed steps that take the queued requests (`take-requests`,
-   `drain-requests`) and send the actual river requests. The order of the
-   steps matters, and the docstring of `manage` says why.
-4. A render sequence follows, where `render.lisp` sets borders and the
-   stacking order.
+1. river sends events. Handlers (`define-handler`) update our state and queue
+   what river should do with `(request wm :kind args...)`.
+2. river sends `:manage-start`. `manage` in `manage.lisp` takes the queued
+   requests and sends them, in a fixed order. Its docstring says why the order
+   matters.
+3. A render sequence follows, where `render.lisp` sets borders and stacking.
 
-Many river events are followed by a manage sequence anyway. When a change comes
-from somewhere river doesn't know about, like a timer, the REPL or an IPC
-client, call `(mark-dirty wm)` so river starts one.
+Most river events are followed by a manage sequence on their own. For changes
+river doesn't know about, like a timer, the REPL or IPC, call
+`(mark-dirty wm)`.
 
-If you call a window management request outside of a manage sequence, river
-kills the connection. So when you add a feature, the usual shape is a handler
-or command that sets some state and queues a request, plus a `manage-...` step
-that acts on it.
+A new feature is usually a handler or command that sets state and queues a
+request, plus a `manage-...` step that acts on it.
 
-## The user-facing pieces
-These are the macros users see in their init file:
+## Configuration
+`define-setting` declares a setting with a `:check` function, which runs after
+the init file loads. `define-command` defines something you can bind, and its
+`type` declarations are checked when the key is bound. `bind` adds `keybind`
+structs to `*bindings*`, and `install-all-keybinds` turns them into river
+bindings.
 
-- `define-setting` declares a setting with a default and a `:check` function.
-  Every setting is checked after the init file loads, so bad values fail early
-  with a readable message.
-- `define-command` defines something bindings can run. The `type` declarations
-  in its body are checked when a key is bound, not when it is pressed.
-- `bind` and `set-binding` add `keybind` structs to `*bindings*`.
-  `install-all-keybinds` turns them into river bindings, and chords become
-  submaps.
-- `on` adds a hook, `rule` adds a window rule.
+The init file loads with all config variables freshly bound and is installed
+only if it loaded without errors. That's why reloading starts from scratch and
+a broken file leaves the old config alone. A new config variable that isn't a
+setting goes into `config-variables` in `init-file.lisp`.
 
-The init file is loaded with all config variables freshly bound (see
-`call-with-default-config`), and the result is installed only if loading
-succeeded. That's why reloading starts from scratch and a broken file never
-leaves you with half a config. When you add a new config variable that isn't a
-setting, add it to `config-variables` in `init-file.lisp`.
-
-Errors in user code (commands, hooks, rules) go through
-`call-reporting-failure`: the first failure shows a notification, later ones
-only go to the log. Errors in our own event handling skip the event and keep
-the loop running. Set `*debug-on-error*` to `t` if you want the debugger
-instead.
+When user code fails, `call-reporting-failure` shows a notification the first
+time and logs after that. A failing event handler skips the event. Set
+`*debug-on-error*` to get the debugger instead.
 
 ## Tests
-The tests use FiveAM, with one suite per file in `tests/`. Most of them run
-against a fake river in `tests/server.lisp`, which speaks the real wire
-protocol over a socket pair. The helpers you'll use most:
+FiveAM, one suite per file. Most tests run against the fake river in
+`tests/server.lisp`, which speaks the real wire protocol:
 
-- `with-fake-server` sets up the socket pair
-- `connect-wm` connects a WM and gets it through the registry
-- `deliver` sends an event to the WM, like
-  `(deliver display socket id "river_window_v1" "closed")`
+- `with-fake-server` and `connect-wm` set up a WM
+- `deliver` sends it an event
 - `run-sequence` runs a manage or render sequence
 - `received` returns what the WM sent back
 
-Tests that touch the config use the `fresh-config` fixture so they don't leak
-settings or bindings into each other. Test names are sentences that describe
-the behaviour, like `releasing-the-leader-cancels-the-delay`, so the test list
-reads as a spec.
+Use the `fresh-config` fixture when a test touches the config. Name tests as
+sentences, like `releasing-the-leader-cancels-the-delay`.
 
-The fake river only knows what we taught it, so for anything where timing
-between river and nucleotide matters, add an integration test in
-`tests/integration.lisp` as well.
+The fake river only knows what we taught it. When timing against the real
+river matters, add a test to `tests/integration.lisp` too.
 
 ## Style
-- Every file starts with the SPDX and copyright header.
-- Lines stay under 100 columns. `make fmt` handles indentation, not line
-  length.
-- `make lint` has to report 0 warnings.
-- Docstrings say what a function returns or why it does something
-  surprising. Skip the ones that only repeat the function name.
-- Prefer small functions and plain data. When a list starts getting taken
-  apart by position in several places, it probably wants to be a struct.
+- SPDX and copyright header in every file
+- Lines under 100 columns
+- `make lint` reports 0 warnings
+- Docstrings only when they say more than the name
+- Structs instead of lists taken apart by position
