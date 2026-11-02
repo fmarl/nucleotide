@@ -30,13 +30,6 @@
     (let ((number (and output (parse-integer output :junk-allowed t))))
       (and number (<= 1 number (length choices)) (1- number)))))
 
-(defun focus-from-switcher (wm win)
-  (when (live win)
-    (let ((previous (wm-focused-output wm)))
-      (end-highlight wm)
-      (focus-window wm win)
-      (follow-focus wm previous))))
-
 (define-command switch-window (wm)
   "Choose a window with *MENU-COMMAND* and focus it."
   (let* ((windows (all-windows wm))
@@ -49,5 +42,5 @@
          (let ((index (menu-choose choices)))
            (when index
              (event-loop-post (wm-loop wm)
-                              (lambda () (focus-from-switcher wm (nth index windows)))))))
+                              (lambda () (jump-to-window wm (nth index windows)))))))
        :name "nucleotide window switcher"))))

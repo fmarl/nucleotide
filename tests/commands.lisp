@@ -19,19 +19,25 @@
            (signals n::nucleotide-error (n::run-command wm 'missing)))
       (fmakunbound 'test-command))))
 
-(test every-command-but-toggle-highlight-ends-the-highlight
-  (let ((n::*commands* (list 'n::toggle-highlight))
-        (ended '()))
+(test commands-end-the-highlight-and-the-overview-except-their-toggles
+  (let ((n::*commands* (list 'n::toggle-highlight 'n::toggle-overview))
+        (calls '()))
     (unwind-protect
          (progn
            (n::define-command plain-test-command (wm)
              (declare (ignore wm)))
-           (with-stubs ((n::end-highlight (lambda (wm) (push wm ended)))
+           (with-stubs ((n::end-highlight (lambda (wm) (push (list wm :end-highlight) calls)))
+                        (n::close-overview (lambda (wm) (push (list wm :close-overview) calls)))
                         (n::toggle-highlight (lambda (wm &rest match)
-                                               (declare (ignore wm match)))))
-             (n::run-command :wm 'plain-test-command)
-             (n::run-command :wm 'n::toggle-highlight))
-           (is (equal '(:wm) ended)))
+                                               (declare (ignore wm match))))
+                        (n::toggle-overview (lambda (wm) (declare (ignore wm)))))
+             (n::run-command 'plain 'plain-test-command)
+             (n::run-command 'highlight 'n::toggle-highlight)
+             (n::run-command 'overview 'n::toggle-overview))
+           (is (equal '((plain :end-highlight) (plain :close-overview)
+                        (highlight :close-overview)
+                        (overview :end-highlight))
+                      (reverse calls))))
       (fmakunbound 'plain-test-command))))
 
 (test (bindings-check-the-arguments-of-their-command :fixture fresh-config)

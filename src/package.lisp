@@ -86,6 +86,7 @@
    #:toggle-fullscreen
    #:toggle-highlight
    #:toggle-maximize
+   #:toggle-overview
    #:toggle-repl
    ;; Layouts
    #:layout

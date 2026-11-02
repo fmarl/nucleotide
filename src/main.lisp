@@ -35,6 +35,7 @@ Skip the failing event instead, or else end only the failing thread."
 (defun main ()
   (sb-ext:disable-debugger)
   (confine-thread-errors)
+  (setf (sb-ext:bytes-consed-between-gcs) (* 16 1024 1024))
   (let ((code (if (member "--version" (rest sb-ext:*posix-argv*) :test #'string=)
                   (progn (format t "nucleotide ~A~%" *version*) 0)
                   (run))))

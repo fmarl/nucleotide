@@ -51,6 +51,7 @@
                (:file "render")
                (:file "windows")
                (:file "highlight")
+               (:file "overview")
                (:file "which-key")
                (:file "ipc")
                (:file "scrolling")

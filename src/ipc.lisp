@@ -36,7 +36,7 @@
       (wm-active-workspace wm)
       (window-workspace win)))
 
-(defun niri-workspace (wm output ws index)
+(defun workspace-json (wm output ws index)
   (let* ((focus (if (eq ws (wm-active-workspace wm))
                     (wm-focus wm)
                     (workspace-focus ws)))
@@ -50,35 +50,37 @@
               ("is_urgent" . :false)
               ("active_window_id" . ,(if active (window-id active) :null)))))
 
-(defun niri-workspaces (wm)
-  "Like niri, only the workspaces that have windows or are shown."
+(defun workspaces-json (wm)
+  "Only the workspaces that have windows or are shown."
   (loop for output in (wm-outputs wm)
         when (output-name output)
         append (loop for ws in (output-workspaces output)
                      for index from 1
                      when (or (workspace-windows ws) (eq ws (output-workspace output)))
-                     collect (niri-workspace wm output ws index))))
+                     collect (workspace-json wm output ws index))))
 
-(defun niri-window (wm win focused)
+(defun window-json (wm win focused)
   `(:object ("id" . ,(window-id win))
             ("title" . ,(or (window-title win) :null))
             ("app_id" . ,(or (window-app-id win) :null))
+            ("identifier" . ,(or (window-identifier win) :null))
             ("workspace_id" . ,(workspace-id (shown-workspace wm win)))
             ("is_focused" . ,(json:bool (eq win focused)))))
 
-(defun niri-windows (wm)
+(defun windows-json (wm)
   (let ((focused (wm-focus wm)))
-    (loop for output in (wm-outputs wm)
-          append (loop for ws in (output-workspaces output)
-                       append (loop for win in (workspace-windows ws)
-                                    collect (niri-window wm win focused))))))
+    (loop for win in (output-windows wm)
+          collect (window-json wm win focused))))
 
-(defun niri-events (wm)
-  "Workspaces first: waybar's niri/window module redraws only on window events
-and then shows the window that its workspace's active_window_id names."
-  (list (json:encode `(:object ("WorkspacesChanged"
-                                :object ("workspaces" . ,(niri-workspaces wm)))))
-        (json:encode `(:object ("WindowsChanged" :object ("windows" . ,(niri-windows wm)))))))
+(defun window-events (wm)
+  "The overview first, so that opening it resends the windows. Workspaces before
+windows: waybar's niri/window module redraws only on window events and then
+shows the window that its workspace's active_window_id names."
+  (list (json:encode `(:object ("OverviewOpenedOrClosed"
+                                :object ("is_open" . ,(json:bool (wm-overview wm))))))
+        (json:encode `(:object ("WorkspacesChanged"
+                                :object ("workspaces" . ,(workspaces-json wm)))))
+        (json:encode `(:object ("WindowsChanged" :object ("windows" . ,(windows-json wm)))))))
 
 (defun which-key-bindings (entries)
   (loop for entry in entries
@@ -102,7 +104,7 @@ and then shows the window that its workspace's active_window_id names."
                                         `(("bindings" . ,(which-key-bindings entries)))))))))))
 
 (defparameter *ipc-streams*
-  '(("EventStream" . niri-events)
+  '(("EventStream" . window-events)
     ("WhichKeyStream" . which-key-events)))
 
 (defun ipc-error (message)
@@ -135,21 +137,53 @@ and then shows the window that its workspace's active_window_id names."
     (cond (id (find id (mappend #'output-workspaces (wm-outputs wm)) :key #'workspace-id))
           ((typep index '(integer 1)) (nth-workspace wm (1- index))))))
 
+(defun focus-workspace-action (wm arguments)
+  (let ((ws (referenced-workspace wm (json:lookup arguments "reference"))))
+    (if ws
+        (progn (end-highlight wm)
+               (switch-to-workspace wm ws)
+               *ipc-ok*)
+        (ipc-error "no such workspace"))))
+
+(defun focus-window-action (wm arguments)
+  (let ((win (find (json:lookup arguments "id") (output-windows wm) :key #'window-id)))
+    (if win
+        (progn (jump-to-window wm win)
+               *ipc-ok*)
+        (ipc-error "no such window"))))
+
+(defun toggle-overview-action (wm arguments)
+  (declare (ignore arguments))
+  (toggle-overview wm)
+  *ipc-ok*)
+
+(defun close-overview-action (wm arguments)
+  (declare (ignore arguments))
+  (close-overview wm)
+  *ipc-ok*)
+
+(defparameter *ipc-actions*
+  '(("FocusWorkspace" . focus-workspace-action)
+    ("FocusWindow" . focus-window-action)
+    ("ToggleOverview" . toggle-overview-action)
+    ("CloseOverview" . close-overview-action)))
+
+(defun action-reply (wm action)
+  (let* ((entry (and (consp action) (eq (first action) :object) (second action)))
+         (handler (cdr (assoc (car entry) *ipc-actions* :test #'equal))))
+    (if handler
+        (funcall handler wm (cdr entry))
+        (ipc-error "unsupported request"))))
+
 (defun handle-ipc-request (wm client request)
   "Act on REQUEST and return the reply lines. The requests of *IPC-STREAMS*
-subscribe CLIENT, FocusWorkspace switches the workspace."
-  (let* ((stream (assoc request *ipc-streams* :test #'equal))
-         (reference (json:lookup request "Action" "FocusWorkspace" "reference"))
-         (ws (and reference (referenced-workspace wm reference))))
-    (cond (stream
-           (destructuring-bind (name . function) stream
-             (setf (ipc-client-subscription client) name)
-             (cons *ipc-ok* (funcall function wm))))
-          ((null reference) (list (ipc-error "unsupported request")))
-          ((null ws) (list (ipc-error "no such workspace")))
-          (t (end-highlight wm)
-             (switch-to-workspace wm ws)
-             (list *ipc-ok*)))))
+subscribe CLIENT."
+  (let ((stream (assoc request *ipc-streams* :test #'equal)))
+    (if stream
+        (destructuring-bind (name . function) stream
+          (setf (ipc-client-subscription client) name)
+          (cons *ipc-ok* (funcall function wm)))
+        (list (action-reply wm (json:lookup request "Action"))))))
 
 (defun ipc-handle-line (wm client octets)
   (multiple-value-bind (request valid)

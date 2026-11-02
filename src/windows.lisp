@@ -8,6 +8,14 @@
   (show-workspace wm (window-workspace win))
   (setf (workspace-focus (window-workspace win)) win))
 
+(defun jump-to-window (wm win)
+  (when (live win)
+    (let ((previous (wm-focused-output wm)))
+      (end-highlight wm)
+      (close-overview wm)
+      (focus-window wm win)
+      (follow-focus wm previous))))
+
 (define-command focus (wm &optional (direction :next))
   "Focus the window in DIRECTION: :LEFT, :RIGHT, :UP or :DOWN."
   (declare (type direction direction))
@@ -131,6 +139,9 @@ workspace."
 
 (define-handler (wm (win window) :app-id) (app-id)
   (setf (%window-app-id win) app-id))
+
+(define-handler (wm (win window) :identifier) (identifier)
+  (setf (%window-identifier win) identifier))
 
 (define-handler (wm (win window) :parent) (parent)
   (setf (%window-parent win) (and parent (find-window wm parent))))

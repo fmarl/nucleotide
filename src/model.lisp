@@ -31,6 +31,8 @@
    (node :initarg :node :reader window-node :writer (setf %window-node))
    (title :initform nil :reader window-title :writer (setf %window-title))
    (app-id :initform nil :reader window-app-id :writer (setf %window-app-id))
+   (identifier :initform nil :reader window-identifier :writer (setf %window-identifier)
+               :documentation "The same as in ext-foreign-toplevel-list.")
    (workspace :initform nil :reader window-workspace :writer (setf %window-workspace))
    (parent :initform nil :reader window-parent :writer (setf %window-parent))
    (closed :initform nil :reader window-closed-p :writer (setf %window-closed-p))
@@ -145,6 +147,7 @@ nothing is highlighted.")
    (which-key :initform (make-which-key) :reader wm-which-key)
    (layer-shell-focus :initform nil :accessor wm-layer-shell-focus)
    (highlight :initform nil :accessor wm-highlight)
+   (overview :initform nil :accessor wm-overview)
    (focus-history :initform '() :accessor wm-focus-history
                   :documentation "Windows from the most recently focused on.")
    (last-focus :initform nil :accessor wm-last-focus)
@@ -171,6 +174,9 @@ Manage sequences bring this in line with LOCKED.")
 
 (defun all-windows (wm)
   (loop for ws in (wm-workspaces wm) append (workspace-windows ws)))
+
+(defun output-windows (wm)
+  (loop for ws in (mappend #'output-workspaces (wm-outputs wm)) append (workspace-windows ws)))
 
 (defmethod wm-highlight :around ((wm wm))
   (live (call-next-method)))

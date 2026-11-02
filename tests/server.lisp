@@ -407,6 +407,13 @@ opened while the pointer is on the right one."
           (is (= 4 (length enabled)))
           (is (= 4 (length (remove-duplicates enabled)))))))))
 
+(test locking-closes-the-overview
+  (with-fake-server (display socket)
+    (let ((wm (connect-wm display socket)))
+      (setf (n::wm-overview wm) t)
+      (run-sequence display socket "session_locked")
+      (is (null (n::wm-overview wm))))))
+
 (test locked-sessions-enter-no-submap
   (let ((wm (make-test-wm)))
     (setf (n::wm-locked wm) t)

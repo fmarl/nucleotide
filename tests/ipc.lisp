@@ -7,7 +7,7 @@
 (in-suite ipc)
 
 (defun workspace-objects (wm)
-  (mapcar #'rest (n::niri-workspaces wm)))
+  (mapcar #'rest (n::workspaces-json wm)))
 
 (defun field (object key)
   (cdr (assoc key object :test #'string=)))
@@ -32,9 +32,57 @@
          (ws (n::output-workspace output))
          (win (open-window-on ws)))
     (setf (n::%window-title win) "title")
+    (n::handle-event nil win :identifier "5cd9987bbbc1279e7542884c4394ab66")
     (is (equal `(("id" . ,(n::window-id win)) ("title" . "title") ("app_id" . :null)
+                 ("identifier" . "5cd9987bbbc1279e7542884c4394ab66")
                  ("workspace_id" . ,(n::workspace-id ws)) ("is_focused" . :true))
-               (rest (first (n::niri-windows wm)))))))
+               (rest (first (n::windows-json wm)))))))
+
+(defun action-request (action)
+  (json:parse (format nil "{\"Action\":~A}" action)))
+
+(test focus-window-requests-jump-to-the-window
+  (let* ((wm (make-test-wm))
+         (left (add-output wm 0 :name "eDP-1"))
+         (right (add-output wm 1000 :name "HDMI-A-1"))
+         (target (open-window-on (second (n::output-workspaces right))))
+         (client (n::make-ipc-client nil)))
+    (declare (ignore left))
+    (setf (n::wm-overview wm) t)
+    (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
+      (is (equal (list n::*ipc-ok*)
+                 (n::handle-ipc-request
+                  wm client (action-request (format nil "{\"FocusWindow\":{\"id\":~D}}"
+                                                    (n::window-id target))))))
+      (is (eq target (n::wm-focus wm)))
+      (is (null (n::wm-overview wm)))
+      (is (search "Err" (first (n::handle-ipc-request
+                                wm client (action-request "{\"FocusWindow\":{\"id\":0}}"))))))))
+
+(test focus-window-requests-ignore-windows-without-output
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0 :name "eDP-1"))
+         (orphan (open-window-on (ws wm 2)))
+         (client (n::make-ipc-client nil)))
+    (n::unassign-output wm output)
+    (let ((active (n::wm-active-workspace wm)))
+      (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
+        (is (search "Err" (first (n::handle-ipc-request
+                                  wm client
+                                  (action-request (format nil "{\"FocusWindow\":{\"id\":~D}}"
+                                                          (n::window-id orphan)))))))
+        (is (eq active (n::wm-active-workspace wm)))))))
+
+(test overview-requests-open-and-close-the-overview
+  (let ((wm (make-test-wm))
+        (client (n::make-ipc-client nil)))
+    (with-stubs ((n::mark-dirty (lambda (wm) (declare (ignore wm)))))
+      (n::handle-ipc-request wm client (action-request "{\"ToggleOverview\":{}}"))
+      (is (n::wm-overview wm))
+      (n::handle-ipc-request wm client (action-request "{\"CloseOverview\":{}}"))
+      (is (null (n::wm-overview wm)))
+      (n::handle-ipc-request wm client (action-request "{\"CloseOverview\":{}}"))
+      (is (null (n::wm-overview wm))))))
 
 (defun focus-request (id)
   (json:parse
@@ -80,9 +128,10 @@
     (add-output wm 0 :name "eDP-1")
     (let ((replies (n::handle-ipc-request wm client "EventStream")))
       (is (equal n::*ipc-ok* (first replies)))
-      (is (= 3 (length replies)))
-      (is (search "WorkspacesChanged" (second replies)))
-      (is (search "WindowsChanged" (third replies)))
+      (is (= 4 (length replies)))
+      (is (search "OverviewOpenedOrClosed" (second replies)))
+      (is (search "WorkspacesChanged" (third replies)))
+      (is (search "WindowsChanged" (fourth replies)))
       (is (equal "EventStream" (n::ipc-client-subscription client))))))
 
 (test requests-with-wrong-types-or-bytes-get-errors
@@ -143,7 +192,7 @@
 (defun subscribe (stream)
   (write-line "\"EventStream\"" stream)
   (finish-output stream)
-  (list (read-reply stream) (read-reply stream) (read-reply stream)))
+  (list (read-reply stream) (read-reply stream) (read-reply stream) (read-reply stream)))
 
 (test the-socket-is-only-for-its-owner
   (let ((wm (make-test-wm)))
@@ -156,8 +205,9 @@
   (let* ((wm (make-test-wm))
          (output (add-output wm 0 :name "eDP-1")))
     (with-ipc-connection (stream wm ipc)
-      (destructuring-bind (ok workspaces windows) (subscribe stream)
+      (destructuring-bind (ok overview workspaces windows) (subscribe stream)
         (is (equal n::*ipc-ok* ok))
+        (is (equal "{\"OverviewOpenedOrClosed\":{\"is_open\":false}}" overview))
         (is (search "WindowsChanged" windows))
         (is (search "WorkspacesChanged" workspaces)))
       (let ((win (open-window-on (n::output-workspace output))))
@@ -186,6 +236,24 @@
         (is (search (format nil "\"active_window_id\":~D" (n::window-id first-win)) workspaces))
         (is (search "WindowsChanged" windows))
         (is (null (read-reply stream)))))))
+
+(test opening-the-overview-also-sends-the-workspaces-and-windows
+  (let* ((wm (make-test-wm))
+         (ws (n::output-workspace (add-output wm 0 :name "eDP-1"))))
+    (open-window-on ws)
+    (with-ipc-connection (stream wm ipc)
+      (subscribe stream)
+      (setf (n::wm-overview wm) t)
+      (n::ipc-update wm)
+      (is (equal "{\"OverviewOpenedOrClosed\":{\"is_open\":true}}" (read-reply stream)))
+      (is (search "WorkspacesChanged" (read-reply stream)))
+      (is (search "WindowsChanged" (read-reply stream)))
+      (is (null (read-reply stream)))
+      (open-window-on ws)
+      (n::ipc-update wm)
+      (is (search "WorkspacesChanged" (read-reply stream)))
+      (is (search "WindowsChanged" (read-reply stream)))
+      (is (null (read-reply stream))))))
 
 (test which-key-subscribers-see-the-prefix
   (let ((wm (make-test-wm)))
@@ -282,9 +350,9 @@
     (open-window-on active)
     (setf (n::wm-highlight wm) highlighted)
     (is (eql (n::workspace-id active)
-             (json:lookup (find (n::window-id highlighted) (n::niri-windows wm)
+             (json:lookup (find (n::window-id highlighted) (n::windows-json wm)
                                 :key (lambda (win) (json:lookup win "id")))
                           "workspace_id")))
     (is (eql (n::window-id highlighted)
-             (json:lookup (n::niri-workspace wm output active 1) "active_window_id")))
-    (is (eq :null (json:lookup (n::niri-workspace wm output home 2) "active_window_id")))))
+             (json:lookup (n::workspace-json wm output active 1) "active_window_id")))
+    (is (eq :null (json:lookup (n::workspace-json wm output home 2) "active_window_id")))))

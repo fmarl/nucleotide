@@ -49,7 +49,7 @@ The rest of `src/` is the window manager, loaded in the order of
 | `floating.lisp`, `highlight.lisp`, `windows.lisp` | Floating, the highlight, window commands |
 | `settings.lisp`, `commands.lisp`, `keys.lisp`, `bindings.lisp` | What users configure |
 | `hooks.lisp`, `rules.lisp`, `init-file.lisp`, `defaults.lisp` | Hooks, rules, the init file, the defaults |
-| `ipc.lisp`, `which-key.lisp` | The niri IPC socket and which-key |
+| `ipc.lisp`, `which-key.lisp`, `overview.lisp` | The IPC socket, which-key and the overview |
 | `repl.lisp`, `main.lisp` | The Slynk server and the entry point |
 
 ## How a change reaches the screen

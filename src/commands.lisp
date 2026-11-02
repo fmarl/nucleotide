@@ -86,6 +86,8 @@ and the TYPE declarations of BODY."
   (destructuring-bind (name . arguments) (normalize-action action)
     (unless (eq name 'toggle-highlight)
       (end-highlight wm))
+    (unless (eq name 'toggle-overview)
+      (close-overview wm))
     (apply name wm arguments)))
 
 (defun command-names ()
