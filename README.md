@@ -7,8 +7,8 @@ A hackable, multi-paradigm Wayland window manager in Common Lisp for the
 - Tiling (master and stack), monocle and niri-like scrolling layouts
 - Workspaces per monitor that come back when you plug the monitor in again
 - Floating dialogs, moved and resized with Super and the mouse
-- Window rules, a window switcher, and a highlight that shows a window on the
-  current workspace without moving it
+- Window rules, a window switcher, an overview of all windows, and a highlight
+  that shows a window on the current workspace without moving it
 - Key bindings and chords, autostart, fullscreen, libinput settings
 - Workspaces and window title in waybar
 - An init file you can reload at runtime, and a Slynk REPL that opens on demand
@@ -29,6 +29,7 @@ river takes the keyboard layout from `XKB_DEFAULT_LAYOUT`,
 | `Super+Shift+Return` | Start alacritty |
 | `Super+P` | Start a program with bemenu |
 | `Super+Tab` | Pick a window with bemenu and focus it |
+| `Super+O` | Open or close the overview |
 | `Super+Q` | Close the focused window |
 | `Super+Shift+F` | Toggle fullscreen |
 | `Super+M` | Toggle maximized: cover the monitor except for bars |
@@ -77,6 +78,13 @@ New windows open on the monitor under the pointer, or on the focused one with
 Dialogs and windows with a fixed size float. Drag a window with `Super` and the
 left mouse button to move it, or with the right button to resize it. Windows
 get a border instead of their own title bar.
+
+## Overview
+`Super+O` shows the windows of all monitors with a thumbnail each, a column per
+workspace. `H`/`J`/`K`/`L` or the arrow keys select a window, `Return` focuses
+it, and `Escape` or `Super+O` close the overview. It needs `nucleotide-monitor`
+from [nucleotide-utils](https://github.com/fmarl/nucleotide-utils) running in
+the session.
 
 ## Waybar
 waybar's `niri/workspaces` and `niri/window` modules show the workspaces and
