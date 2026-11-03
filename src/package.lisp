@@ -45,6 +45,7 @@
    #:*cursor-theme*
    #:*default-column-width*
    #:*default-layout*
+   #:*focus-follows-pointer*
    #:*gap*
    #:*key-repeat*
    #:*libinput-settings*

@@ -15,6 +15,9 @@
   :documentation "Linux input event code of the button that resizes windows (BTN_RIGHT)."
   :check (type-check '(unsigned-byte 32) "a button code like 273"))
 
+(define-setting *focus-follows-pointer* nil
+  :documentation "If non-NIL, keyboard focus follows the pointer.")
+
 (defun fixed-size-p (win)
   (and (plusp (window-min-width win))
        (plusp (window-min-height win))
@@ -209,7 +212,11 @@ return the rect of its offset and size."
         (:end (finish-pointer-op wm op))))))
 
 (define-handler (wm (seat river-seat-v1) :pointer-enter) (window)
-  (setf (wm-pointer-window wm) (find-window wm window)))
+  (let ((win (find-window wm window)))
+    (setf (wm-pointer-window wm) win)
+    (when *focus-follows-pointer*
+      (focus-window wm win)
+      (mark-dirty wm))))
 
 (define-handler (wm (seat river-seat-v1) :pointer-leave) ()
   (setf (wm-pointer-window wm) nil))
