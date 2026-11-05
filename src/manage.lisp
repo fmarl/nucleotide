@@ -211,6 +211,7 @@ sizes, focus and IPC see the result."
   (manage-fullscreen-outputs wm)
   (manage-maximized wm)
   (manage-pointer-op wm)
+  (manage-focus-follows-pointer wm)
   (dolist (output (wm-outputs wm))
     (when (and (output-workspace output) (output-ready-p output))
       (manage-layout (output-workspace output) output)))
