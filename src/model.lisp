@@ -33,6 +33,8 @@
    (app-id :initform nil :reader window-app-id :writer (setf %window-app-id))
    (identifier :initform nil :reader window-identifier :writer (setf %window-identifier)
                :documentation "The same as in ext-foreign-toplevel-list.")
+   (focused-at :initform nil :reader window-focused-at :writer (setf %window-focused-at)
+               :documentation "The GET-INTERNAL-REAL-TIME of the last focus.")
    (workspace :initform nil :reader window-workspace :writer (setf %window-workspace))
    (parent :initform nil :reader window-parent :writer (setf %window-parent))
    (closed :initform nil :reader window-closed-p :writer (setf %window-closed-p))

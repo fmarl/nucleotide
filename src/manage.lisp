@@ -171,7 +171,8 @@ fullscreen windows, and floating ones are placed when rendering."
   (unless (eq focused (wm-last-focus wm))
     (setf (wm-last-focus wm) focused)
     (when focused
-      (setf (wm-focus-history wm) (cons focused (remove focused (wm-focus-history wm)))))
+      (setf (%window-focused-at focused) (get-internal-real-time)
+            (wm-focus-history wm) (cons focused (remove focused (wm-focus-history wm)))))
     (run-event-hooks :focus-changed focused))
   (let ((ws (wm-active-workspace wm)))
     (unless (eq ws (wm-last-workspace wm))

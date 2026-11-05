@@ -59,13 +59,21 @@
                      when (or (workspace-windows ws) (eq ws (output-workspace output)))
                      collect (workspace-json wm output ws index))))
 
+(defun timestamp-json (time)
+  (if time
+      (multiple-value-bind (secs rest) (floor time internal-time-units-per-second)
+        `(:object ("secs" . ,secs)
+                  ("nanos" . ,(* rest (floor 1000000000 internal-time-units-per-second)))))
+      :null))
+
 (defun window-json (wm win focused)
   `(:object ("id" . ,(window-id win))
             ("title" . ,(or (window-title win) :null))
             ("app_id" . ,(or (window-app-id win) :null))
             ("identifier" . ,(or (window-identifier win) :null))
             ("workspace_id" . ,(workspace-id (shown-workspace wm win)))
-            ("is_focused" . ,(json:bool (eq win focused)))))
+            ("is_focused" . ,(json:bool (eq win focused)))
+            ("focus_timestamp" . ,(timestamp-json (window-focused-at win)))))
 
 (defun windows-json (wm)
   (let ((focused (wm-focus wm)))
