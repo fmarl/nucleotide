@@ -154,6 +154,8 @@ nothing is highlighted.")
    (last-workspace :initform nil :accessor wm-last-workspace)
    (pointer-window :initform nil :accessor wm-pointer-window)
    (pointer-position :initform nil :accessor wm-pointer-position)
+   (last-pointer-position :initform nil :accessor wm-last-pointer-position)
+   (pointer-entered :initform nil :accessor wm-pointer-entered)
    (op :initform nil :accessor wm-op)
    (bindings :initform '() :accessor wm-bindings
              :documentation "The bindings outside of SUBMAPS.")

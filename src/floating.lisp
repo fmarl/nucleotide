@@ -212,11 +212,17 @@ return the rect of its offset and size."
         (:end (finish-pointer-op wm op))))))
 
 (define-handler (wm (seat river-seat-v1) :pointer-enter) (window)
-  (let ((win (find-window wm window)))
-    (setf (wm-pointer-window wm) win)
-    (when *focus-follows-pointer*
-      (focus-window wm win)
-      (mark-dirty wm))))
+  (setf (wm-pointer-window wm) (find-window wm window)
+        (wm-pointer-entered wm) t))
+
+(defun manage-focus-follows-pointer (wm)
+  (let ((win (wm-pointer-window wm)))
+    (when (and *focus-follows-pointer* win (wm-pointer-entered wm)
+               (not (equalp (wm-pointer-position wm) (wm-last-pointer-position wm)))
+               (not (wm-highlight wm)))
+      (focus-window wm win))
+    (setf (wm-pointer-entered wm) nil
+          (wm-last-pointer-position wm) (wm-pointer-position wm))))
 
 (define-handler (wm (seat river-seat-v1) :pointer-leave) ()
   (setf (wm-pointer-window wm) nil))
