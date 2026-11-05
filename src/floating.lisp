@@ -219,7 +219,8 @@ return the rect of its offset and size."
   (let ((win (wm-pointer-window wm)))
     (when (and *focus-follows-pointer* win (wm-pointer-entered wm)
                (not (equalp (wm-pointer-position wm) (wm-last-pointer-position wm)))
-               (not (wm-highlight wm)))
+               (not (wm-highlight wm))
+               (not (wm-op wm)))
       (focus-window wm win))
     (setf (wm-pointer-entered wm) nil
           (wm-last-pointer-position wm) (wm-pointer-position wm))))
