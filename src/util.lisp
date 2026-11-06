@@ -7,8 +7,8 @@
   "Log the message and show it as a desktop notification."
   (let ((message (apply #'format nil control args)))
     (log-message :info "~A" message)
-    (ignore-errors
-      (uiop:launch-program (list "notify-send" "nucleotide" message)))
+    (handler-case (uiop:launch-program (list "notify-send" "nucleotide" message))
+      (error (c) (log-message :warn "notify-send failed: ~A" c)))
     (values)))
 
 (defun check-file-permissions (path forbidden-bits &key allow-root)
