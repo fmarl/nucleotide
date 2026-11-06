@@ -53,9 +53,19 @@
 
 (defun pad4 (n) (logand (+ n 3) -4))
 
-(defun get-wl-string (buffer offset)
-  "X11 windows may send titles that are not UTF-8."
+(defun check-message-end (end needed)
+  (when (> needed end)
+    (error 'wl-protocol-error
+           :format-control "argument runs ~D bytes past the end of its message"
+           :format-arguments (list (- needed end)))))
+
+(defun get-wl-string (buffer offset &optional (end (length buffer)))
+  "The string at OFFSET in BUFFER, or NIL for a null string, and the offset after
+it. Invalid UTF-8, which X11 windows send in titles, becomes U+FFFD. Signals
+WL-PROTOCOL-ERROR if the string runs past END."
+  (check-message-end end (+ offset 4))
   (let ((len (u32ref buffer offset)))
+    (check-message-end end (+ offset 4 (pad4 len)))
     (if (zerop len)
         (values nil (+ offset 4))
         (values (sb-ext:octets-to-string buffer :external-format
@@ -81,8 +91,12 @@
         (fill buffer 0 :start (+ offset 4 (length bytes)) :end (+ offset 4 (pad4 len)))
         (+ offset 4 (pad4 len)))))
 
-(defun get-wl-array (buffer offset)
+(defun get-wl-array (buffer offset &optional (end (length buffer)))
+  "A copy of the array at OFFSET in BUFFER and the offset after it. Signals
+WL-PROTOCOL-ERROR if the array runs past END."
+  (check-message-end end (+ offset 4))
   (let ((len (u32ref buffer offset)))
+    (check-message-end end (+ offset 4 (pad4 len)))
     (values (subseq buffer (+ offset 4) (+ offset 4 len))
             (+ offset 4 (pad4 len)))))
 

@@ -78,7 +78,8 @@
           (u32ref buf 4) (logior (ash end 16) opcode))
     (send-raw conn end)))
 
-(defun decode-arg (display parent buf off spec)
+(defun decode-arg (display parent buf off end spec)
+  (check-message-end end (+ off 4))
   (if (consp spec)
       (ecase (first spec)
         (:object
@@ -93,23 +94,23 @@
         (:uint (values (u32ref buf off) (+ off 4)))
         (:int (values (i32ref buf off) (+ off 4)))
         (:fixed (values (/ (i32ref buf off) 256) (+ off 4)))
-        (:string (get-wl-string buf off))
-        (:array (get-wl-array buf off)))))
+        (:string (get-wl-string buf off end))
+        (:array (get-wl-array buf off end)))))
 
-(defun decode-args (display parent buf off specs)
+(defun decode-args (display parent buf off end specs)
   (when specs
-    (multiple-value-bind (value next) (decode-arg display parent buf off (first specs))
-      (cons value (decode-args display parent buf next (rest specs))))))
+    (multiple-value-bind (value next) (decode-arg display parent buf off end (first specs))
+      (cons value (decode-args display parent buf next end (rest specs))))))
 
 (defun event-definition (proxy opcode)
   (and proxy
        (gethash (cons (class-name (class-of proxy)) opcode) *event-definitions*)))
 
-(defun decode-event (display proxy definition body-offset)
+(defun decode-event (display proxy definition body-offset body-size)
   (when definition
     (cons (car definition)
           (decode-args display proxy (connection-rbuf (display-connection display))
-                       body-offset (cdr definition)))))
+                       body-offset (+ body-offset body-size) (cdr definition)))))
 
 (defun run-hooks (proxy event)
   (unless (proxy-destroyed-p proxy)
@@ -121,7 +122,7 @@
     (multiple-value-bind (sender opcode body-offset body-size) (peek-message conn)
       (let* ((proxy (gethash sender (display-proxies display)))
              (definition (event-definition proxy opcode))
-             (event (unwind-protect (decode-event display proxy definition body-offset)
+             (event (unwind-protect (decode-event display proxy definition body-offset body-size)
                       (consume-message conn (+ 8 body-size)))))
         (cond (event (run-hooks proxy event))
               (proxy (log-message :warn "no event definition for opcode ~D on ~S" opcode proxy)))

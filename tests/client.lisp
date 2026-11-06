@@ -101,6 +101,20 @@
           (n::connection-rend conn) 8)
     (signals n::wl-protocol-error (n::dispatch-buffered display))))
 
+(test arguments-must-end-within-their-message
+  (let* ((display (make-test-display))
+         (object (n::make-proxy display 'test-object))
+         (events (record-events object))
+         (conn (n::display-connection display)))
+    (feed-message display (n::proxy-id object) 0 0 0 0 0 40 #x41414141)
+    (feed-message display (n::proxy-id object) 0 0 1 0 0 "")
+    (signals n::wl-protocol-error (n::dispatch-event display))
+    (is (= 32 (n::connection-rstart conn)))
+    (feed-message display (n::proxy-id object) 0 0)
+    (n::dispatch-event display)
+    (signals n::wl-protocol-error (n::dispatch-event display))
+    (is (equal '(1) (mapcar #'third (funcall events))))))
+
 (test only-connection-errors-escape-the-event-loop
   (is (null (let ((*error-output* (make-broadcast-stream)))
               (n::call-reporting-errors (lambda () (error "policy bug"))))))
