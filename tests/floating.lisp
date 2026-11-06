@@ -206,3 +206,21 @@ manage step."
     (is (eq b (n::wm-focus wm)))
     (is (eq right (n::wm-active-workspace wm)))
     (is (eq left (n::output-workspace (first (n::wm-outputs wm)))))))
+
+(test dialogs-are-placed-in-the-usable-area
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0))
+         (parent (open-window-on (n::output-workspace output)))
+         (dialog (make-win :parent parent)))
+    ;; A bar takes the top 30 pixels.
+    (setf (n::output-usable output) (n::rect 0 30 1000 770))
+    (n::add-window (n::output-workspace output) dialog :focus nil)
+    (setf (n::%window-width dialog) 400
+          (n::%window-height dialog) 300
+          (n::%window-x parent) 100
+          (n::%window-y parent) 100
+          (n::%window-width parent) 600
+          (n::%window-height parent) 400)
+    (is (equalp (n::point 200 120) (n::initial-float-offset wm dialog)))
+    (setf (n::%window-clip parent) :hidden)
+    (is (equalp (n::point 300 235) (n::initial-float-offset wm dialog)))))
