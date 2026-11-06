@@ -5,12 +5,12 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun keysym-header-pathname ()
-    (or (loop for dir in (append (mapcar (lambda (dir) (merge-pathnames "../include/" dir))
-                                         (uiop:getenv-absolute-directories "PATH"))
-                                 (uiop:getenv-absolute-directories "C_INCLUDE_PATH")
-                                 (uiop:getenv-absolute-directories "CPATH")
-                                 (list #p"/usr/include/"))
-              thereis (probe-file (merge-pathnames "xkbcommon/xkbcommon-keysyms.h" dir)))
+    (or (loop :for dir :in (append (mapcar (lambda (dir) (merge-pathnames "../include/" dir))
+                                           (uiop:getenv-absolute-directories "PATH"))
+                                   (uiop:getenv-absolute-directories "C_INCLUDE_PATH")
+                                   (uiop:getenv-absolute-directories "CPATH")
+                                   (list #p"/usr/include/"))
+              :thereis (probe-file (merge-pathnames "xkbcommon/xkbcommon-keysyms.h" dir)))
         (error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
 
   (defun header-codepoint (line)
@@ -21,34 +21,34 @@ like /*(U+...)*/ or /*<U+...>*/."
 
   (defun keysym-header-entries (pathname)
     (with-open-file (in pathname)
-      (loop for line = (read-line in nil)
-            while line
-            when (uiop:string-prefix-p "#define XKB_KEY_" line)
-            collect (destructuring-bind (name value &rest comment)
-                        (remove "" (uiop:split-string (subseq line 16)) :test #'string=)
-                      (declare (ignore comment))
-                      (list name (parse-integer value :start 2 :radix 16)
-                            (header-codepoint line)))))))
+      (loop :for line = (read-line in nil)
+            :while line
+            :when (uiop:string-prefix-p "#define XKB_KEY_" line)
+            :collect (destructuring-bind (name value &rest comment)
+                         (remove "" (uiop:split-string (subseq line 16)) :test #'string=)
+                       (declare (ignore comment))
+                       (list name (parse-integer value :start 2 :radix 16)
+                             (header-codepoint line)))))))
 
 (defun keysym-table (entries)
   (let ((table (make-hash-table :test #'equal)))
-    (loop for (name keysym) in entries
-          do (setf (gethash name table) keysym))
+    (loop :for (name keysym) :in entries
+          :do (setf (gethash name table) keysym))
     table))
 
 (defun keysym-name-table (entries)
   (let ((table (make-hash-table)))
-    (loop for (name keysym) in entries
-          unless (gethash keysym table)
-          do (setf (gethash keysym table) name))
+    (loop :for (name keysym) :in entries
+          :unless (gethash keysym table)
+          :do (setf (gethash keysym table) name))
     table))
 
 (defun codepoint-table (entries)
   (let ((table (make-hash-table)))
-    (loop for (nil keysym codepoint) in entries
-          when codepoint
-          do (setf (gethash codepoint table)
-                   (min keysym (gethash codepoint table keysym))))
+    (loop :for (nil keysym codepoint) :in entries
+          :when codepoint
+          :do (setf (gethash codepoint table)
+                    (min keysym (gethash codepoint table keysym))))
     table))
 
 (defun keysym-table-ignoring-case (keysyms)
@@ -150,9 +150,9 @@ matches bindings with the keysyms of the layout."
           (t (format nil "0x~X" keysym)))))
 
 (defun modifier-display-names (modifiers)
-  (loop for (name . bit) in (remove-duplicates *modifier-names* :key #'cdr :from-end t)
-        when (logtest modifiers bit)
-        collect name))
+  (loop :for (name . bit) :in (remove-duplicates *modifier-names* :key #'cdr :from-end t)
+        :when (logtest modifiers bit)
+        :collect name))
 
 (defun key-display-name (key)
   (destructuring-bind (keysym . modifiers) key

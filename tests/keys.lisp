@@ -104,13 +104,13 @@
 (test characters-map-to-keysyms-like-xkbcommon
   ;; Expected values from xkb_utf32_to_keysym in libxkbcommon 1.13.1, at the
   ;; edges of its ranges.
-  (loop for (code keysym) in '((#x08 #xff08) (#x0b #xff0b) (#x0c #x100000c)
-                               (#x0d #xff0d) (#x1b #xff1b) (#x1f #x100001f)
-                               (#x20 #x20) (#x7e #x7e) (#x7f #xffff)
-                               (#x9f #x100009f) (#xa0 #xa0) (#xff #xff)
-                               (#x100 #x3c0) (#x10ffff #x110ffff))
-        do (is (= keysym (n::char-keysym (code-char code)))
-               "U+~4,'0X should map to keysym #x~X" code keysym)))
+  (loop :for (code keysym) :in '((#x08 #xff08) (#x0b #xff0b) (#x0c #x100000c)
+                                 (#x0d #xff0d) (#x1b #xff1b) (#x1f #x100001f)
+                                 (#x20 #x20) (#x7e #x7e) (#x7f #xffff)
+                                 (#x9f #x100009f) (#xa0 #xa0) (#xff #xff)
+                                 (#x100 #x3c0) (#x10ffff #x110ffff))
+        :do (is (= keysym (n::char-keysym (code-char code)))
+                "U+~4,'0X should map to keysym #x~X" code keysym)))
 
 (test unicode-keysyms-display-their-character
   (is (equal (string (code-char #x100)) (n::keysym-display-name #x1000100)))

@@ -31,10 +31,10 @@ contain arguments (\"alacritty -e htop\"). A list is used as argv directly."
               command))))
 
 (defun plist-p (object)
-  (loop for tail = object then (cddr tail)
-        while (consp tail)
-        always (consp (cdr tail))
-        finally (return (null tail))))
+  (loop :for tail = object :then (cddr tail)
+        :while (consp tail)
+        :always (consp (cdr tail))
+        :finally (return (null tail))))
 
 (defun alist-get (key alist)
   (cdr (assoc key alist :test #'equal)))
@@ -54,5 +54,5 @@ order of LIST."
              (group (or (assoc k groups :test #'equal)
                         (first (push (list k) groups)))))
         (push element (cdr group))))
-    (loop for (k . elements) in (reverse groups)
-          collect (cons k (reverse elements)))))
+    (loop :for (k . elements) :in (reverse groups)
+          :collect (cons k (reverse elements)))))

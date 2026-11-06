@@ -127,8 +127,8 @@ Every other failure ends the connection."
         (incf (connection-rend connection) n)))))
 
 (defun ensure-bytes (connection n)
-  (loop while (< (- (connection-rend connection) (connection-rstart connection)) n)
-        do (fill-read-buffer connection)))
+  (loop :while (< (- (connection-rend connection) (connection-rstart connection)) n)
+        :do (fill-read-buffer connection)))
 
 (defun peek-message (connection)
   (ensure-bytes connection 8)
@@ -163,8 +163,8 @@ Every other failure ends the connection."
   (let ((socket (connection-socket connection))
         (buffer (connection-wbuf connection))
         (sent 0))
-    (loop while (< sent end)
-          do (incf sent (retrying-interrupted
-                         (sb-bsd-sockets:socket-send
-                          socket (if (zerop sent) buffer (subseq buffer sent end))
-                          (- end sent) :nosignal t))))))
+    (loop :while (< sent end)
+          :do (incf sent (retrying-interrupted
+                          (sb-bsd-sockets:socket-send
+                           socket (if (zerop sent) buffer (subseq buffer sent end))
+                           (- end sent) :nosignal t))))))

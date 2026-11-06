@@ -8,8 +8,8 @@
 
 (defun match-p (object)
   (and (plist-p object)
-       (loop for (key pattern) on object by #'cddr
-             always (and (member key '(:app-id :title)) (pattern-p pattern)))))
+       (loop :for (key pattern) :on object :by #'cddr
+             :always (and (member key '(:app-id :title)) (pattern-p pattern)))))
 
 (define-value-type match "a plist of :app-id and :title patterns like (:app-id \"foot\")"
   :type (satisfies match-p))
@@ -29,8 +29,8 @@
   (check-value match 'match)
   (unless (plist-p actions)
     (nucleotide-error "~S is not a plist of actions like (:float t)" actions))
-  (loop for (action value) on actions by #'cddr
-        do (check-value value (action-type action))))
+  (loop :for (action value) :on actions :by #'cddr
+        :do (check-value value (action-type action))))
 
 (defvar *window-rules* '()
   "List of (MATCH . ACTIONS) plists, applied in order to every new window.")
@@ -58,10 +58,10 @@ number, :OUTPUT name, :FULLSCREEN T."
       (and value (call-reporting-failure pattern pattern (list value) "a window rule pattern"))))
 
 (defun rule-matches-p (match win)
-  (loop for (key pattern) on match by #'cddr
-        always (pattern-matches-p pattern (ecase key
-                                            (:app-id (window-app-id win))
-                                            (:title (window-title win))))))
+  (loop :for (key pattern) :on match :by #'cddr
+        :always (pattern-matches-p pattern (ecase key
+                                             (:app-id (window-app-id win))
+                                             (:title (window-title win))))))
 
 (defun window-actions (win)
   "The actions of all matching rules. Later rules come first and so win."

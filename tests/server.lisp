@@ -17,18 +17,18 @@
   (let ((core (assoc interface *core-messages* :test #'equal)))
     (if core
         (if (eq kind :request) (second core) (third core))
-        (loop for file in (directory (merge-pathnames "*.xml" (asdf:system-relative-pathname
-                                                               "nucleotide" "protocol/")))
-              for node = (find interface
-                               (xml:children-named (xml:parse (uiop:read-file-string file))
-                                                   "interface")
-                               :key (lambda (node) (xml:attribute node "name"))
-                               :test #'equal)
-              when node
-              return (mapcar (lambda (message) (xml:attribute message "name"))
-                             (xml:children-named node (if (eq kind :request)
-                                                          "request"
-                                                          "event")))))))
+        (loop :for file :in (directory (merge-pathnames "*.xml" (asdf:system-relative-pathname
+                                                                 "nucleotide" "protocol/")))
+              :for node = (find interface
+                                (xml:children-named (xml:parse (uiop:read-file-string file))
+                                                    "interface")
+                                :key (lambda (node) (xml:attribute node "name"))
+                                :test #'equal)
+              :when node
+              :return (mapcar (lambda (message) (xml:attribute message "name"))
+                              (xml:children-named node (if (eq kind :request)
+                                                           "request"
+                                                           "event")))))))
 
 (defun call-with-fake-server (function)
   (with-private-directory (directory)
@@ -71,21 +71,21 @@
   "The requests sent since the last call, as (interface request object body)."
   (let ((input (make-array 0 :element-type '(unsigned-byte 8)))
         (chunk (buffer 4096)))
-    (loop for length = (nth-value 1 (sb-bsd-sockets:socket-receive socket chunk nil))
-          while length
-          do (setf input (concatenate 'n::octets input (subseq chunk 0 length))))
-    (loop with offset = 0
-          while (< offset (length input))
-          collect (let* ((object (n::u32ref input offset))
-                         (word (n::u32ref input (+ offset 4)))
-                         (size (ash word -16))
-                         (proxy (gethash object (n::display-proxies display)))
-                         (interface (n::interface-wire-name (class-name (class-of proxy)))))
-                    (prog1 (list interface
-                                 (nth (logand word #xffff) (message-names interface :request))
-                                 object
-                                 (subseq input (+ offset 8) (+ offset size)))
-                      (incf offset size))))))
+    (loop :for length = (nth-value 1 (sb-bsd-sockets:socket-receive socket chunk nil))
+          :while length
+          :do (setf input (concatenate 'n::octets input (subseq chunk 0 length))))
+    (loop :with offset = 0
+          :while (< offset (length input))
+          :collect (let* ((object (n::u32ref input offset))
+                          (word (n::u32ref input (+ offset 4)))
+                          (size (ash word -16))
+                          (proxy (gethash object (n::display-proxies display)))
+                          (interface (n::interface-wire-name (class-name (class-of proxy)))))
+                     (prog1 (list interface
+                                  (nth (logand word #xffff) (message-names interface :request))
+                                  object
+                                  (subseq input (+ offset 8) (+ offset size)))
+                       (incf offset size))))))
 
 (defun names (requests)
   (mapcar (lambda (request) (subseq request 0 2)) requests))
@@ -128,9 +128,9 @@ and the requests it sent so far."
     (n::u32ref body id-offset)))
 
 (defun proposed-dimensions (requests)
-  (loop for (nil request nil body) in requests
-        when (equal "propose_dimensions" request)
-        collect (list (n::i32ref body 0) (n::i32ref body 4))))
+  (loop :for (nil request nil body) :in requests
+        :when (equal "propose_dimensions" request)
+        :collect (list (n::i32ref body 0) (n::i32ref body 4))))
 
 (defun key-binding (requests keysym)
   (created-id requests "get_xkb_binding" keysym 8 4))

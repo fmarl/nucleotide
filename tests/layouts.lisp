@@ -7,15 +7,15 @@
 (in-suite layouts)
 
 (test tiling-fits-and-does-not-overlap
-  (loop with area = (n::rect 10 20 1000 800)
-        for n from 0 to 6
-        for rects = (n::tiling-rects n area 3/5 8)
-        do (is (= n (length rects)))
+  (loop :with area = (n::rect 10 20 1000 800)
+        :for n :from 0 :to 6
+        :for rects = (n::tiling-rects n area 3/5 8)
+        :do (is (= n (length rects)))
         (dolist (rect rects)
           (is (n::rect-within-p rect area)))
-        (loop for (a . rest) on rects
-              do (dolist (b rest)
-                   (is (zerop (n::overlap-area a b)))))))
+        (loop :for (a . rest) :on rects
+              :do (dolist (b rest)
+                    (is (zerop (n::overlap-area a b)))))))
 
 (test tiling-stack-fills-the-height
   (let ((rects (n::tiling-rects 4 (n::rect 0 0 1000 800) 3/5 8)))

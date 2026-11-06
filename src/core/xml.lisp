@@ -38,8 +38,8 @@
     (setf (cursor-pos cursor) (+ found (length marker)))))
 
 (defun skip-whitespace (cursor)
-  (loop while (member (current-char cursor) '(#\Space #\Tab #\Newline #\Return))
-        do (incf (cursor-pos cursor))))
+  (loop :while (member (current-char cursor) '(#\Space #\Tab #\Newline #\Return))
+        :do (incf (cursor-pos cursor))))
 
 (defun skip-to-tag (cursor)
   (loop
@@ -52,9 +52,9 @@
 
 (defun read-name (cursor)
   (let ((start (cursor-pos cursor)))
-    (loop while (let ((c (current-char cursor)))
-                  (and c (or (alphanumericp c) (find c "_-:."))))
-          do (incf (cursor-pos cursor)))
+    (loop :while (let ((c (current-char cursor)))
+                   (and c (or (alphanumericp c) (find c "_-:."))))
+          :do (incf (cursor-pos cursor)))
     (when (= start (cursor-pos cursor))
       (xml-error "expected a name at position ~D" start))
     (subseq (cursor-string cursor) start (cursor-pos cursor))))
@@ -96,9 +96,9 @@
           (setf (cursor-pos cursor) (1+ end)))))))
 
 (defun read-attributes (cursor)
-  (loop for attribute = (read-attribute cursor)
-        while attribute
-        collect attribute))
+  (loop :for attribute = (read-attribute cursor)
+        :while attribute
+        :collect attribute))
 
 (defun read-closing-tag-p (cursor name)
   (when (eofp cursor)
@@ -113,9 +113,9 @@
     t))
 
 (defun read-children (cursor name)
-  (loop do (skip-to-tag cursor)
-        until (read-closing-tag-p cursor name)
-        collect (read-element cursor)))
+  (loop :do (skip-to-tag cursor)
+        :until (read-closing-tag-p cursor name)
+        :collect (read-element cursor)))
 
 (defun read-element (cursor)
   (expect cursor #\<)

@@ -33,9 +33,9 @@
 (define-command switch-window (wm)
   "Choose a window with *MENU-COMMAND* and focus it."
   (let* ((windows (all-windows wm))
-         (choices (loop for win in windows
-                        for number from 1
-                        collect (window-label win number))))
+         (choices (loop :for win :in windows
+                        :for number :from 1
+                        :collect (window-label win number))))
     (when windows
       (sb-thread:make-thread
        (lambda ()

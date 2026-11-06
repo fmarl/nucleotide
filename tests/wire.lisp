@@ -149,8 +149,8 @@
 
 (defun test-message (index)
   "Message INDEX: sender INDEX, opcode INDEX mod 7, INDEX mod 20 body words."
-  (let ((words (loop for k below (mod index 20)
-                     collect (ldb (byte 32 0) (* (1+ index) (1+ k) 2654435761)))))
+  (let ((words (loop :for k :below (mod index 20)
+                     :collect (ldb (byte 32 0) (* (1+ index) (1+ k) 2654435761)))))
     (apply #'concatenate '(vector (unsigned-byte 8))
            (header index (mod index 7) (+ 8 (* 4 (length words))))
            (mapcar (lambda (word)
@@ -161,31 +161,31 @@
 
 (test messages-arrive-whole-however-the-stream-is-split
   ;; Well over the read buffer's 64 KiB, so it is compacted many times.
-  (let* ((messages (loop for i below 3000 collect (test-message i)))
+  (let* ((messages (loop :for i :below 3000 :collect (test-message i)))
          (stream (apply #'concatenate '(vector (unsigned-byte 8)) messages))
          (wrong '()))
     (call-with-socket-pair
      (lambda (writer conn)
        (let ((writing (sb-thread:make-thread
                       (lambda ()
-                        (loop for start = 0 then end
-                              for i from 0
-                              for end = (min (length stream) (+ start 1 (mod (* i 37) 701)))
-                              while (< start (length stream))
-                              do (sb-bsd-sockets:socket-send
-                                  writer (subseq stream start end) nil))))))
-         (loop for expected in messages
-               for i from 0
-               do (multiple-value-bind (sender opcode body-offset body-size)
-                      (n::peek-message conn)
-                    (unless (and (= sender i)
-                                 (= opcode (mod i 7))
-                                 (equalp expected
-                                         (subseq (n::connection-rbuf conn)
-                                                 (- body-offset 8)
-                                                 (+ body-offset body-size))))
-                      (push i wrong))
-                    (n::consume-message conn (+ 8 body-size))))
+                        (loop :for start = 0 :then end
+                              :for i :from 0
+                              :for end = (min (length stream) (+ start 1 (mod (* i 37) 701)))
+                              :while (< start (length stream))
+                              :do (sb-bsd-sockets:socket-send
+                                   writer (subseq stream start end) nil))))))
+         (loop :for expected :in messages
+               :for i :from 0
+               :do (multiple-value-bind (sender opcode body-offset body-size)
+                       (n::peek-message conn)
+                     (unless (and (= sender i)
+                                  (= opcode (mod i 7))
+                                  (equalp expected
+                                          (subseq (n::connection-rbuf conn)
+                                                  (- body-offset 8)
+                                                  (+ body-offset body-size))))
+                       (push i wrong))
+                     (n::consume-message conn (+ 8 body-size))))
          (sb-thread:join-thread writing))))
     (is (null wrong) "messages read wrongly: ~S" (reverse wrong))))
 

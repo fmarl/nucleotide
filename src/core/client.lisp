@@ -64,10 +64,10 @@
   (unless (eq sb-thread:*current-thread* (display-thread (proxy-display proxy)))
     (nucleotide-error "request to ~S from ~S, which does not run the display"
                       proxy sb-thread:*current-thread*))
-  (loop for type in signature
-        for value in args
-        when (and (eq type :object) value (proxy-destroyed-p value))
-        do (nucleotide-error "request (opcode ~D) to ~S names destroyed ~S" opcode proxy value))
+  (loop :for type :in signature
+        :for value :in args
+        :when (and (eq type :object) value (proxy-destroyed-p value))
+        :do (nucleotide-error "request (opcode ~D) to ~S names destroyed ~S" opcode proxy value))
   (let* ((conn (display-connection (proxy-display proxy)))
          (buf (connection-wbuf conn))
          (end (reduce (lambda (off type-and-value)
@@ -138,7 +138,7 @@
          (cons ,event-name ',(mapcar #'second arg-specs))))
 
 (defun mappend (function list)
-  (loop for x in list append (funcall function x)))
+  (loop :for x :in list :append (funcall function x)))
 
 (defstruct (request-arg
              (:constructor request-arg (parameters types values &optional new-proxy)))
@@ -234,7 +234,7 @@
             (when (eq event :done)
               (setf done t)))
           (proxy-hooks callback))
-    (loop until done do (dispatch-event display))
+    (loop :until done :do (dispatch-event display))
     (values)))
 
 (defun supports-p (proxy version)

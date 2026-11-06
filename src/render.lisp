@@ -9,8 +9,8 @@
                (char= #\# (char color-code 0))
                (every (lambda (char) (digit-char-p char 16)) (subseq color-code 1)))
     (nucleotide-error "~S is not a color like \"#6f8cab\"" color-code))
-  (append (loop for start from 1 below (length color-code) by 2
-                collect (parse-integer color-code :start start :end (+ start 2) :radix 16))
+  (append (loop :for start :from 1 :below (length color-code) :by 2
+                :collect (parse-integer color-code :start start :end (+ start 2) :radix 16))
           (and (= 7 (length color-code)) '(255))))
 
 (define-setting *border-width* 2

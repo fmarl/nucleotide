@@ -49,11 +49,11 @@
                 (t (wire-type type))))))
 
 (defun enum-forms (interface-name enum)
-  (loop for entry in (xml:children-named enum "entry")
-        collect `(defconstant ,(enum-constant-name interface-name
-                                                   (xml:attribute enum "name")
-                                                   (xml:attribute entry "name"))
-                   ,(parse-enum-value (xml:attribute entry "value")))))
+  (loop :for entry :in (xml:children-named enum "entry")
+        :collect `(defconstant ,(enum-constant-name interface-name
+                                                    (xml:attribute enum "name")
+                                                    (xml:attribute entry "name"))
+                    ,(parse-enum-value (xml:attribute entry "value")))))
 
 (defun request-form (class request opcode)
   (let ((since (xml:attribute request "since"))
@@ -71,12 +71,12 @@
   (let* ((wire-name (xml:attribute interface "name"))
          (class (lispify wire-name)))
     (append
-     (loop for request in (xml:children-named interface "request")
-           for opcode from 0
-           collect (request-form class request opcode))
-     (loop for event in (xml:children-named interface "event")
-           for opcode from 0
-           collect (event-form class event opcode))
+     (loop :for request :in (xml:children-named interface "request")
+           :for opcode :from 0
+           :collect (request-form class request opcode))
+     (loop :for event :in (xml:children-named interface "event")
+           :for opcode :from 0
+           :collect (event-form class event opcode))
      (mappend (lambda (enum) (enum-forms wire-name enum))
               (xml:children-named interface "enum")))))
 

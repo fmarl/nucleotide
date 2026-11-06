@@ -50,9 +50,9 @@ DONT-CLOSE, it stops listening after the first connection."
   (when (repl-listening-p port)
     (nucleotide-error "a REPL is already listening on port ~D" port))
   (uiop:symbol-call '#:slynk '#:create-server :port port :dont-close dont-close)
-  (loop repeat 100
-        until (repl-listening-p port)
-        do (sleep 0.01))
+  (loop :repeat 100
+        :until (repl-listening-p port)
+        :do (sleep 0.01))
   port)
 
 (defun stop-repl-server (&key (port *repl-port*))

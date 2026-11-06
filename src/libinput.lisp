@@ -58,13 +58,13 @@ how to encode its value: the name of an enum, or :DOUBLE.")
 (defun check-libinput-settings (plist)
   (unless (and (listp plist) (evenp (length plist)))
     (nucleotide-error "~S is not a plist like (:tap t)" plist))
-  (loop for (setting value) on plist by #'cddr
-        for encoding = (fourth (or (find setting *libinput-requests* :key #'first)
-                                   (nucleotide-error "unknown libinput setting ~S" setting)))
-        do (if (eq encoding :double)
-               (unless (typep value '(real -1 1))
-                 (nucleotide-error "~S is not a number from -1 to 1" value))
-               (libinput-value encoding value))))
+  (loop :for (setting value) :on plist :by #'cddr
+        :for encoding = (fourth (or (find setting *libinput-requests* :key #'first)
+                                    (nucleotide-error "unknown libinput setting ~S" setting)))
+        :do (if (eq encoding :double)
+                (unless (typep value '(real -1 1))
+                  (nucleotide-error "~S is not a number from -1 to 1" value))
+                (libinput-value encoding value))))
 
 (defun watch-libinput-result (setting result)
   (push (lambda (event &rest args)
@@ -75,14 +75,14 @@ how to encode its value: the name of an enum, or :DOUBLE.")
 
 (defun apply-libinput-settings (device event support)
   (when (plusp support)
-    (loop for (setting announcement request encoding) in *libinput-requests*
-          when (eq event announcement)
-          do (multiple-value-bind (present value)
-                 (get-properties *libinput-settings* (list setting))
-               (when present
-                 (watch-libinput-result
-                  setting
-                  (funcall request device (libinput-value encoding value))))))))
+    (loop :for (setting announcement request encoding) :in *libinput-requests*
+          :when (eq event announcement)
+          :do (multiple-value-bind (present value)
+                  (get-properties *libinput-settings* (list setting))
+                (when present
+                  (watch-libinput-result
+                   setting
+                   (funcall request device (libinput-value encoding value))))))))
 
 (defmethod handle-event (wm (device river-libinput-device-v1) event &rest args)
   (declare (ignore wm))

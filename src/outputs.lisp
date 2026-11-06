@@ -67,10 +67,10 @@ outputs plugged in after a reload may have another *NUM-OF-WORKSPACES*."
 (defun migrate-workspaces (from to &key keep-home)
   "Move the windows of each workspace of FROM to the corresponding one of TO.
 With KEEP-HOME they can return to the workspace they came from."
-  (loop for ws in from
-        for index from 0
-        do (migrate-windows ws (corresponding-workspace index to)
-                            :home (and keep-home ws))))
+  (loop :for ws :in from
+        :for index :from 0
+        :do (migrate-windows ws (corresponding-workspace index to)
+                             :home (and keep-home ws))))
 
 (defun evacuate-output (wm output target)
   "Move the windows of OUTPUT to the same workspaces of TARGET. With a name,

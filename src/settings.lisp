@@ -19,13 +19,13 @@ called with its value after the init file loaded."
      ',name))
 
 (defun setting-defaults ()
-  (loop for (nil . properties) in *settings*
-        collect (funcall (getf properties :default))))
+  (loop :for (nil . properties) :in *settings*
+        :collect (funcall (getf properties :default))))
 
 (defun check-settings ()
-  (loop for (name . properties) in *settings*
-        for check = (getf properties :check)
-        when check
-        do (handler-case (funcall check (symbol-value name))
-             (error (c)
-               (nucleotide-error "~(~A~): ~A" name c)))))
+  (loop :for (name . properties) :in *settings*
+        :for check = (getf properties :check)
+        :when check
+        :do (handler-case (funcall check (symbol-value name))
+              (error (c)
+                (nucleotide-error "~(~A~): ~A" name c)))))

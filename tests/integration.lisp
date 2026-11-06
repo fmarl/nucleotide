@@ -38,9 +38,9 @@
 
 (defun await (predicate &key (seconds 5))
   "The first true value of PREDICATE within SECONDS, else NIL."
-  (loop repeat (* 20 seconds)
-        thereis (funcall predicate)
-        do (sleep 0.05)))
+  (loop :repeat (* 20 seconds)
+        :thereis (funcall predicate)
+        :do (sleep 0.05)))
 
 (defun in-wm (function)
   (let ((semaphore (sb-thread:make-semaphore))
@@ -82,14 +82,14 @@ before the answer, so a broken connection is visible afterwards."
   (let ((previous (mapcar (lambda (variable) (uiop:getenv (car variable))) variables)))
     (unwind-protect
          (progn
-           (loop for (name . value) in variables
-                 do (sb-posix:setenv name value 1))
+           (loop :for (name . value) :in variables
+                 :do (sb-posix:setenv name value 1))
            (funcall function))
-      (loop for (name) in variables
-            for value in previous
-            do (if value
-                   (sb-posix:setenv name value 1)
-                   (sb-posix:unsetenv name))))))
+      (loop :for (name) :in variables
+            :for value :in previous
+            :do (if value
+                    (sb-posix:setenv name value 1)
+                    (sb-posix:unsetenv name))))))
 
 (defun call-with-river (function)
   (let* ((*runtime-directory* (uiop:ensure-directory-pathname
@@ -125,8 +125,8 @@ before the answer, so a broken connection is visible afterwards."
 
 (defun open-windows (count)
   "Whether COUNT new clients opened their windows."
-  (loop repeat count
-        do (launch "weston-simple-shm"))
+  (loop :repeat count
+        :do (launch "weston-simple-shm"))
   (await (lambda ()
            (= count (in-wm (lambda () (length (n:all-windows n:*wm*))))))))
 

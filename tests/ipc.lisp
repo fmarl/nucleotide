@@ -170,7 +170,7 @@
       (is (search runtime (n::ipc-socket-path))))))
 
 (defun serve (times)
-  (loop repeat times do (sb-sys:serve-event 0.05)))
+  (loop :repeat times :do (sb-sys:serve-event 0.05)))
 
 (defun read-reply (stream)
   "The next line from the IPC, or NIL if none arrives instead of blocking."
@@ -343,11 +343,11 @@
       (declare (ignore stream))
       (unwind-protect
            (progn
-             (loop repeat (+ 5 n::+ipc-max-clients+)
-                   do (let ((socket (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
-                        (sb-bsd-sockets:socket-connect socket (n::ipc-path ipc))
-                        (push socket sockets)
-                        (serve 1)))
+             (loop :repeat (+ 5 n::+ipc-max-clients+)
+                   :do (let ((socket (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
+                         (sb-bsd-sockets:socket-connect socket (n::ipc-path ipc))
+                         (push socket sockets)
+                         (serve 1)))
              (serve 20)
              (is (= n::+ipc-max-clients+ (length (n::ipc-clients ipc)))))
         (mapc #'sb-bsd-sockets:socket-close sockets)))))

@@ -88,25 +88,25 @@ then be bound."
 
 (defun chord-entries (keybinds)
   "Alist from prefixes to the key entries of the chords of KEYBINDS after them."
-  (loop for (prefix . chords) in (group-by #'keybind-first-key
-                                           (remove-if-not #'keybind-chord-key keybinds))
-        collect (cons prefix
-                      (loop for chord in chords
-                            collect (make-key-entry (key-display-name (keybind-chord-key chord))
-                                                    (keybind-label chord))))))
+  (loop :for (prefix . chords) :in (group-by #'keybind-first-key
+                                             (remove-if-not #'keybind-chord-key keybinds))
+        :collect (cons prefix
+                       (loop :for chord :in chords
+                             :collect (make-key-entry (key-display-name (keybind-chord-key chord))
+                                                      (keybind-label chord))))))
 
 (defun modifier-entries (keybinds)
   "Alist from modifiers to the key entries of KEYBINDS starting with them."
-  (loop for (modifiers . group) in (group-by (lambda (keybind) (cdr (keybind-first-key keybind)))
-                                             keybinds)
-        collect (cons modifiers
-                      (remove-duplicates
-                       (loop for keybind in group
-                             for key = (keysym-display-name (car (keybind-first-key keybind)))
-                             collect (if (keybind-chord-key keybind)
-                                         (make-prefix-entry key)
-                                         (make-key-entry key (keybind-label keybind))))
-                       :key #'key-entry-key :test #'equal :from-end t))))
+  (loop :for (modifiers . group) :in (group-by (lambda (keybind) (cdr (keybind-first-key keybind)))
+                                               keybinds)
+        :collect (cons modifiers
+                       (remove-duplicates
+                        (loop :for keybind :in group
+                              :for key = (keysym-display-name (car (keybind-first-key keybind)))
+                              :collect (if (keybind-chord-key keybind)
+                                           (make-prefix-entry key)
+                                           (make-key-entry key (keybind-label keybind))))
+                        :key #'key-entry-key :test #'equal :from-end t))))
 
 (defun prefix-submap (wm submaps prefix chords)
   "CHORDS are the CHORD-ENTRIES of the keybinds."

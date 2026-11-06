@@ -13,20 +13,20 @@
 
 (defun write-json-string (string stream)
   (write-char #\" stream)
-  (loop for char across string
-        do (case char
-             (#\" (write-string "\\\"" stream))
-             (#\\ (write-string "\\\\" stream))
-             (t (if (< (char-code char) #x20)
-                    (format stream "\\u~4,'0X" (char-code char))
-                    (write-char char stream)))))
+  (loop :for char :across string
+        :do (case char
+              (#\" (write-string "\\\"" stream))
+              (#\\ (write-string "\\\\" stream))
+              (t (if (< (char-code char) #x20)
+                     (format stream "\\u~4,'0X" (char-code char))
+                     (write-char char stream)))))
   (write-char #\" stream))
 
 (defun write-json (value stream)
   (flet ((write-items (open items write-item close)
            (write-char open stream)
-           (loop for (item . more) on items
-                 do (funcall write-item item)
+           (loop :for (item . more) :on items
+                 :do (funcall write-item item)
                  (when more
                    (write-char #\, stream)))
            (write-char close stream)))
@@ -65,12 +65,12 @@
     char))
 
 (defun read-json-code-unit (in)
-  (loop repeat 4
-        for digit = (let ((char (read-char in nil)))
-                      (or (and char (digit-char-p char 16))
-                          (json-error "invalid \\u escape in JSON")))
-        for code = digit then (+ (* 16 code) digit)
-        finally (return code)))
+  (loop :repeat 4
+        :for digit = (let ((char (read-char in nil)))
+                       (or (and char (digit-char-p char 16))
+                           (json-error "invalid \\u escape in JSON")))
+        :for code = digit :then (+ (* 16 code) digit)
+        :finally (return code)))
 
 (defun read-json-code-point (in)
   (let ((code (read-json-code-unit in)))
@@ -100,24 +100,24 @@
 (defun read-json-string (in)
   (read-json-char in #\")
   (with-output-to-string (out)
-    (loop for char = (read-char in nil)
-          do (case char
-               ((nil) (json-error "unterminated JSON string"))
-               (#\" (return))
-               (#\\ (write-char (read-json-escape in) out))
-               (t (write-char char out))))))
+    (loop :for char = (read-char in nil)
+          :do (case char
+                ((nil) (json-error "unterminated JSON string"))
+                (#\" (return))
+                (#\\ (write-char (read-json-escape in) out))
+                (t (write-char char out))))))
 
 (defun read-json-token (in)
   (with-output-to-string (out)
-    (loop for char = (peek-char nil in nil)
-          until (member char '(nil #\, #\] #\} #\: #\Space #\Tab #\Newline #\Return))
-          do (write-char (read-char in) out))))
+    (loop :for char = (peek-char nil in nil)
+          :until (member char '(nil #\, #\] #\} #\: #\Space #\Tab #\Newline #\Return))
+          :do (write-char (read-char in) out))))
 
 (defun read-json-items (in close read-item)
   (if (eql (peek-char t in nil) close)
       (progn (read-char in) '())
-      (loop collect (funcall read-item)
-            until (eql (read-json-char in #\, close) close))))
+      (loop :collect (funcall read-item)
+            :until (eql (read-json-char in #\, close) close))))
 
 (defconstant +json-max-depth+ 64
   "Deeper input is rejected before it can exhaust the stack.")

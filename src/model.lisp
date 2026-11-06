@@ -177,10 +177,10 @@ Manage sequences bring this in line with LOCKED.")
           (mappend #'cdr (wm-stash wm))))
 
 (defun all-windows (wm)
-  (loop for ws in (wm-workspaces wm) append (workspace-windows ws)))
+  (loop :for ws :in (wm-workspaces wm) :append (workspace-windows ws)))
 
 (defun output-windows (wm)
-  (loop for ws in (mappend #'output-workspaces (wm-outputs wm)) append (workspace-windows ws)))
+  (loop :for ws :in (mappend #'output-workspaces (wm-outputs wm)) :append (workspace-windows ws)))
 
 (defmethod wm-highlight :around ((wm wm))
   (live (call-next-method)))
@@ -228,8 +228,8 @@ and run the clause of each with its arguments, the oldest first."
   (let ((request (gensym "REQUEST")))
     `(dolist (,request (take-requests ,wm ',(mapcar #'first clauses)))
        (ecase (car ,request)
-         ,@(loop for (kind lambda-list . body) in clauses
-                 collect `(,kind (destructuring-bind ,lambda-list (cdr ,request)
+         ,@(loop :for (kind lambda-list . body) :in clauses
+                 :collect `(,kind (destructuring-bind ,lambda-list (cdr ,request)
                                    ,@body)))))))
 
 (defun dialog-of-p (win root)

@@ -51,11 +51,11 @@ column has none, as it could not show it.")))
 (defun reconcile-columns (columns windows anchor)
   "Drop windows that are gone, and open each window without a column as a new
 column right of ANCHOR's."
-  (let* ((kept (loop for column in columns
-                     for present = (remove-if-not (lambda (win) (member win windows))
-                                                  (column-windows column))
-                     when present
-                     collect (copy-column column :windows present)))
+  (let* ((kept (loop :for column :in columns
+                     :for present = (remove-if-not (lambda (win) (member win windows))
+                                                   (column-windows column))
+                     :when present
+                     :collect (copy-column column :windows present)))
          (placed (mappend #'column-windows kept))
          (new (reverse (remove-if (lambda (win) (member win placed)) windows)))
          (at (1+ (or (column-index kept anchor) (1- (length kept))))))
@@ -75,10 +75,10 @@ column right of ANCHOR's."
   (- (round (* (column-width column) (+ view gap))) gap))
 
 (defun column-lefts (widths gap)
-  (loop with left = 0
-        for width in widths
-        collect left
-        do (incf left (+ width gap))))
+  (loop :with left = 0
+        :for width :in widths
+        :collect left
+        :do (incf left (+ width gap))))
 
 (defun scroll-into-view (offset left width view)
   (cond ((or (< left offset) (> width view)) left)

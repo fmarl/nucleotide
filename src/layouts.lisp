@@ -81,12 +81,12 @@ fullscreen, without changing LAYOUT."))
   (:documentation "Move WIN one step in DIRECTION within WORKSPACE.")
   (:method (layout workspace win direction)
     (unless (window-floating-p win)
-      (let ((other (loop for other = (layout-neighbor layout workspace win direction)
-                         then (layout-neighbor layout workspace other direction)
-                         repeat (length (workspace-windows workspace))
-                         while (and other (not (eq other win)))
-                         unless (window-floating-p other)
-                         return other)))
+      (let ((other (loop :for other = (layout-neighbor layout workspace win direction)
+                         :then (layout-neighbor layout workspace other direction)
+                         :repeat (length (workspace-windows workspace))
+                         :while (and other (not (eq other win)))
+                         :unless (window-floating-p other)
+                         :return other)))
         (when other
           (swap-windows workspace win other))))))
 
@@ -98,11 +98,11 @@ fullscreen, without changing LAYOUT."))
 
 (defun stack-rects-by (fractions area gap)
   "The last rect takes what rounding leaves."
-  (loop with room = (- (rect-height area) (* (1- (length fractions)) gap))
-        for (fraction . more) on fractions
-        for top = (rect-y area) then (+ top each gap)
-        for each = (if more (floor (* fraction room)) (- (rect-bottom area) top))
-        collect (rect (rect-x area) top (rect-width area) each)))
+  (loop :with room = (- (rect-height area) (* (1- (length fractions)) gap))
+        :for (fraction . more) :on fractions
+        :for top = (rect-y area) :then (+ top each gap)
+        :for each = (if more (floor (* fraction room)) (- (rect-bottom area) top))
+        :collect (rect (rect-x area) top (rect-width area) each)))
 
 (defun stack-rects (n area gap)
   (when (plusp n)

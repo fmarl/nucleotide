@@ -19,17 +19,17 @@
   (make-array size :element-type '(unsigned-byte 8) :initial-element 0))
 
 (defmacro with-stubs ((&rest stubs) &body body)
-  (let ((saved (loop repeat (length stubs) collect (gensym))))
-    `(let ,(loop for (name) in stubs
-                 for var in saved
-                 collect `(,var (fdefinition ',name)))
+  (let ((saved (loop :repeat (length stubs) :collect (gensym))))
+    `(let ,(loop :for (name) :in stubs
+                 :for var :in saved
+                 :collect `(,var (fdefinition ',name)))
        (unwind-protect
-            (progn ,@(loop for (name function) in stubs
-                           collect `(setf (fdefinition ',name) ,function))
+            (progn ,@(loop :for (name function) :in stubs
+                           :collect `(setf (fdefinition ',name) ,function))
                    ,@body)
-         ,@(loop for (name) in stubs
-                 for var in saved
-                 collect `(setf (fdefinition ',name) ,var))))))
+         ,@(loop :for (name) :in stubs
+                 :for var :in saved
+                 :collect `(setf (fdefinition ',name) ,var))))))
 
 (defmacro with-fresh-config (&body body)
   `(progv (n::config-variables) (n::default-config)
@@ -43,10 +43,10 @@
 
 (defun entry-pairs (entries)
   "ENTRIES as (key . label), and (key) for a prefix."
-  (loop for entry in entries
-        collect (if (n::key-entry-prefix-p entry)
-                    (list (n::key-entry-key entry))
-                    (cons (n::key-entry-key entry) (n::key-entry-label entry)))))
+  (loop :for entry :in entries
+        :collect (if (n::key-entry-prefix-p entry)
+                     (list (n::key-entry-key entry))
+                     (cons (n::key-entry-key entry) (n::key-entry-label entry)))))
 
 (defun action (keys)
   (let ((keybind (keybind keys)))
@@ -82,14 +82,14 @@
   (let ((previous (mapcar (lambda (variable) (uiop:getenv (first variable))) variables)))
     (unwind-protect
          (progn
-           (loop for (name value) in variables
-                 do (sb-posix:setenv name value 1))
+           (loop :for (name value) :in variables
+                 :do (sb-posix:setenv name value 1))
            (funcall thunk))
-      (loop for (name) in variables
-            for value in previous
-            do (if value
-                   (sb-posix:setenv name value 1)
-                   (sb-posix:unsetenv name))))))
+      (loop :for (name) :in variables
+            :for value :in previous
+            :do (if value
+                    (sb-posix:setenv name value 1)
+                    (sb-posix:unsetenv name))))))
 
 (defmacro with-environment ((&rest variables) &body body)
   `(call-with-environment (list ,@(mapcar (lambda (variable) `(list ,@variable)) variables))

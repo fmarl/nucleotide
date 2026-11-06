@@ -14,9 +14,9 @@
     (values wm (received socket display) (n::proxy-id (n::wm-xkb-seat wm)))))
 
 (defun modifiers-watches (requests xkb-seat)
-  (loop for (nil request object body) in requests
-        when (and (eql object xkb-seat) (equal request "modifiers_watch"))
-        collect (n::u32ref body 0)))
+  (loop :for (nil request object body) :in requests
+        :when (and (eql object xkb-seat) (equal request "modifiers_watch"))
+        :collect (n::u32ref body 0)))
 
 (defun timers (wm)
   (n::loop-timers (n::wm-loop wm)))

@@ -13,30 +13,30 @@
       (if (consp name) (second name) name)))
 
   (defun without-defaults (lambda-list)
-    (loop with optional = nil
-          for parameter in (ldiff lambda-list (member '&aux lambda-list))
-          for supplied = (gensym "SUPPLIED")
-          if (member parameter lambda-list-keywords)
-            do (setf optional (member parameter '(&optional &key)))
-            and collect parameter into parameters
-          else if optional
-                 collect (list (if (consp parameter) (first parameter) parameter) nil supplied)
-                   into parameters
-                 and collect (cons (parameter-variable parameter) supplied) into given
-          else
-            collect parameter into parameters
-            and collect (cons parameter t) into given
-          finally (return (values parameters given))))
+    (loop :with optional = nil
+          :for parameter :in (ldiff lambda-list (member '&aux lambda-list))
+          :for supplied = (gensym "SUPPLIED")
+          :if (member parameter lambda-list-keywords)
+            :do (setf optional (member parameter '(&optional &key)))
+            :and :collect parameter :into parameters
+          :else :if optional
+                  :collect (list (if (consp parameter) (first parameter) parameter) nil supplied)
+                    :into parameters
+                  :and :collect (cons (parameter-variable parameter) supplied) :into given
+          :else
+            :collect parameter :into parameters
+            :and :collect (cons parameter t) :into given
+          :finally (return (values parameters given))))
 
   (defun declared-types (body variables)
-    (loop for form in body
-          while (or (stringp form) (and (consp form) (eq 'declare (first form))))
-          when (consp form)
-          append (loop for (kind type . declared) in (rest form)
-                       when (eq kind 'type)
-                       append (loop for variable in declared
-                                    when (member variable variables)
-                                    collect (list variable type))))))
+    (loop :for form :in body
+          :while (or (stringp form) (and (consp form) (eq 'declare (first form))))
+          :when (consp form)
+          :append (loop :for (kind type . declared) :in (rest form)
+                        :when (eq kind 'type)
+                        :append (loop :for variable :in declared
+                                      :when (member variable variables)
+                                      :collect (list variable type))))))
 
 (defmacro define-command (name (wm &rest lambda-list) &body body)
   "Define NAME as a function of the window manager WM and LAMBDA-LIST that
@@ -49,10 +49,10 @@ and the TYPE declarations of BODY."
              (lambda ,parameters
                (declare (ignorable ,@(mapcar #'car given)
                                    ,@(remove t (mapcar #'cdr given))))
-               (remove nil (list ,@(loop for (variable type)
-                                           in (declared-types body (mapcar #'car given))
-                                         collect `(and ,(cdr (assoc variable given))
-                                                       (cons ,variable ',type)))))))
+               (remove nil (list ,@(loop :for (variable type)
+                                           :in (declared-types body (mapcar #'car given))
+                                         :collect `(and ,(cdr (assoc variable given))
+                                                        (cons ,variable ',type)))))))
        (pushnew ',name *commands*)
        ',name)))
 
@@ -72,8 +72,8 @@ and the TYPE declarations of BODY."
     (let ((typed (handler-case (apply (get name 'argument-types) arguments)
                    (program-error ()
                      (nucleotide-error "~S has the wrong number of arguments" action)))))
-      (handler-case (loop for (value . type) in typed
-                          do (check-value value type))
+      (handler-case (loop :for (value . type) :in typed
+                          :do (check-value value type))
         (nucleotide-error (c)
           (nucleotide-error "~S: ~A" action c))))))
 

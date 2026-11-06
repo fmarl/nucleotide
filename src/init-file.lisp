@@ -23,8 +23,8 @@ only, and return the configuration it leaves as an alist."
       (mapcar (lambda (variable) (cons variable (symbol-value variable))) variables))))
 
 (defun install-config (config)
-  (loop for (variable . value) in config
-        do (setf (symbol-value variable) value)))
+  (loop :for (variable . value) :in config
+        :do (setf (symbol-value variable) value)))
 
 (defun load-config-file (file)
   (check-file-permissions (uiop:pathname-directory-pathname file) #o022 :allow-root t)

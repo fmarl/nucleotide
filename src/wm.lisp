@@ -19,8 +19,8 @@ accessor that holds the proxy.")
   :check (type-check '(integer 1) "a number of workspaces like 9"))
 
 (defun make-workspaces ()
-  (loop for i from 1 to *num-of-workspaces*
-        collect (make-instance 'workspace :name (princ-to-string i))))
+  (loop :for i :from 1 :to *num-of-workspaces*
+        :collect (make-instance 'workspace :name (princ-to-string i))))
 
 (define-command exit-session (wm)
   "End the river session."
@@ -83,13 +83,13 @@ and size of the seat and of programs started afterwards."
   (when (eq *inherited-cursor-environment* :unread)
     (setf *inherited-cursor-environment*
           (mapcar #'uiop:getenv '("XCURSOR_THEME" "XCURSOR_SIZE"))))
-  (loop for variable in '("XCURSOR_THEME" "XCURSOR_SIZE")
-        for value in (if *cursor-theme*
-                         (mapcar #'princ-to-string *cursor-theme*)
-                         *inherited-cursor-environment*)
-        do (if value
-               (sb-posix:setenv variable value 1)
-               (sb-posix:unsetenv variable))))
+  (loop :for variable :in '("XCURSOR_THEME" "XCURSOR_SIZE")
+        :for value :in (if *cursor-theme*
+                           (mapcar #'princ-to-string *cursor-theme*)
+                           *inherited-cursor-environment*)
+        :do (if value
+                (sb-posix:setenv variable value 1)
+                (sb-posix:unsetenv variable))))
 
 (defun set-cursor-theme (wm)
   (let ((seat (wm-seat wm)))

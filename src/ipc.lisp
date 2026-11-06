@@ -52,12 +52,12 @@
 
 (defun workspaces-json (wm)
   "Only the workspaces that have windows or are shown."
-  (loop for output in (wm-outputs wm)
-        when (output-name output)
-        append (loop for ws in (output-workspaces output)
-                     for index from 1
-                     when (or (workspace-windows ws) (eq ws (output-workspace output)))
-                     collect (workspace-json wm output ws index))))
+  (loop :for output :in (wm-outputs wm)
+        :when (output-name output)
+        :append (loop :for ws :in (output-workspaces output)
+                      :for index :from 1
+                      :when (or (workspace-windows ws) (eq ws (output-workspace output)))
+                      :collect (workspace-json wm output ws index))))
 
 (defun timestamp-json (time)
   (if time
@@ -77,8 +77,8 @@
 
 (defun windows-json (wm)
   (let ((focused (wm-focus wm)))
-    (loop for win in (output-windows wm)
-          collect (window-json wm win focused))))
+    (loop :for win :in (output-windows wm)
+          :collect (window-json wm win focused))))
 
 (defun window-events (wm)
   "The overview first, so that opening it resends the windows. Workspaces before
@@ -91,11 +91,11 @@ shows the window that its workspace's active_window_id names."
         (json:encode `(:object ("WindowsChanged" :object ("windows" . ,(windows-json wm)))))))
 
 (defun which-key-bindings (entries)
-  (loop for entry in entries
-        collect `(:object ("key" . ,(key-entry-key entry))
-                          ,(if (key-entry-prefix-p entry)
-                               '("prefix" . :true)
-                               `("description" . ,(key-entry-label entry))))))
+  (loop :for entry :in entries
+        :collect `(:object ("key" . ,(key-entry-key entry))
+                           ,(if (key-entry-prefix-p entry)
+                                '("prefix" . :true)
+                                `("description" . ,(key-entry-label entry))))))
 
 (defun which-key-events (wm)
   "The pending chord, or else the modifiers which-key shows."
@@ -212,9 +212,9 @@ subscribe CLIENT."
     (if (member length '(nil 0))
         (close-client client)
         (let ((input (concatenate 'octets (ipc-client-input client) (subseq buffer 0 length))))
-          (loop for newline = (position 10 input)
-                while (and newline (ipc-client-socket client))
-                do (ipc-handle-line wm client (subseq input 0 newline))
+          (loop :for newline = (position 10 input)
+                :while (and newline (ipc-client-socket client))
+                :do (ipc-handle-line wm client (subseq input 0 newline))
                 (setf input (subseq input (1+ newline))))
           (if (> (length input) +ipc-max-request+)
               (close-client client)
@@ -275,20 +275,20 @@ IPC-LISTEN."
 
 (defun changed-events (events last-events)
   "EVENTS from the first one that differs from LAST-EVENTS."
-  (loop for tail on events
-        for last = last-events then (rest last)
-        unless (equal (first tail) (first last))
-        return tail))
+  (loop :for tail :on events
+        :for last = last-events :then (rest last)
+        :unless (equal (first tail) (first last))
+        :return tail))
 
 (defun ipc-update (wm)
   "Send subscribers every event from the first one that changed."
   (let ((ipc (wm-ipc wm)))
     (when ipc
       (setf (ipc-clients ipc) (remove-if-not #'ipc-client-socket (ipc-clients ipc)))
-      (loop for (name . function) in *ipc-streams*
-            for events = (funcall function wm)
-            for changed = (changed-events events (gethash name (ipc-last-events ipc)))
-            do (setf (gethash name (ipc-last-events ipc)) events)
+      (loop :for (name . function) :in *ipc-streams*
+            :for events = (funcall function wm)
+            :for changed = (changed-events events (gethash name (ipc-last-events ipc)))
+            :do (setf (gethash name (ipc-last-events ipc)) events)
             (dolist (client (ipc-clients ipc))
               (when (equal name (ipc-client-subscription client))
                 (dolist (event changed)
