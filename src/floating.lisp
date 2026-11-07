@@ -5,15 +5,18 @@
 
 (define-setting *pointer-modifiers* "Super"
   :documentation "The modifiers that move and resize windows with the pointer."
-  :check #'parse-modifiers)
+  :type modifiers)
+
+(define-value-type button "a button code like 272"
+  :type (unsigned-byte 32))
 
 (define-setting *move-button* 272
   :documentation "Linux input event code of the button that moves windows (BTN_LEFT)."
-  :check (type-check '(unsigned-byte 32) "a button code like 272"))
+  :type button)
 
 (define-setting *resize-button* 273
   :documentation "Linux input event code of the button that resizes windows (BTN_RIGHT)."
-  :check (type-check '(unsigned-byte 32) "a button code like 273"))
+  :type button)
 
 (define-setting *focus-follows-pointer* nil
   :documentation "If non-NIL, keyboard focus follows the pointer.")

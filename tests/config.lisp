@@ -195,7 +195,15 @@
                  (n::*libinput-settings* (:tap))
                  (n::*libinput-settings* (:tapping t))
                  (n::*libinput-settings* (:click-method :clickfingers))
-                 (n::*libinput-settings* (:accel-speed 2))))
+                 (n::*libinput-settings* (:accel-speed 2))
+                 (n::*bindings-layout* -1)
+                 (n::*resize-button* 1/2)
+                 (n::*which-key-delay* 0.5)
+                 (n::*which-key-modifier* "")
+                 (n::*border-focused* "blue")
+                 (n::*cursor-theme* ("Adwaita"))
+                 (n::*key-repeat* (25 -600))
+                 (n::*scroll-factor* -2)))
     (destructuring-bind (setting value) bad
       (signals n:config-error
                (n::call-with-default-config (lambda () (setf (symbol-value setting) value))))))

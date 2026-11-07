@@ -5,7 +5,7 @@
 
 (define-setting *gap* 8
   :documentation "Pixels between windows and around them."
-  :check (type-check '(and wire-int unsigned-byte) "a number of pixels like 8"))
+  :type pixels)
 
 (defclass layout ()
   ()

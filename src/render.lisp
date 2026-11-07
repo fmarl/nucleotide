@@ -13,19 +13,22 @@
                 :collect (parse-integer color-code :start start :end (+ start 2) :radix 16))
           (and (= 7 (length color-code)) '(255))))
 
+(define-value-type color "a color like \"#6f8cab\""
+  :check parse-color)
+
 (define-setting *border-width* 2
   :documentation "Pixels of the border around each window."
-  :check (type-check '(and wire-int unsigned-byte) "a number of pixels like 2"))
+  :type pixels)
 
 (define-setting *border-focused* "#6f8cab"
   :documentation "The border color of the focused window, like \"#6f8cab\", or with
 alpha like \"#6f8cabcc\"."
-  :check #'parse-color)
+  :type color)
 
 (define-setting *border-unfocused* "#ababab"
   :documentation "The border color of the other windows, written like
 *BORDER-FOCUSED*."
-  :check #'parse-color)
+  :type color)
 
 (defun rgba->uint32 (rgba)
   "River takes colors premultiplied by alpha."

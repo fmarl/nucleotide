@@ -15,9 +15,12 @@
   "The globals we bind: proxy class, highest version we support, and the WM
 accessor that holds the proxy.")
 
+(define-value-type workspace-count "a number of workspaces like 9"
+  :type (integer 1))
+
 (define-setting *num-of-workspaces* 9
   :documentation "Workspaces per output. Read at startup."
-  :check (type-check '(integer 1) "a number of workspaces like 9"))
+  :type workspace-count)
 
 (defun make-workspaces ()
   (loop :for i :from 1 :to *num-of-workspaces*
@@ -65,14 +68,13 @@ accessor that holds the proxy.")
   (river-window-manager-v1.destroy river)
   (event-loop-stop (wm-loop wm)))
 
-(defun check-cursor-theme (value)
-  (unless (typep value '(or null (cons string (cons (and wire-int unsigned-byte) null))))
-    (invalid-value value "NIL or a theme and a size like (\"Adwaita\" 24)")))
+(define-value-type cursor-theme "NIL or a theme and a size like (\"Adwaita\" 24)"
+  :type (or null (cons string (cons (and wire-int unsigned-byte) null))))
 
 (define-setting *cursor-theme* nil
   :documentation "NIL for the default of river, or (NAME SIZE): the XCursor theme
 and size of the seat and of programs started afterwards."
-  :check #'check-cursor-theme)
+  :type cursor-theme)
 
 (defparameter *river-cursor-theme* '("default" 24)
   "The theme river uses until it gets another one.")

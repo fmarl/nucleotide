@@ -3,17 +3,19 @@
 
 (in-package #:nucleotide)
 
-(defun check-presets (value)
-  (unless (and (consp value) (every (lambda (preset) (typep preset 'fraction)) value))
-    (invalid-value value "a list of fractions like (1/3 1/2 2/3)")))
+(defun presets-p (object)
+  (and (consp object) (list-of-p 'fraction object)))
+
+(define-value-type presets "a list of fractions like (1/3 1/2 2/3)"
+  :type (satisfies presets-p))
 
 (define-setting *column-widths* '(1/3 1/2 2/3)
   :documentation "Fractions of the output width that CYCLE-COLUMN-WIDTH steps through."
-  :check #'check-presets)
+  :type presets)
 
 (define-setting *window-heights* '(1/3 1/2 2/3)
   :documentation "Fractions of the column height that CYCLE-WINDOW-HEIGHT steps through."
-  :check #'check-presets)
+  :type presets)
 
 (defun next-preset (presets fraction)
   (or (find-if (lambda (preset) (> preset fraction)) presets)

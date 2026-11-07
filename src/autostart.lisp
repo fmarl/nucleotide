@@ -3,16 +3,16 @@
 
 (in-package #:nucleotide)
 
-(defun check-programs (programs)
-  (unless (and (listp programs) (null (cdr (last programs))))
-    (invalid-value programs "a list of programs like (\"waybar\")"))
-  (dolist (program programs)
-    (check-value program 'program)))
+(defun programs-p (object)
+  (list-of-p 'program object))
+
+(define-value-type programs "a list of programs like (\"waybar\")"
+  :type (satisfies programs-p))
 
 (define-setting *autostart-programs*
     '(("waybar"))
   :documentation "Programs started once at startup, in the format SPAWN takes."
-  :check #'check-programs)
+  :type programs)
 
 (defvar *autostarted* nil)
 

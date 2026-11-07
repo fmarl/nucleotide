@@ -121,7 +121,7 @@ matches bindings with the keysyms of the layout."
   (remove "" (uiop:split-string string :separator separator) :test #'string=))
 
 (defun parse-modifiers (names)
-  (unless (or (stringp names) (null names) (argv-p names))
+  (unless (or (stringp names) (list-of-p 'string names))
     (invalid-value names "modifiers like \"Super+Shift\""))
   (reduce #'logior
           (mapcar (lambda (name)
@@ -129,6 +129,9 @@ matches bindings with the keysyms of the layout."
                         (unknown-name "modifier" name)))
                   (if (stringp names) (split names "+") names))
           :initial-value 0))
+
+(define-value-type modifiers "modifiers like \"Super+Shift\""
+  :check parse-modifiers)
 
 (defun key-keysym (name)
   (let ((keysym (if (= 1 (length name))

@@ -65,9 +65,10 @@ valid names if there are few."))
                           (push ,entry (%config-error-context ,condition)))))
          ,@body))))
 
-(defmacro define-value-type (name description &key (type nil type-p) check)
+(defmacro define-value-type (name description &key (type nil type-p) check documentation)
   "Define the type NAME of the values of TYPE, or of those that the function named
-CHECK accepts. Errors describe its values as DESCRIPTION."
+CHECK accepts. Errors describe its values as DESCRIPTION. DOCUMENTATION is the
+docstring of the type."
   (assert (if type-p (null check) check) ()
           "~S needs either a type or a check" name)
   (let ((predicate (and check (intern (format nil "~A-P" name)))))
@@ -76,7 +77,9 @@ CHECK accepts. Errors describe its values as DESCRIPTION."
            `((defun ,predicate (value)
                (handler-case (progn (,check value) t)
                  (config-error () nil)))))
-       (deftype ,name () ',(if check `(satisfies ,predicate) type))
+       (deftype ,name ()
+         ,@(and documentation (list documentation))
+         ',(if check `(satisfies ,predicate) type))
        (setf (get ',name 'value-description) ,description
              (get ',name 'value-check) ',check)
        ',name)))
@@ -91,13 +94,13 @@ CHECK accepts. Errors describe its values as DESCRIPTION."
           ((not (typep value type))
            (invalid-value value description)))))
 
-(defun type-check (type &optional (description (type-description type)))
-  "A check for settings that rejects values not of TYPE."
-  (lambda (value)
-    (check-value value type description)))
+(defun list-of-p (type object)
+  (and (listp object)
+       (null (cdr (last object)))
+       (every (lambda (element) (typep element type)) object)))
 
 (defun argv-p (object)
-  (and (consp object) (null (cdr (last object))) (every #'stringp object)))
+  (and (consp object) (list-of-p 'string object)))
 
 (define-value-type argv "a list of strings like (\"foot\" \"-e\" \"htop\")"
   :type (satisfies argv-p))
@@ -105,3 +108,6 @@ CHECK accepts. Errors describe its values as DESCRIPTION."
 (define-value-type program
     "a command line like \"foot -e htop\" or a list of strings like (\"foot\" \"-e\")"
   :type (or string argv))
+
+(define-value-type pixels "a number of pixels like 8"
+  :type (and wire-int unsigned-byte))

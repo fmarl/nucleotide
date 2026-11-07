@@ -10,7 +10,7 @@
 T or NIL. :CLICK-METHOD takes :BUTTON-AREAS or :CLICKFINGER, :SCROLL-METHOD
 :NO-SCROLL, :TWO-FINGER, :EDGE or :ON-BUTTON-DOWN, :ACCEL-PROFILE :FLAT or
 :ADAPTIVE, and :ACCEL-SPEED a number from -1 to 1. Devices get them when they appear."
-  :check 'check-libinput-settings)
+  :type libinput-settings)
 
 (defparameter *libinput-requests*
   '((:tap :tap-support river-libinput-device-v1.set-tap "tap_state")
@@ -65,6 +65,9 @@ how to encode its value: the name of an enum, or :DOUBLE.")
                     (invalid-value value "a number from -1 to 1"))
                   (libinput-value encoding value)))))
 
+(define-value-type libinput-settings "a plist like (:tap t)"
+  :check check-libinput-settings)
+
 (defun watch-libinput-result (setting result)
   (push (lambda (event &rest args)
           (declare (ignore args))
@@ -94,25 +97,23 @@ how to encode its value: the name of an enum, or :DOUBLE.")
 (define-handler (wm (device river-libinput-device-v1) :removed) ()
   (river-libinput-device-v1.destroy device))
 
-(defun check-key-repeat (value)
-  (unless (typep value '(or null (cons (and wire-int unsigned-byte)
-                                  (cons (and wire-int unsigned-byte) null))))
-    (invalid-value value "NIL or a rate and a delay like (25 600)")))
+(define-value-type key-repeat "NIL or a rate and a delay like (25 600)"
+  :type (or null (cons (and wire-int unsigned-byte)
+                       (cons (and wire-int unsigned-byte) null))))
 
 (define-setting *key-repeat* nil
   :documentation "NIL to keep the default of river, or (RATE DELAY): key repeats per
 second, 0 for none, and the milliseconds until they start. Keyboards get it when
 they appear."
-  :check #'check-key-repeat)
+  :type key-repeat)
 
-(defun check-scroll-factor (value)
-  (unless (typep value '(or null (and wire-fixed (real 0))))
-    (invalid-value value "NIL or a factor like 0.5")))
+(define-value-type scroll-factor "NIL or a factor like 0.5"
+  :type (or null (and wire-fixed (real 0))))
 
 (define-setting *scroll-factor* nil
   :documentation "NIL to keep the default of river, or how much faster pointers scroll,
 like 0.5 or 2. Pointers get it when they appear."
-  :check #'check-scroll-factor)
+  :type scroll-factor)
 
 (define-handler (wm (manager river-input-manager-v1) :input-device) (device)
   (forward-events wm device))

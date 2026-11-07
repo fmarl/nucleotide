@@ -71,8 +71,9 @@ A new feature is usually a handler or command that sets state and queues a
 request, plus a `manage-...` step that acts on it.
 
 ## Configuration
-`define-setting` declares a setting with a `:check` function, which runs after
-the init file loads. `define-command` defines something you can bind, and its
+`define-value-type` names a type of values and how errors describe it.
+`define-setting` declares a setting of such a type, checked after the init file
+loads. `define-command` defines something you can bind, and its
 `type` declarations are checked when the key is bound. `bind` adds `keybind`
 structs to `*bindings*`, and `install-all-keybinds` turns them into river
 bindings.

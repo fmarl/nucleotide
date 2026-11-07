@@ -52,11 +52,14 @@
   (push (on-press wm binding action) (wm-bindings wm))
   (request wm :enable-binding binding))
 
+(define-value-type layout-index "NIL or a layout index like 0"
+  :type (or null (unsigned-byte 32)))
+
 (define-setting *bindings-layout* nil
   :documentation "NIL to match key bindings with the active keyboard layout, or the
 index of the layout to match them with, like 0. Only keys of that layout can
 then be bound."
-  :check (type-check '(or null (unsigned-byte 32)) "NIL or a layout index like 0"))
+  :type layout-index)
 
 (defun make-key-binding (wm keysym modifiers)
   (let ((binding (river-xkb-bindings-v1.get-xkb-binding (wm-xkb wm) (wm-seat wm)

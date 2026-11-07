@@ -5,16 +5,16 @@
 
 (defvar *settings* '()
   "Alist from the symbol of each setting to a plist of :DEFAULT, a function
-returning its default value, and :CHECK.")
+returning its default value, and :TYPE, the value type of the setting.")
 
-(defmacro define-setting (name default &key documentation check)
-  "Define the setting NAME. Every configuration starts from DEFAULT, and CHECK is
-called with its value after the init file loaded."
+(defmacro define-setting (name default &key documentation (type t))
+  "Define the setting NAME. Every configuration starts from DEFAULT, and the value
+must be of the value type TYPE once the init file loaded."
   `(progn
      (defparameter ,name ,default ,@(and documentation (list documentation)))
      (setf *settings* (alist-set ',name
                                  (list :default (lambda () ,default)
-                                       :check ,check)
+                                       :type ',type)
                                  *settings*))
      ',name))
 
@@ -24,7 +24,5 @@ called with its value after the init file loaded."
 
 (defun check-settings ()
   (loop :for (name . properties) :in *settings*
-        :for check = (getf properties :check)
-        :when check
         :do (with-config-context (:setting name)
-              (funcall check (symbol-value name)))))
+              (check-value (symbol-value name) (getf properties :type)))))

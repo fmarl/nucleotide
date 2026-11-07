@@ -3,15 +3,25 @@
 
 (in-package #:nucleotide)
 
+(define-value-type delay "NIL or milliseconds like 500"
+  :type (or null (integer 0)))
+
+(defun parse-held-modifiers (names)
+  (let ((modifiers (parse-modifiers names)))
+    (when (zerop modifiers)
+      (invalid-value names "the name of a modifier like \"Super\""))
+    modifiers))
+
+(define-value-type held-modifiers "the name of a modifier like \"Super\""
+  :check parse-held-modifiers)
+
 (define-setting *which-key-delay* nil
   :documentation "Milliseconds to hold *WHICH-KEY-MODIFIER* before which-key shows, or NIL."
-  :check (type-check '(or null (integer 0)) "NIL or milliseconds like 500"))
+  :type delay)
 
 (define-setting *which-key-modifier* "Super"
   :documentation "The modifiers to hold for which-key."
-  :check (lambda (value)
-           (unless (plusp (parse-modifiers value))
-             (invalid-value value "the name of a modifier like \"Super\""))))
+  :type held-modifiers)
 
 (defstruct which-key
   "LEADER and DELAY, in seconds or NIL, are the settings as they were when the
@@ -68,7 +78,7 @@ or NIL."
 (defmethod bindings-installed progn ((wm wm))
   (dismiss-which-key wm)
   (let ((which-key (wm-which-key wm)))
-    (setf (which-key-leader which-key) (parse-modifiers *which-key-modifier*)
+    (setf (which-key-leader which-key) (parse-held-modifiers *which-key-modifier*)
           (which-key-delay which-key) (and *which-key-delay* (/ *which-key-delay* 1000))))
   (request wm :watch-modifiers))
 

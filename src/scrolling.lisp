@@ -3,14 +3,14 @@
 
 (in-package #:nucleotide)
 
-(deftype fraction ()
-  "A part of the width or height of an output or column."
-  '(real (0) 1))
+(define-value-type fraction "a fraction like 1/2"
+  :documentation "A part of the width or height of an output or column."
+  :type (real (0) 1))
 
 (define-setting *default-column-width* 1/2
   :documentation "The width of new columns of the scrolling layout, and the one
 TOGGLE-FULL-WIDTH returns to, as a fraction of the output."
-  :check (type-check 'fraction "a fraction like 1/2"))
+  :type fraction)
 
 (defclass column ()
   ((windows :initarg :windows :reader column-windows)

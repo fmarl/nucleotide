@@ -3,9 +3,12 @@
 
 (in-package #:nucleotide)
 
+(define-value-type port "a port like 4005"
+  :type (integer 1 65535))
+
 (define-setting *repl-port* 4005
   :documentation "The localhost port TOGGLE-REPL opens a Slynk listener on."
-  :check (type-check '(integer 1 65535) "a port like 4005"))
+  :type port)
 
 (defun repl-secret-file ()
   (merge-pathnames ".sly-secret" (user-homedir-pathname)))
