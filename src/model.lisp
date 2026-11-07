@@ -199,7 +199,7 @@ Manage sequences bring this in line with LOCKED.")
 
 (defun requests (wm kinds)
   "The requests of KINDS, (kind . arguments), the oldest first."
-  (reverse (remove-if-not (lambda (request) (member (car request) kinds))
+  (reverse (remove-if-not (lambda (request) (member (first request) kinds))
                           (wm-requests wm))))
 
 (defun drop-requests (wm predicate)
@@ -212,11 +212,11 @@ Manage sequences bring this in line with LOCKED.")
   "Drop the requests of KINDS, only those about the window ABOUT if given.
 Returns whether there were any."
   (drop-requests wm (lambda (request)
-                      (and (member (car request) kinds)
-                           (or (null about) (member about (cdr request)))))))
+                      (and (member (first request) kinds)
+                           (or (null about) (member about (rest request)))))))
 
 (defun forget-window-requests (wm win)
-  (drop-requests wm (lambda (request) (member win (cdr request)))))
+  (drop-requests wm (lambda (request) (member win (rest request)))))
 
 (defun take-requests (wm kinds)
   (prog1 (requests wm kinds)
@@ -227,10 +227,10 @@ Returns whether there were any."
 and run the clause of each with its arguments, the oldest first."
   (let ((request (gensym "REQUEST")))
     `(dolist (,request (take-requests ,wm ',(mapcar #'first clauses)))
-       (ecase (car ,request)
+       (ecase (first ,request)
          ,@(loop :for (kind lambda-list . body) :in clauses
-                 :collect `(,kind (destructuring-bind ,lambda-list (cdr ,request)
-                                   ,@body)))))))
+                 :collect `(,kind (destructuring-bind ,lambda-list (rest ,request)
+                                    ,@body)))))))
 
 (defun dialog-of-p (win root)
   "Whether WIN is ROOT or a floating dialog of it, also through other dialogs."

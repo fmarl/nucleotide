@@ -210,10 +210,10 @@
     display))
 
 (defun wl-socket-path (&optional name)
-  (let ((name (or name (sb-ext:posix-getenv "WAYLAND_DISPLAY") "wayland-0")))
+  (let ((name (or name (uiop:getenv "WAYLAND_DISPLAY") "wayland-0")))
     (if (char= #\/ (char name 0))
         name
-        (let ((dir (or (sb-ext:posix-getenv "XDG_RUNTIME_DIR")
+        (let ((dir (or (uiop:getenv "XDG_RUNTIME_DIR")
                        (nucleotide-error "XDG_RUNTIME_DIR is not set"))))
           (concatenate 'string dir "/" name)))))
 

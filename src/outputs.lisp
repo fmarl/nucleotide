@@ -62,7 +62,7 @@ OUTPUT relative to RECT to clip it to."
 (defun corresponding-workspace (index workspaces)
   "The workspace at INDEX of WORKSPACES, or the last one if there are fewer:
 outputs plugged in after a reload may have another *NUM-OF-WORKSPACES*."
-  (or (nth index workspaces) (car (last workspaces))))
+  (or (nth index workspaces) (first (last workspaces))))
 
 (defun migrate-workspaces (from to &key keep-home)
   "Move the windows of each workspace of FROM to the corresponding one of TO.

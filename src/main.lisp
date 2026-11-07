@@ -30,7 +30,7 @@ Skip the failing event instead, or else end only the failing thread."
   (stop-ipc *wm*)
   (if (loop-failure (wm-loop *wm*)) 1 0))
 
-(defparameter *version* #.(asdf:component-version (asdf:find-system "nucleotide")))
+(defparameter *version* (asdf:component-version (asdf:find-system "nucleotide")))
 
 (defun main ()
   (sb-ext:disable-debugger)

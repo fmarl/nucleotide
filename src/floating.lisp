@@ -175,10 +175,10 @@ return the rect of its offset and size."
 
 (defun output-under (wm rect)
   "The output RECT mostly lies on."
-  (flet ((area (output) (overlap-area rect (output-rect output))))
-    (first (sort (remove-if-not (lambda (output) (plusp (area output)))
-                                (copy-list (wm-outputs wm)))
-                 #'> :key #'area))))
+  (flet ((area (output)
+           (if output (overlap-area rect (output-rect output)) 0)))
+    (reduce (lambda (best output) (if (> (area output) (area best)) output best))
+            (wm-outputs wm) :initial-value nil)))
 
 (defun settle-floating (wm win)
   "Hand a moved floating window to the output it now mostly lies on."

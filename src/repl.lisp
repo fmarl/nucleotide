@@ -11,7 +11,7 @@
 
 (defun random-hex (n-bytes)
   (let ((bytes (make-array n-bytes :element-type '(unsigned-byte 8))))
-    (with-open-file (in "/dev/urandom" :element-type '(unsigned-byte 8))
+    (with-open-file (in "/dev/urandom" :direction :input :element-type '(unsigned-byte 8))
       (read-sequence bytes in))
     (format nil "~(~{~2,'0X~}~)" (coerce bytes 'list))))
 
@@ -29,7 +29,7 @@
     (unless (probe-file path)
       (create-repl-secret path))
     (check-file-permissions path #o077)
-    (when (zerop (length (with-open-file (in path) (read-line in nil ""))))
+    (when (zerop (length (with-open-file (in path :direction :input) (read-line in nil ""))))
       (nucleotide-error "~A is empty" path))))
 
 (defun ensure-slynk ()
@@ -39,8 +39,7 @@
 (defun repl-listening-p (&optional (port *repl-port*))
   (let ((package (find-package '#:slynk)))
     (and package
-         (find port (symbol-value (find-symbol "*SERVERS*" package)) :key #'second)
-         t)))
+         (find port (symbol-value (find-symbol "*SERVERS*" package)) :key #'second))))
 
 (defun start-repl-server (&key (port *repl-port*) dont-close)
   "Open a Slynk listener on localhost:PORT, protected by ~/.sly-secret. Unless

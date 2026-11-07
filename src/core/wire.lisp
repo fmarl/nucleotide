@@ -9,7 +9,7 @@
 
 (deftype wire-fixed ()
   "The numbers a Wayland fixed, 24.8 bits in a wire int, holds."
-  '(real #.(- (expt 2 23)) #.(1- (expt 2 23))))
+  `(real ,(- (expt 2 23)) ,(1- (expt 2 23))))
 
 (defconstant +read-buffer-size+ (* 64 1024))
 (defconstant +max-message-size+ 4096)

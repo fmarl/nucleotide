@@ -11,7 +11,7 @@
                                    (uiop:getenv-absolute-directories "CPATH")
                                    (list #p"/usr/include/"))
               :thereis (probe-file (merge-pathnames "xkbcommon/xkbcommon-keysyms.h" dir)))
-        (error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
+        (nucleotide-error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
 
   (defun header-codepoint (line)
     "The character of a comment like /* U+20AC EURO SIGN */. Inexact ones look
@@ -20,7 +20,7 @@ like /*(U+...)*/ or /*<U+...>*/."
       (and start (parse-integer line :start (+ start 5) :radix 16 :junk-allowed t))))
 
   (defun keysym-header-entries (pathname)
-    (with-open-file (in pathname)
+    (with-open-file (in pathname :direction :input)
       (loop :for line = (read-line in nil)
             :while line
             :when (uiop:string-prefix-p "#define XKB_KEY_" line)
@@ -141,7 +141,7 @@ matches bindings with the keysyms of the layout."
   (let ((parts (split key "+")))
     (unless parts
       (nucleotide-error "~S is not a key" key))
-    (cons (key-keysym (car (last parts))) (parse-modifiers (butlast parts)))))
+    (cons (key-keysym (first (last parts))) (parse-modifiers (butlast parts)))))
 
 (defun keysym-display-name (keysym)
   (let ((char (keysym-char keysym)))
