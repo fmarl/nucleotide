@@ -96,8 +96,8 @@
 
 (defun buffered-connection (&rest chunks)
   "A connection whose read buffer holds 16 consumed bytes, then CHUNKS."
-  (let* ((conn (n::make-wire-connection nil))
-         (bytes (apply #'concatenate '(vector (unsigned-byte 8)) (dirty-buffer 16) chunks)))
+  (let ((conn (n::make-wire-connection nil))
+        (bytes (apply #'concatenate '(vector (unsigned-byte 8)) (dirty-buffer 16) chunks)))
     (replace (n::connection-rbuf conn) bytes)
     (setf (n::connection-rstart conn) 16
           (n::connection-rend conn) (length bytes))

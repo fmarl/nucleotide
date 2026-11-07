@@ -134,8 +134,8 @@
                  (n::ipc-socket-path))))))
 
 (test event-streams-start-with-ok-and-the-state
-  (let* ((wm (make-test-wm))
-         (client (n::make-ipc-client nil)))
+  (let ((wm (make-test-wm))
+        (client (n::make-ipc-client nil)))
     (add-output wm 0 :name "eDP-1")
     (let ((replies (n::handle-ipc-request wm client "EventStream")))
       (is (equal n::*ipc-ok* (first replies)))

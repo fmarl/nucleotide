@@ -40,8 +40,8 @@
     ws))
 
 (test neighbors-wrap-around-in-tiling
-  (let* ((layout (n::make-layout 'n::tiling))
-         (ws (workspace-with 'a 'b 'c)))
+  (let ((layout (n::make-layout 'n::tiling))
+        (ws (workspace-with 'a 'b 'c)))
     (is (eq 'b (n::layout-neighbor layout ws 'a :next)))
     (is (eq 'a (n::layout-neighbor layout ws 'c :right)))
     (is (eq 'c (n::layout-neighbor layout ws 'a :up)))

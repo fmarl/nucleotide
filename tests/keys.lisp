@@ -7,7 +7,7 @@
 (in-suite keys)
 
 (test modifiers
-  (is (= 0 (n::parse-modifiers '())))
+  (is (zerop (n::parse-modifiers '())))
   (is (= 64 (n::parse-modifiers "Super")))
   (is (= 64 (n::parse-modifiers "Mod")))
   (is (= 65 (n::parse-modifiers "super+Shift")))

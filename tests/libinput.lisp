@@ -8,7 +8,7 @@
 
 (test libinput-values
   (is (= 1 (n::libinput-value "tap_state" t)))
-  (is (= 0 (n::libinput-value "natural_scroll_state" nil)))
+  (is (zerop (n::libinput-value "natural_scroll_state" nil)))
   (is (= 2 (n::libinput-value "click_method" :clickfinger)))
   (is (= 1 (n::libinput-value "scroll_method" :two-finger)))
   (is (= 1 (n::libinput-value "accel_profile" :flat)))
