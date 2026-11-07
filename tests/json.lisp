@@ -45,7 +45,8 @@
   (signals json:json-error (json:parse "{\"a\" 1}"))
   (signals json:json-error (json:parse "{\"a\":1 \"b\":2}"))
   (signals json:json-error (json:parse "[1,]"))
-  (signals json:json-error (json:parse "{\"a\":1,}")))
+  (signals json:json-error (json:parse "{\"a\":1,}"))
+  (signals parse-error (json:parse "[1,]")))
 
 (test u-escapes-take-four-hex-digits
   (is (equal (string (code-char #xff)) (json:parse "\"\\u00fF\"")))

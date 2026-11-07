@@ -3,7 +3,7 @@
 
 (in-package #:nucleotide.xml)
 
-(define-condition xml-error (simple-error) ())
+(define-condition xml-error (parse-error simple-condition) ())
 
 (defun xml-error (control &rest args)
   (error 'xml-error :format-control control :format-arguments args))

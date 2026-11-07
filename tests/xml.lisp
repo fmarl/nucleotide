@@ -28,4 +28,5 @@
   (signals xml:xml-error (xml:parse "<a>"))
   (signals xml:xml-error (xml:parse "<a v=x/>"))
   (signals xml:xml-error (xml:parse "<a v=\"&nope;\"/>"))
-  (signals xml:xml-error (xml:parse "<a v=\"&amp\"/>")))
+  (signals xml:xml-error (xml:parse "<a v=\"&amp\"/>"))
+  (signals parse-error (xml:parse "<a>")))

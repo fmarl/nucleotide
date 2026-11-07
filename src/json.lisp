@@ -3,7 +3,7 @@
 
 (in-package #:nucleotide.json)
 
-(define-condition json-error (simple-error) ())
+(define-condition json-error (parse-error simple-condition) ())
 
 (defun json-error (control &rest args)
   (error 'json-error :format-control control :format-arguments args))
