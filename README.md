@@ -8,7 +8,7 @@ A hackable, multi-paradigm Wayland window manager in Common Lisp for the
 - Tiling (master and stack), monocle and niri-like scrolling layouts
 - Workspaces per monitor
 - Floating dialogs
-- `hightlight`, which teleports a window to the current workspace without actually moving it
+- Highlight, which teleports a window to the current workspace without actually moving it
 - Key bindings and chords
 - Autostart
 - A mostly niri-compatible IPC
@@ -16,13 +16,13 @@ A hackable, multi-paradigm Wayland window manager in Common Lisp for the
 
 ## Installation
 
-In case you're using `GNU Guix`, install it with `guix package -f guix.scm`. 
+If you use GNU Guix, install it with `guix package -f guix.scm`.
 
 ### Requirements
 
 | Package | Version |
 |---------|---------|
-| `river` | 0.4.7 |
+| `river` | 0.4.8 |
 | `sbcl`  | 2.6.4 |
 | `sbcl-slynk` | 1.0.43-9.9c43bf6 |
 
@@ -30,10 +30,10 @@ In case you're using `GNU Guix`, install it with `guix package -f guix.scm`.
 
 The default settings configure `alacritty`, `bemenu` and `waybar`.
 
-## Keyboard Layout
+## Keyboard layout
 
 `nucleotide` does not configure the keyboard layout itself.
-Instead you can set `XKB_DEFAULT_LAYOUT`, `XKB_DEFAULT_VARIANT` 
+Instead you can set `XKB_DEFAULT_LAYOUT`, `XKB_DEFAULT_VARIANT`
 and `XKB_DEFAULT_OPTIONS` in your environment, as `river` respects these variables.
 
 ## Default keybinds
@@ -42,7 +42,7 @@ and `XKB_DEFAULT_OPTIONS` in your environment, as `river` respects these variabl
 |---|---|
 | `Super+Shift+Return` | Start alacritty |
 | `Super+P` | Start a program with bemenu |
-| `Super+O` | Open or close the overview (see IPC) |
+| `Super+O` | Open or close the overview, shown by an IPC client (see IPC) |
 | `Super+Q` | Close the focused window |
 | `Super+Shift+F` | Toggle fullscreen |
 | `Super+M` | Toggle maximized: cover the monitor except for bars |
@@ -52,7 +52,7 @@ and `XKB_DEFAULT_OPTIONS` in your environment, as `river` respects these variabl
 | `Super+Space R` | Open or close the REPL |
 | `Super+Space Q` | Quit the session |
 
-Except that there are movement keybinds set, which are basically what every other window manager sets. See Layouts.
+Movement keys are bound as well, see Layouts and Monitors.
 
 ## Layouts
 `Super+Space` followed by `T`, `M` or `S` switches the workspace to tiling,
@@ -70,7 +70,7 @@ focused column.
 | `Super+R` | Cycle the column width through `*column-widths*` (1/3, 1/2, 2/3) |
 | `Super+-` / `Super+=` | Make the column 10% narrower / wider |
 | `Super+Shift+R` | Cycle the window height through `*window-heights*` (1/3, 1/2, 2/3) |
-| `Super+Shift+-` / `Super+Shift+=` | Make the window 10% lower / higher |
+| `Super+Shift+-` / `Super+Shift+=` | Make the window 10% shorter / taller |
 | `Super+Ctrl+R` | Let the window share the column height again |
 | `Super+F` | Let the column fill the monitor, or give it the default width |
 | `Super+C` | Center the focused column |
@@ -80,38 +80,38 @@ Set `*default-layout*` to `'scrolling` or `'(tiling :ratio 1/2)` to change the
 layout of new workspaces, and `*gap*` for the gaps of all layouts.
 
 ## Monitors
-Every monitor has workspaces 1 to 9. `Super+1` to `Super+9` switch the
-workspace on the focused monitor, and with Ctrl they send the focused window
-there. `Super+,` and `Super+.` focus the monitor to the left or right. Add
-Shift to send the window there, or Ctrl to swap the workspace with the one
-shown there.
+Every monitor has workspaces 1 to 9, or as many as `*num-of-workspaces*` says.
+`Super+1` to `Super+9` switch the workspace on the focused monitor, and with
+Ctrl they send the focused window there. `Super+,` and `Super+.` focus the
+monitor to the left or right. Add Shift to send the window there, or Ctrl to
+swap the workspace with the one shown there.
 
 New windows open on the monitor under the pointer, or on the focused one with
 `*open-on-pointer-output*` set to `nil`.
 
 ## Floating windows
 Dialogs and windows with a fixed size float. Drag a window with `Super` and the
-left mouse button to move it, or with the right button to resize it. 
+left mouse button to move it, or with the right button to resize it.
 
 ## IPC
-`nucleotide` provides a IPC socket for communicating it's state to other programs.
-It's also possible to request a change of `nucleotide`'s state via IPC. 
+`nucleotide` provides an IPC socket that publishes its state to other programs
+and accepts requests to change it.
 The most notable features are `which-key` and `overview` support.
-Other feature a niri-compatible `workspace` and `window` state,
+It also provides niri-compatible `workspace` and `window` state,
 so you can reuse `waybar`'s `niri/workspaces` and `niri/window` modules.
 
 ### which-key
-The `which-key` feature (known by many Emacs users) publishes, depending on the pressed
-keys by the user, documentation about possible next key presses.
+The `which-key` feature, known to many Emacs users, publishes the possible next
+key presses for the keys pressed so far.
 
-Example: If you press `Super+Space`, which triggers a key chord, `which-key` will publish 
-all possible keybinds within this key chord with it's description string:
+Example: If you press `Super+Space`, which starts a key chord, `which-key` publishes
+all keybinds within this chord with their descriptions:
 
 `(bind "Super+Space T" (set-layout tiling) :description "tiling")`
 
 It also works for normal keybinds, not just key chords, but you need to set `*which-key-delay*`.
 
-I provide a possible `waybar` module in `examples/waybar/which-key` for using `which-key`: 
+I provide a `waybar` module for `which-key` in `examples/waybar/which-key`:
 ```json
 "custom/which-key": {
     "exec": "/path/to/which-key",
@@ -120,13 +120,15 @@ I provide a possible `waybar` module in `examples/waybar/which-key` for using `w
 ```
 
 The `waybar` module is easy to use, but fairly limited in formatting possibilities.
-Therefor I recommend to checkout [nucleotide-tools](https://github.com/fmarl/nucleotide-tools).
-`nucleotide-monitor` communicates with `nucleotide`'s IPC  and also supports the `overview` feature.
+Therefore I recommend checking out [nucleotide-tools](https://github.com/fmarl/nucleotide-tools).
+It has `nucleotide-which-key`, which shows `which-key` as a panel, and
+`nucleotide-overview`, which shows the overview. In the overview, `/` starts a
+search through the titles and app ids of all windows.
 
 ## Configuration
 At startup nucleotide loads `~/.config/nucleotide/init.lisp`. Without it you
-get the default keys. The file is ignored if it or its directory is writable
-by others.
+get the default keys. The file is not loaded if it or its directory is writable
+by group or others.
 
 ```lisp
 (use-defaults)

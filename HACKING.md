@@ -25,30 +25,17 @@ outputs or proxies in `in-wm`:
 
 - `nucleotide.wayland` is a Wayland client and provides infrastructure to talk to `river`.
 
-- `nucleotide.json` and `nucleotide.xml` are self-explanatory. They suppport the minimal features
-  needed for `nucleotide`. I've implemented them myself instead of using a dependency to simplify packaging
-  `nucleotide` on non-guix distros.
+- `nucleotide.json` and `nucleotide.xml` support just what `nucleotide` needs. I wrote them myself
+  instead of using dependencies, to keep packaging simple on distributions other than
+  Guix.
 
 - `scanner.lisp` in `nucleotide.wayland` turns the XML files in `protocol/` into Lisp at compile time.
-  They provide the communication protocol for `river` and is used in `src/river.lisp` to provide a lisp-native API.
-  The XML files are also the documentation for what each request does.
+  `src/river.lisp` uses it to turn river's protocols into a Lisp API.
+  The XML files also document what each request does.
 
 - `eventloop.lisp` runs the WM thread: Wayland messages, thunks from `in-wm` and timers.
 
-The rest of `src/` is the window manager:
-
-| Files | What's in them |
-|---|---|
-| `model.lisp` | The `wm` class and the window and output state |
-| `events.lisp`, `wm.lisp` | `define-handler` and the handlers for river's events |
-| `manage.lisp`, `render.lisp` | What we send river in each manage and render sequence |
-| `workspaces.lisp`, `outputs.lisp` | Workspaces, and monitors coming and going |
-| `layouts.lisp`, `scrolling*.lisp` | Tiling, monocle and scrolling |
-| `floating.lisp`, `highlight.lisp`, `windows.lisp` | Floating, the highlight, window commands |
-| `settings.lisp`, `commands.lisp`, `keys.lisp`, `bindings.lisp` | What users configure |
-| `hooks.lisp`, `rules.lisp`, `init-file.lisp`, `defaults.lisp` | Hooks, rules, the init file, the defaults |
-| `ipc.lisp`, `which-key.lisp`, `overview.lisp` | The IPC socket, which-key and the overview |
-| `repl.lisp`, `main.lisp` | The Slynk server and the entry point |
+The rest of `src/` is the window manager.
 
 ## How a change reaches the screen
 `river` takes changes from the window manager only during a manage sequence.
