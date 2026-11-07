@@ -23,7 +23,7 @@
                                      (:file "conditions")
                                      (:file "wire")
                                      (:file "client")
-                                     (:file "wayland")
+                                     (:file "protocol")
                                      (:file "scanner")
                                      (:file "eventloop")))
                (:file "river")
