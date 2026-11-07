@@ -191,7 +191,6 @@
                  (n::*default-column-width* 3/2)
                  (n::*column-widths* ())
                  (n::*window-heights* (1/2 2))
-                 (n::*menu-command* "bemenu")
                  (n::*autostart-programs* (42))
                  (n::*libinput-settings* (:tap))
                  (n::*libinput-settings* (:tapping t))

@@ -27,7 +27,6 @@
   (bind "Super+F" toggle-full-width)
   (bind "Super+C" center-column)
   (bind "Super+Shift+Space" toggle-floating)
-  (bind "Super+Tab" switch-window)
   (bind "Super+O" toggle-overview)
   (bind "Super+Comma" (focus-output :left))
   (bind "Super+Period" (focus-output :right))

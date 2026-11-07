@@ -94,7 +94,6 @@ generates protocol bindings from XML.")
    #:*gap*
    #:*key-repeat*
    #:*libinput-settings*
-   #:*menu-command*
    #:*move-button*
    #:*num-of-workspaces*
    #:*open-on-pointer-output*
@@ -125,7 +124,6 @@ generates protocol bindings from XML.")
    #:set-layout
    #:set-window-height
    #:spawn
-   #:switch-window
    #:switch-workspace
    #:toggle-floating
    #:toggle-full-width
