@@ -3,7 +3,8 @@
 
 (defpackage #:nucleotide/integration
   (:use #:cl #:fiveam)
-  (:local-nicknames (#:n #:nucleotide)))
+  (:local-nicknames (#:n #:nucleotide)
+                    (#:w #:nucleotide.wayland)))
 
 (in-package #:nucleotide/integration)
 
