@@ -114,10 +114,11 @@
           :do (write-char (read-char in) out))))
 
 (defun read-json-items (in close read-item)
-  (if (eql (peek-char t in nil) close)
-      (progn (read-char in) '())
-      (loop :collect (funcall read-item)
-            :until (eql (read-json-char in #\, close) close))))
+  (cond ((eql (peek-char t in nil) close)
+         (read-char in)
+         '())
+        (t (loop :collect (funcall read-item)
+                 :until (eql (read-json-char in #\, close) close)))))
 
 (defconstant +json-max-depth+ 64
   "Deeper input is rejected before it can exhaust the stack.")

@@ -83,11 +83,9 @@ event is logged and skipped.")
 the failing frames still on the stack. Wayland connection errors are left to
 end the loop."
   (unless (typep condition 'wl-error)
-    (if *debug-on-error*
-        (invoke-debugger condition)
-        (progn
-          (log-message :error "event skipped: ~A" condition)
-          (invoke-restart 'skip)))))
+    (cond (*debug-on-error* (invoke-debugger condition))
+          (t (log-message :error "event skipped: ~A" condition)
+             (invoke-restart 'skip)))))
 
 (defun call-reporting-errors (thunk)
   (restart-case (handler-bind ((error #'report-or-debug))

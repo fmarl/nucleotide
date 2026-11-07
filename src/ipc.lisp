@@ -143,22 +143,21 @@ shows the window that its workspace's active_window_id names."
   (let ((id (json:lookup reference "Id"))
         (index (json:lookup reference "Index")))
     (cond (id (find id (mappend #'output-workspaces (wm-outputs wm)) :key #'workspace-id))
-          ((typep index '(integer 1)) (nth-workspace wm (1- index))))))
+          ((typep index '(integer 1)) (nth-workspace wm (1- index)))
+          (t nil))))
 
 (defun focus-workspace-action (wm arguments)
   (let ((ws (referenced-workspace wm (json:lookup arguments "reference"))))
-    (if ws
-        (progn (end-highlight wm)
-               (switch-to-workspace wm ws)
-               *ipc-ok*)
-        (ipc-error "no such workspace"))))
+    (cond (ws (end-highlight wm)
+              (switch-to-workspace wm ws)
+              *ipc-ok*)
+          (t (ipc-error "no such workspace")))))
 
 (defun focus-window-action (wm arguments)
   (let ((win (find (json:lookup arguments "id") (output-windows wm) :key #'window-id)))
-    (if win
-        (progn (jump-to-window wm win)
+    (cond (win (jump-to-window wm win)
                *ipc-ok*)
-        (ipc-error "no such window"))))
+          (t (ipc-error "no such window")))))
 
 (defun toggle-overview-action (wm arguments)
   (declare (ignore arguments))

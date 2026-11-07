@@ -190,7 +190,7 @@
              `((setf (proxy-destroyed-p ,proxy) t)))
          ,new-var))))
 (defun handle-display-event (display event &rest args)
-  (case event
+  (ecase event
     (:error
      (destructuring-bind (object code message) args
        (error 'wl-server-error :object object :code code :text message)))

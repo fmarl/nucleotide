@@ -63,13 +63,12 @@ DONT-CLOSE, it stops listening after the first connection."
 (define-command toggle-repl (wm)
   "Open the REPL port, or close it."
   (declare (ignore wm))
-  (if (repl-listening-p)
-      (progn
-        (stop-repl-server)
-        (notify "REPL port ~D closed" *repl-port*))
-      (handler-case
-          (progn
-            (start-repl-server)
-            (notify "REPL listening on port ~D" *repl-port*))
-        (error (c)
-          (notify "REPL not started: ~A" c)))))
+  (cond ((repl-listening-p)
+         (stop-repl-server)
+         (notify "REPL port ~D closed" *repl-port*))
+        (t (handler-case
+               (progn
+                 (start-repl-server)
+                 (notify "REPL listening on port ~D" *repl-port*))
+             (error (c)
+               (notify "REPL not started: ~A" c))))))

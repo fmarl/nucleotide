@@ -92,7 +92,8 @@ matches bindings with the keysyms of the layout."
 (defun keysym-char (keysym)
   (let ((code (- keysym +unicode-keysym+)))
     (cond ((latin-1-printable-p keysym) (code-char keysym))
-          ((<= #x100 code #x10ffff) (code-char code)))))
+          ((<= #x100 code #x10ffff) (code-char code))
+          (t nil))))
 
 (defun keysym-from-name (name)
   (or (gethash name *keysyms*)

@@ -157,9 +157,10 @@ fullscreen windows, and floating ones are placed when rendering."
     (layout-update layout ws managed area)
     (let ((rects (mapcar #'cons arranged (layout-arrange layout ws arranged area))))
       (dolist (win (workspace-windows ws))
-        (case (window-placement win)
+        (ecase (window-placement win)
           (:tiled (place-window win (cdr (assoc win rects)) output))
-          (:maximized (place-window win area output)))))))
+          (:maximized (place-window win area output))
+          ((:floating :fullscreen)))))))
 
 (defun manage-warp (wm)
   (let ((target (second (first (last (take-requests wm '(:warp))))))

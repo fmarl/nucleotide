@@ -79,7 +79,8 @@ they name or else on OUTPUT."
                  (and name (find name (wm-outputs wm) :key #'output-name :test #'equal))))
         (number (getf actions :workspace)))
     (cond (number (nth-workspace wm (1- number) (or named output)))
-          (named (output-workspace named)))))
+          (named (output-workspace named))
+          (t nil))))
 
 (defun apply-float-rule (win actions)
   (multiple-value-bind (present float) (get-properties actions '(:float))

@@ -28,10 +28,10 @@ KEY is a notification about what CONTROL and CONTROL-ARGUMENTS describe, later
 ones go to the log."
   (handler-case (apply function arguments)
     (error (c)
-      (if (member key *failures* :test #'equal)
-          (log-message :error "~? failed: ~A" control control-arguments c)
-          (progn (push key *failures*)
-                 (notify "~? failed: ~A" control control-arguments c)))
+      (cond ((member key *failures* :test #'equal)
+             (log-message :error "~? failed: ~A" control control-arguments c))
+            (t (push key *failures*)
+               (notify "~? failed: ~A" control control-arguments c)))
       nil)))
 
 (defun run-event-hooks (event &rest args)
