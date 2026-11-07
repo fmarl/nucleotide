@@ -1,13 +1,13 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
-(in-package #:nucleotide)
+(in-package #:nucleotide.wayland)
 
 (defun lisp-name (wire-name)
   (substitute #\- #\_ (string-upcase wire-name)))
 
 (defun lispify (wire-name)
-  (intern (lisp-name wire-name) '#:nucleotide))
+  (intern (lisp-name wire-name)))
 
 (defun lispify-keyword (wire-name)
   (intern (lisp-name wire-name) '#:keyword))
@@ -16,7 +16,7 @@
   (format nil "+~A-~A-~A+" (lisp-name interface) (lisp-name enum) (lisp-name entry)))
 
 (defun enum-constant-name (interface enum entry)
-  (intern (enum-constant-string interface enum entry) '#:nucleotide))
+  (intern (enum-constant-string interface enum entry)))
 
 (defun parse-enum-value (string)
   (if (and (> (length string) 2) (string-equal "0x" string :end2 2))
@@ -77,8 +77,8 @@
      (loop :for event :in (xml:children-named interface "event")
            :for opcode :from 0
            :collect (event-form class event opcode))
-     (mappend (lambda (enum) (enum-forms wire-name enum))
-              (xml:children-named interface "enum")))))
+     (loop :for enum :in (xml:children-named interface "enum")
+           :append (enum-forms wire-name enum)))))
 
 (defun protocol-forms (root)
   (unless (string= "protocol" (xml:node-name root))
@@ -90,14 +90,14 @@
                `(define-interface ,(lispify (xml:attribute interface "name"))
                     ,(xml:attribute interface "name")))
              interfaces)
-     (mappend #'interface-forms interfaces))))
+     (loop :for interface :in interfaces :append (interface-forms interface)))))
 
 (defun protocol-file-forms (pathname)
   (protocol-forms (xml:parse (uiop:read-file-string pathname))))
 
 (defmacro define-protocol (file)
   "Define the classes, requests, events and enum constants of the Wayland
-protocol in protocol/FILE at compile time."
+protocol in protocol/FILE at compile time, named in the current package."
   `(progn
      ,@(protocol-file-forms
         (merge-pathnames file (asdf:system-relative-pathname

@@ -4,40 +4,55 @@ A hackable, multi-paradigm Wayland window manager in Common Lisp for the
 [river](https://github.com/riverwm/river) compositor.
 
 ## Features
+
 - Tiling (master and stack), monocle and niri-like scrolling layouts
-- Workspaces per monitor that come back when you plug the monitor in again
-- Floating dialogs, moved and resized with Super and the mouse
-- Window rules, a window switcher, an overview of all windows, and a highlight
-  that shows a window on the current workspace without moving it
-- Key bindings and chords, autostart, fullscreen, libinput settings
-- Workspaces and window title in waybar
+- Workspaces per monitor
+- Floating dialogs
+- `hightlight`, which teleports a window to the current workspace without actually moving it
+- Key bindings and chords
+- Autostart
+- A mostly niri-compatible IPC
 - An init file you can reload at runtime, and a Slynk REPL that opens on demand
 
 ## Installation
-nucleotide needs river 0.4.7 or newer. Install it with
-`guix package -f guix.scm` and start it with `river -c nucleotide`. The default
-keys start alacritty and bemenu, and waybar starts with the session.
 
-river takes the keyboard layout from `XKB_DEFAULT_LAYOUT`,
-`XKB_DEFAULT_VARIANT` and `XKB_DEFAULT_OPTIONS`, e.g.
-`XKB_DEFAULT_LAYOUT=de river -c nucleotide`. With several layouts, set
-`*bindings-layout*` to `0` to keep the bindings on the first one.
+In case you're using `GNU Guix`, install it with `guix package -f guix.scm`. 
 
-## Keys
+### Requirements
+
+| Package | Version |
+|---------|---------|
+| `river` | 0.4.7 |
+| `sbcl`  | 2.6.4 |
+| `sbcl-slynk` | 1.0.43-9.9c43bf6 |
+
+### Optional requirements
+
+The default settings configure `alacritty`, `bemenu` and `waybar`.
+
+## Keyboard Layout
+
+`nucleotide` does not configure the keyboard layout itself.
+Instead you can set `XKB_DEFAULT_LAYOUT`, `XKB_DEFAULT_VARIANT` 
+and `XKB_DEFAULT_OPTIONS` in your environment, as `river` respects these variables.
+
+## Default keybinds
+
 | Keys | Action |
 |---|---|
 | `Super+Shift+Return` | Start alacritty |
 | `Super+P` | Start a program with bemenu |
-| `Super+Tab` | Pick a window with bemenu and focus it |
-| `Super+O` | Open or close the overview |
+| `Super+O` | Open or close the overview (see IPC) |
 | `Super+Q` | Close the focused window |
 | `Super+Shift+F` | Toggle fullscreen |
 | `Super+M` | Toggle maximized: cover the monitor except for bars |
 | `Super+Shift+Space` | Toggle floating |
-| `Super+Space E` | Show Emacs alone on the focused monitor, or stop |
+| `Super+Space E` | Highlight Emacs |
 | `Super+Space C` | Reload the init file |
 | `Super+Space R` | Open or close the REPL |
 | `Super+Space Q` | Quit the session |
+
+Except that there are movement keybinds set, which are basically what every other window manager sets. See Layouts.
 
 ## Layouts
 `Super+Space` followed by `T`, `M` or `S` switches the workspace to tiling,
@@ -76,25 +91,27 @@ New windows open on the monitor under the pointer, or on the focused one with
 
 ## Floating windows
 Dialogs and windows with a fixed size float. Drag a window with `Super` and the
-left mouse button to move it, or with the right button to resize it. Windows
-get a border instead of their own title bar.
+left mouse button to move it, or with the right button to resize it. 
 
-## Overview
-`Super+O` shows the windows of all monitors with a thumbnail each, a column per
-workspace. `H`/`J`/`K`/`L` or the arrow keys select a window, `Return` focuses
-it, and `Escape` or `Super+O` close the overview. It needs `nucleotide-monitor`
-from [nucleotide-utils](https://github.com/fmarl/nucleotide-utils) running in
-the session.
+## IPC
+`nucleotide` provides a IPC socket for communicating it's state to other programs.
+It's also possible to request a change of `nucleotide`'s state via IPC. 
+The most notable features are `which-key` and `overview` support.
+Other feature a niri-compatible `workspace` and `window` state,
+so you can reuse `waybar`'s `niri/workspaces` and `niri/window` modules.
 
-## Waybar
-waybar's `niri/workspaces` and `niri/window` modules show the workspaces and
-the title of the focused window.
+### which-key
+The `which-key` feature (known by many Emacs users) publishes, depending on the pressed
+keys by the user, documentation about possible next key presses.
 
-`examples/waybar/which-key` is a module that shows which keys come next after
-a prefix like `Super+Space`. With `*which-key-delay*` set to milliseconds, like
-`500`, it also shows the bindings of `Super` when you hold it that long. It
-needs `jq`:
+Example: If you press `Super+Space`, which triggers a key chord, `which-key` will publish 
+all possible keybinds within this key chord with it's description string:
 
+`(bind "Super+Space T" (set-layout tiling) :description "tiling")`
+
+It also works for normal keybinds, not just key chords, but you need to set `*which-key-delay*`.
+
+I provide a possible `waybar` module in `examples/waybar/which-key` for using `which-key`: 
 ```json
 "custom/which-key": {
     "exec": "/path/to/which-key",
@@ -102,9 +119,9 @@ needs `jq`:
 }
 ```
 
-While keys are shown the module has the class `active`. Bindings show their
-action unless you give them a name:
-`(bind "Super+Space T" (set-layout tiling) :description "tiling")`.
+The `waybar` module is easy to use, but fairly limited in formatting possibilities.
+Therefor I recommend to checkout [nucleotide-tools](https://github.com/fmarl/nucleotide-tools).
+`nucleotide-monitor` communicates with `nucleotide`'s IPC  and also supports the `overview` feature.
 
 ## Configuration
 At startup nucleotide loads `~/.config/nucleotide/init.lisp`. Without it you

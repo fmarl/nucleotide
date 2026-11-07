@@ -3,7 +3,7 @@
 
 SBCL := sbcl --non-interactive
 EMACS := emacs --batch -Q
-LISP_FILES := $(wildcard *.lisp *.asd src/*.lisp src/core/*.lisp tests/*.lisp scripts/*.lisp)
+LISP_FILES := $(wildcard *.lisp *.asd src/*.lisp src/wayland/*.lisp tests/*.lisp scripts/*.lisp)
 
 .PHONY: all check integration lint fmt clean
 

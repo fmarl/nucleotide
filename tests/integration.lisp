@@ -54,7 +54,7 @@
 (defun connected-p ()
   (and n:*wm*
        (sb-thread:thread-alive-p (n::wm-thread n:*wm*))
-       (not (n::loop-failure (n::wm-loop n:*wm*)))))
+       (not (w::loop-failure (n::wm-loop n:*wm*)))))
 
 (defvar *manages* 0)
 
@@ -66,7 +66,7 @@ before the answer, so a broken connection is visible afterwards."
              (push (lambda (&rest event)
                      (declare (ignore event))
                      (sb-thread:signal-semaphore done))
-                   (n::proxy-hooks (n::wl-display.sync (n::wm-display n:*wm*))))))
+                   (w::proxy-hooks (w::wl-display.sync (n::wm-display n:*wm*))))))
     (sb-thread:wait-on-semaphore done :timeout 5)))
 
 (defun settle ()

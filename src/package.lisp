@@ -21,8 +21,53 @@
    #:lookup
    #:json-error))
 
-(defpackage #:nucleotide
+(defpackage #:nucleotide.wayland
   (:use #:cl)
+  (:local-nicknames (#:xml #:nucleotide.xml))
+  (:documentation "A Wayland client with an event loop, and the scanner that
+generates protocol bindings from XML.")
+  (:export
+   ;; Errors and logging
+   #:nucleotide-error
+   #:environment-error
+   #:event-loop-stopped
+   #:wl-error
+   #:*log-level*
+   #:log-message
+   #:*debug-on-error*
+   #:call-reporting-errors
+   #:skip
+   ;; Wire format
+   #:octets
+   #:u32ref
+   #:wire-int
+   #:wire-fixed
+   ;; Display and proxies
+   #:wl-display-connect
+   #:wl-display-roundtrip
+   #:wl-display-disconnect
+   #:wl-display.get-registry
+   #:wl-registry.bind
+   #:wl-output
+   #:wl-output.release
+   #:supports-p
+   #:proxy-hooks
+   #:interface-wire-name
+   ;; Protocol bindings
+   #:define-protocol
+   #:enum-constant-string
+   ;; Event loop
+   #:event-loop
+   #:make-event-loop
+   #:run-event-loop
+   #:event-loop-post
+   #:event-loop-schedule
+   #:event-loop-cancel
+   #:event-loop-stop
+   #:loop-failure))
+
+(defpackage #:nucleotide
+  (:use #:cl #:nucleotide.wayland)
   (:local-nicknames (#:xml #:nucleotide.xml)
                     (#:json #:nucleotide.json))
   (:export

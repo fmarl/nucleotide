@@ -3,6 +3,9 @@
 
 (in-package #:nucleotide)
 
+(defun mappend (function list)
+  (loop :for x :in list :append (funcall function x)))
+
 (defun notify (control &rest args)
   "Log the message and show it as a desktop notification."
   (let ((message (apply #'format nil control args)))

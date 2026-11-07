@@ -16,17 +16,17 @@
                                      (:static-file "river-input-management-v1.xml")
                                      (:static-file "river-libinput-config-v1.xml")))
                (:file "package")
-               (:module "core"
+               (:file "xml")
+               (:module "wayland"
                         :serial t
                         :components ((:file "log")
                                      (:file "conditions")
                                      (:file "wire")
                                      (:file "client")
-                                     (:file "xml")
                                      (:file "wayland")
                                      (:file "scanner")
-                                     (:file "river")
                                      (:file "eventloop")))
+               (:file "river")
                (:file "util")
                (:file "values")
                (:file "geometry")

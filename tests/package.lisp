@@ -4,6 +4,7 @@
 (defpackage #:nucleotide/tests
   (:use #:cl #:fiveam)
   (:local-nicknames (#:n #:nucleotide)
+                    (#:w #:nucleotide.wayland)
                     (#:xml #:nucleotide.xml)
                     (#:json #:nucleotide.json)))
 

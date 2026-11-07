@@ -25,29 +25,30 @@
 </protocol>")
 
 (defun forms (head)
-  (remove head (n::protocol-forms (xml:parse *protocol*))
+  (remove head (let ((*package* (find-package '#:nucleotide/tests)))
+                 (w::protocol-forms (xml:parse *protocol*)))
           :key #'first :test-not #'eq))
 
 (test interface-form
-  (is (equal '((n::define-interface n::test-thing-v1 "test_thing_v1"))
-             (forms 'n::define-interface))))
+  (is (equal '((w::define-interface test-thing-v1 "test_thing_v1"))
+             (forms 'w::define-interface))))
 
 (test requests-get-opcodes-in-order
-  (is (equal '((n::define-request (n::test-thing-v1 n::destroy 0 :destructor t))
-               (n::define-request (n::test-thing-v1 n::get-child 1)
-                 (n::id (:new-id n::test-child-v1))
-                 (n::scale :fixed)
-                 (n::parent (:object)))
-               (n::define-request (n::test-thing-v1 n::newer 2 :since 2)))
-             (forms 'n::define-request))))
+  (is (equal '((w::define-request (test-thing-v1 destroy 0 :destructor t))
+               (w::define-request (test-thing-v1 get-child 1)
+                 (id (:new-id test-child-v1))
+                 (scale :fixed)
+                 (parent (:object)))
+               (w::define-request (test-thing-v1 newer 2 :since 2)))
+             (forms 'w::define-request))))
 
 (test events-use-keywords
-  (is (equal '((n::define-event (n::test-thing-v1 :title 0) (n::title :string)))
-             (forms 'n::define-event))))
+  (is (equal '((w::define-event (test-thing-v1 :title 0) (title :string)))
+             (forms 'w::define-event))))
 
 (test enums-become-constants
-  (is (equal '((defconstant n::+test-thing-v1-edges-top+ 1)
-               (defconstant n::+test-thing-v1-edges-all+ 15))
+  (is (equal '((defconstant +test-thing-v1-edges-top+ 1)
+               (defconstant +test-thing-v1-edges-all+ 15))
              (forms 'defconstant))))
 
 (test generated-river-constants
@@ -55,4 +56,4 @@
   (is (= 15 n::+all-edges+)))
 
 (test rejects-other-documents
-  (signals n::nucleotide-error (n::protocol-forms (xml:parse "<html/>"))))
+  (signals w::nucleotide-error (w::protocol-forms (xml:parse "<html/>"))))

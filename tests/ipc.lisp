@@ -157,7 +157,7 @@
                          "{\"Action\":{\"FocusWorkspace\":{\"reference\":{\"Index\":\"1\"}}}}"
                          "[]"))
         (n::ipc-handle-line wm client (sb-ext:string-to-octets request)))
-      (n::ipc-handle-line wm client (coerce #(34 #xff 34) 'n::octets)))
+      (n::ipc-handle-line wm client (coerce #(34 #xff 34) 'w::octets)))
     (is (= 4 (length replies)))
     (is (every (lambda (reply) (search "\"Err\"" reply)) replies))))
 

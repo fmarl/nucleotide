@@ -11,21 +11,21 @@
   (let ((wm (connect-wm display socket)))
     (deliver display socket 2 "wl_registry" "global" 2 "river_xkb_bindings_v1" 3)
     (deliver display socket +window-manager+ "river_window_manager_v1" "seat" +seat+)
-    (values wm (received socket display) (n::proxy-id (n::wm-xkb-seat wm)))))
+    (values wm (received socket display) (w::proxy-id (n::wm-xkb-seat wm)))))
 
 (defun modifiers-watches (requests xkb-seat)
   (loop :for (nil request object body) :in requests
         :when (and (eql object xkb-seat) (equal request "modifiers_watch"))
-        :collect (n::u32ref body 0)))
+        :collect (w::u32ref body 0)))
 
 (defun timers (wm)
-  (n::loop-timers (n::wm-loop wm)))
+  (w::loop-timers (n::wm-loop wm)))
 
 (defun run-timers (wm)
   "Run the timers of WM as if they were due."
   (dolist (timer (timers wm))
-    (setf (n::loop-timer-deadline timer) 0))
-  (n::run-due-timers (n::wm-loop wm)))
+    (setf (w::loop-timer-deadline timer) 0))
+  (w::run-due-timers (n::wm-loop wm)))
 
 (defun shown (wm)
   (n::which-key-shown (n::wm-which-key wm)))
@@ -39,7 +39,7 @@ returns those watched next, PRESS delivers an event."
     `(with-fake-server (,display ,socket)
        (multiple-value-bind (,wm ,created ,xkb-seat) (connect-wm-with-xkb-seat ,display ,socket)
          (declare (ignorable ,created))
-         (setf (n::wm-loop ,wm) (n::%make-event-loop))
+         (setf (n::wm-loop ,wm) (w::%make-event-loop))
          (flet ((,update (old new)
                   (deliver ,display ,socket ,xkb-seat "river_xkb_bindings_seat_v1"
                            "modifiers_update" old new)

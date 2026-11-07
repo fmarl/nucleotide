@@ -39,6 +39,7 @@
 
 (defun repl-listening-p (&optional (port *repl-port*))
   (let ((package (find-package '#:slynk)))
+    ;; Slynk exports no list of its servers, so this reads the internal one.
     (and package
          (find port (symbol-value (find-symbol "*SERVERS*" package)) :key #'second))))
 

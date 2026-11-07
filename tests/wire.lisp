@@ -8,25 +8,25 @@
 
 (test u32-is-little-endian
   (let ((buf (buffer 4)))
-    (setf (n::u32ref buf 0) #x12345678)
+    (setf (w::u32ref buf 0) #x12345678)
     (is (equalp (octets #x78 #x56 #x34 #x12) buf))
-    (is (= #x12345678 (n::u32ref buf 0)))))
+    (is (= #x12345678 (w::u32ref buf 0)))))
 
 (test i32-roundtrip
   (let ((buf (buffer 4)))
     (dolist (value '(0 1 -1 2147483647 -2147483648))
-      (setf (n::i32ref buf 0) value)
-      (is (= value (n::i32ref buf 0))))))
+      (setf (w::i32ref buf 0) value)
+      (is (= value (w::i32ref buf 0))))))
 
 (test pad4
-  (is (equal '(0 4 4 4 4 8) (mapcar #'n::pad4 '(0 1 2 3 4 5)))))
+  (is (equal '(0 4 4 4 4 8) (mapcar #'w::pad4 '(0 1 2 3 4 5)))))
 
 (test string-roundtrip
   (let ((buf (buffer 64)))
     (dolist (string '("" "a" "abc" "abcd" "grüße"))
-      (let ((end (n::put-wl-string buf 0 string)))
+      (let ((end (w::put-wl-string buf 0 string)))
         (is (zerop (mod end 4)))
-        (multiple-value-bind (decoded next) (n::get-wl-string buf 0)
+        (multiple-value-bind (decoded next) (w::get-wl-string buf 0)
           (is (string= string decoded))
           (is (= end next)))))))
 
@@ -36,96 +36,96 @@
 
 (test null-string
   (let ((buf (dirty-buffer 8)))
-    (is (= 4 (n::put-wl-string buf 0 nil)))
+    (is (= 4 (w::put-wl-string buf 0 nil)))
     (is (equalp (octets 0 0 0 0 #xff #xff #xff #xff) buf))
-    (is (equal '(nil 4) (multiple-value-list (n::get-wl-string buf 0))))
-    (is (equal '(nil 8) (multiple-value-list (n::get-wl-string (buffer 8) 4))))))
+    (is (equal '(nil 4) (multiple-value-list (w::get-wl-string buf 0))))
+    (is (equal '(nil 8) (multiple-value-list (w::get-wl-string (buffer 8) 4))))))
 
 (test array-roundtrip
   (let ((buf (buffer 64))
         (bytes (octets 1 2 3 4 5)))
-    (let ((end (n::put-wl-array buf 0 bytes)))
+    (let ((end (w::put-wl-array buf 0 bytes)))
       (is (= 12 end))
-      (multiple-value-bind (decoded next) (n::get-wl-array buf 0)
+      (multiple-value-bind (decoded next) (w::get-wl-array buf 0)
         (is (equalp bytes decoded))
         (is (= end next))))))
 
 (test strings-carry-their-length-with-the-nul-and-pad-with-zeros
   (let ((buf (dirty-buffer 16)))
-    (is (= 12 (n::put-wl-string buf 0 "abcd")))
+    (is (= 12 (w::put-wl-string buf 0 "abcd")))
     (is (equalp (octets 5 0 0 0 97 98 99 100 0 0 0 0 #xff #xff #xff #xff) buf))))
 
 (test arrays-carry-their-length-and-pad-with-zeros
   (let ((buf (dirty-buffer 20)))
-    (is (= 16 (n::put-wl-array buf 4 (octets 1 2 3 4 5))))
+    (is (= 16 (w::put-wl-array buf 4 (octets 1 2 3 4 5))))
     (is (equalp (octets #xff #xff #xff #xff 5 0 0 0 1 2 3 4 5 0 0 0
                         #xff #xff #xff #xff)
                 buf))))
 
 (test arguments-that-just-fit-are-written
-  (is (= 4 (n::put-wl-string (buffer 4) 0 nil)))
-  (is (= 12 (n::put-wl-string (buffer 12) 0 "abcdefg")))
-  (is (= 12 (n::put-wl-array (buffer 12) 0 (buffer 8))))
-  (signals n::nucleotide-error (n::put-wl-string (buffer 3) 0 nil))
-  (signals n::nucleotide-error (n::put-wl-string (buffer 12) 0 "abcdefgh"))
-  (signals n::nucleotide-error (n::put-wl-array (buffer 12) 0 (buffer 9))))
+  (is (= 4 (w::put-wl-string (buffer 4) 0 nil)))
+  (is (= 12 (w::put-wl-string (buffer 12) 0 "abcdefg")))
+  (is (= 12 (w::put-wl-array (buffer 12) 0 (buffer 8))))
+  (signals w::nucleotide-error (w::put-wl-string (buffer 3) 0 nil))
+  (signals w::nucleotide-error (w::put-wl-string (buffer 12) 0 "abcdefgh"))
+  (signals w::nucleotide-error (w::put-wl-array (buffer 12) 0 (buffer 9))))
 
 (test negative-ints-are-twos-complement
   (let ((buf (buffer 4)))
-    (setf (n::i32ref buf 0) -2)
+    (setf (w::i32ref buf 0) -2)
     (is (equalp (octets #xfe #xff #xff #xff) buf))))
 
 (test overlong-messages-are-refused
   (let ((buffer (buffer 16)))
-    (signals n::nucleotide-error (n::put-wl-string buffer 0 (make-string 20 :initial-element #\a)))
-    (signals n::nucleotide-error (n::put-wl-array buffer 8 (buffer 8)))
-    (signals n::nucleotide-error (n::encode-arg buffer 16 :uint 1))
-    (is (= 16 (n::put-wl-string buffer 0 "0123456789")))))
+    (signals w::nucleotide-error (w::put-wl-string buffer 0 (make-string 20 :initial-element #\a)))
+    (signals w::nucleotide-error (w::put-wl-array buffer 8 (buffer 8)))
+    (signals w::nucleotide-error (w::encode-arg buffer 16 :uint 1))
+    (is (= 16 (w::put-wl-string buffer 0 "0123456789")))))
 
 (test invalid-utf-8-becomes-replacement-characters
-  (let ((title (n::get-wl-string (octets 5 0 0 0 #x61 #xff #xfe #x62 0 0 0 0) 0)))
+  (let ((title (w::get-wl-string (octets 5 0 0 0 #x61 #xff #xfe #x62 0 0 0 0) 0)))
     (is (char= #\a (char title 0)))
     (is (char= #\b (char title (1- (length title)))))
     (is (find #\REPLACEMENT_CHARACTER title))))
 
 (defun header (sender opcode size)
   (let ((buf (buffer 8)))
-    (setf (n::u32ref buf 0) sender
-          (n::u32ref buf 4) (logior (ash size 16) opcode))
+    (setf (w::u32ref buf 0) sender
+          (w::u32ref buf 4) (logior (ash size 16) opcode))
     buf))
 
 (defun buffered-connection (&rest chunks)
   "A connection whose read buffer holds 16 consumed bytes, then CHUNKS."
-  (let ((conn (n::make-wire-connection nil))
+  (let ((conn (w::make-wire-connection nil))
         (bytes (apply #'concatenate '(vector (unsigned-byte 8)) (dirty-buffer 16) chunks)))
-    (replace (n::connection-rbuf conn) bytes)
-    (setf (n::connection-rstart conn) 16
-          (n::connection-rend conn) (length bytes))
+    (replace (w::connection-rbuf conn) bytes)
+    (setf (w::connection-rstart conn) 16
+          (w::connection-rend conn) (length bytes))
     conn))
 
 (test buffered-message-size-waits-for-complete-messages
-  (is (null (n::buffered-message-size (buffered-connection (buffer 7)))))
-  (is (null (n::buffered-message-size (buffered-connection (header 1 0 12)))))
-  (is (= 12 (n::buffered-message-size (buffered-connection (header 1 0 12) (buffer 4)))))
-  (is (null (n::buffered-message-size
-             (buffered-connection (header 1 0 n::+max-message-size+))))))
+  (is (null (w::buffered-message-size (buffered-connection (buffer 7)))))
+  (is (null (w::buffered-message-size (buffered-connection (header 1 0 12)))))
+  (is (= 12 (w::buffered-message-size (buffered-connection (header 1 0 12) (buffer 4)))))
+  (is (null (w::buffered-message-size
+             (buffered-connection (header 1 0 w::+max-message-size+))))))
 
 (test buffered-message-size-reports-malformed-sizes-at-once
-  (is (= 4 (n::buffered-message-size (buffered-connection (header 1 0 4)))))
-  (is (= (1+ n::+max-message-size+)
-         (n::buffered-message-size
-          (buffered-connection (header 1 0 (1+ n::+max-message-size+)))))))
+  (is (= 4 (w::buffered-message-size (buffered-connection (header 1 0 4)))))
+  (is (= (1+ w::+max-message-size+)
+         (w::buffered-message-size
+          (buffered-connection (header 1 0 (1+ w::+max-message-size+)))))))
 
 (test peek-message-splits-the-header
   (let ((conn (buffered-connection (header 7 3 16) (octets 1 2 3 4 5 6 7 8))))
-    (is (equal '(7 3 24 8) (multiple-value-list (n::peek-message conn))))
-    (n::consume-message conn 16)
-    (is (= 32 (n::connection-rstart conn)))))
+    (is (equal '(7 3 24 8) (multiple-value-list (w::peek-message conn))))
+    (w::consume-message conn 16)
+    (is (= 32 (w::connection-rstart conn)))))
 
 (test peek-message-refuses-malformed-sizes
-  (signals n::wl-protocol-error (n::peek-message (buffered-connection (header 1 0 4))))
-  (signals n::wl-protocol-error
-    (n::peek-message (buffered-connection (header 1 0 (1+ n::+max-message-size+))))))
+  (signals w::wl-protocol-error (w::peek-message (buffered-connection (header 1 0 4))))
+  (signals w::wl-protocol-error
+    (w::peek-message (buffered-connection (header 1 0 (1+ w::+max-message-size+))))))
 
 (defun call-with-socket-pair (function)
   "Call FUNCTION with a writing socket and a connection reading from it."
@@ -142,7 +142,7 @@
              (setf reader (sb-bsd-sockets:socket-accept listener))
              ;; A broken read path loops instead of failing.
              (sb-ext:with-timeout 10
-               (funcall function writer (n::make-wire-connection reader))))
+               (funcall function writer (w::make-wire-connection reader))))
         (sb-bsd-sockets:socket-close listener)
         (sb-bsd-sockets:socket-close writer)
         (when reader (sb-bsd-sockets:socket-close reader))))))
@@ -155,7 +155,7 @@
            (header index (mod index 7) (+ 8 (* 4 (length words))))
            (mapcar (lambda (word)
                      (let ((buf (buffer 4)))
-                       (setf (n::u32ref buf 0) word)
+                       (setf (w::u32ref buf 0) word)
                        buf))
                    words))))
 
@@ -177,15 +177,15 @@
          (loop :for expected :in messages
                :for i :from 0
                :do (multiple-value-bind (sender opcode body-offset body-size)
-                       (n::peek-message conn)
+                       (w::peek-message conn)
                      (unless (and (= sender i)
                                   (= opcode (mod i 7))
                                   (equalp expected
-                                          (subseq (n::connection-rbuf conn)
+                                          (subseq (w::connection-rbuf conn)
                                                   (- body-offset 8)
                                                   (+ body-offset body-size))))
                        (push i wrong))
-                     (n::consume-message conn (+ 8 body-size))))
+                     (w::consume-message conn (+ 8 body-size))))
          (sb-thread:join-thread writing))))
     (is (null wrong) "messages read wrongly: ~S" (reverse wrong))))
 
@@ -194,4 +194,4 @@
    (lambda (writer conn)
      (sb-bsd-sockets:socket-send writer (subseq (header 1 0 16) 0 6) nil)
      (sb-bsd-sockets:socket-shutdown writer :direction :output)
-     (signals n::wl-disconnected (n::peek-message conn)))))
+     (signals w::wl-disconnected (w::peek-message conn)))))

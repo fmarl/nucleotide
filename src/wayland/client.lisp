@@ -1,7 +1,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;; Copyright © 2026 Florian Marrero Liestmann <f.m.liestmann@fx-ttr.de>
 
-(in-package #:nucleotide)
+(in-package #:nucleotide.wayland)
 
 (defvar *interface-wire-names* (make-hash-table))
 (defvar *event-definitions* (make-hash-table :test #'equal))
@@ -138,9 +138,6 @@
   `(setf (gethash (cons ',interface ,opcode) *event-definitions*)
          (cons ,event-name ',(mapcar #'second arg-specs))))
 
-(defun mappend (function list)
-  (loop :for x :in list :append (funcall function x)))
-
 (defstruct (request-arg
              (:constructor request-arg (parameters types values &optional new-proxy)))
   parameters types values new-proxy)
@@ -176,16 +173,17 @@
          (new-proxy-forms (remove nil (mapcar #'request-arg-new-proxy args))))
     (when (rest new-proxy-forms)
       (nucleotide-error "only one new_id arg is supported"))
-    `(defun ,(intern (concatenate 'string (symbol-name interface) "." (symbol-name name)))
-         (,proxy ,@(mappend #'request-arg-parameters args))
+    `(defun ,(intern (concatenate 'string (symbol-name interface) "." (symbol-name name))
+                     (symbol-package interface))
+         (,proxy ,@(loop :for arg :in args :append (request-arg-parameters arg)))
        ,@(when (> since 1)
            `((unless (supports-p ,proxy ,since)
                (nucleotide-error "~S needs version ~D of ~S, which is bound at version ~D"
                                  ',name ,since ,proxy (proxy-version ,proxy)))))
        (let ((,new-var ,(first new-proxy-forms)))
          (declare (ignorable ,new-var))
-         (send-request ,proxy ,opcode ',(mappend #'request-arg-types args)
-                       (list ,@(mappend #'request-arg-values args)))
+         (send-request ,proxy ,opcode ',(loop :for arg :in args :append (request-arg-types arg))
+                       (list ,@(loop :for arg :in args :append (request-arg-values arg))))
          ,@(when destructor
              `((setf (proxy-destroyed-p ,proxy) t)))
          ,new-var))))
