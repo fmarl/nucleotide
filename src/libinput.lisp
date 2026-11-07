@@ -54,7 +54,7 @@ how to encode its value: the name of an enum, or :DOUBLE.")
           (unknown-name "value" value))))
 
 (defun check-libinput-settings (plist)
-  (unless (and (listp plist) (evenp (length plist)))
+  (unless (plist-p plist)
     (invalid-value plist "a plist like (:tap t)"))
   (loop :for (setting value) :on plist :by #'cddr
         :for encoding = (fourth (or (find setting *libinput-requests* :key #'first)

@@ -130,6 +130,17 @@
     (is (member :window-opened (n:unknown-name-known c)))
     (is (search "unknown event :NO-SUCH-EVENT, expected one of" (princ-to-string c)))))
 
+(test (badly-typed-settings-are-config-errors-that-name-the-setting :fixture fresh-config)
+  (loop :for (setting value) :in '((n:*pointer-modifiers* :super)
+                                   (n:*which-key-modifier* 5)
+                                   (n:*libinput-settings* (:tap . t)))
+        :for c = (config-error-of
+                  (lambda ()
+                    (n::call-with-default-config
+                     (lambda () (setf (symbol-value setting) value)))))
+        :do (is (typep c 'n:invalid-value) "~S ~S gave ~S" setting value c)
+            (is (equal (list (cons :setting setting)) (and c (n:config-error-context c))))))
+
 (test libinput-errors-name-what-the-user-wrote
   (let ((c (config-error-of (lambda () (n::check-libinput-settings '(:accel-profile :steep))))))
     (is (typep c 'n:unknown-name))
