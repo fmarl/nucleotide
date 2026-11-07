@@ -5,7 +5,7 @@
 
 (defun check-programs (programs)
   (unless (and (listp programs) (null (cdr (last programs))))
-    (nucleotide-error "~S is not a list of programs like (\"waybar\")" programs))
+    (invalid-value programs "a list of programs like (\"waybar\")"))
   (dolist (program programs)
     (check-value program 'program)))
 

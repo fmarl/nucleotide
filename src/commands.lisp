@@ -68,14 +68,13 @@ and the TYPE declarations of BODY."
 (defun check-arguments (action)
   (destructuring-bind (name &rest arguments) action
     (unless (member name *commands*)
-      (nucleotide-error "unknown command ~S" name))
-    (let ((typed (handler-case (apply (get name 'argument-types) arguments)
-                   (program-error ()
-                     (nucleotide-error "~S has the wrong number of arguments" action)))))
-      (handler-case (loop :for (value . type) :in typed
-                          :do (check-value value type))
-        (nucleotide-error (c)
-          (nucleotide-error "~S: ~A" action c))))))
+      (unknown-name "command" name))
+    (with-config-context (:action action)
+      (let ((typed (handler-case (apply (get name 'argument-types) arguments)
+                     (program-error (c)
+                       (config-error "~A" c)))))
+        (loop :for (value . type) :in typed
+              :do (check-value value type))))))
 
 (defun normalize-action (action)
   (let ((action (if (consp action) action (list action))))

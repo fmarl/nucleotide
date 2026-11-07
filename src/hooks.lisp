@@ -12,9 +12,9 @@
   "Call FUNCTION on EVENT: :WINDOW-OPENED and :WINDOW-CLOSED with the window,
 :WINDOW-TITLE with the window and its title, :FOCUS-CHANGED with the focused
 window or NIL, and :WORKSPACE-CHANGED with the active workspace. Signals
-NUCLEOTIDE-ERROR for any other EVENT."
+CONFIG-ERROR for any other EVENT."
   (unless (member event *hook-events*)
-    (nucleotide-error "unknown event ~S, expected one of ~S" event *hook-events*))
+    (unknown-name "event" event *hook-events*))
   (setf *hooks* (alist-set event
                            (append (remove function (alist-get event *hooks*))
                                    (list function))

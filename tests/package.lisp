@@ -38,6 +38,10 @@
 (def-fixture fresh-config ()
   (with-fresh-config (&body)))
 
+(defun config-error-of (function)
+  (handler-case (progn (funcall function) nil)
+    (n:config-error (c) c)))
+
 (defun keybind (keys)
   (find (n::parse-key-sequence keys) n::*bindings* :key #'n::keybind-keys :test #'equal))
 

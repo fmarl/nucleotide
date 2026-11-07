@@ -66,7 +66,7 @@ event is logged and skipped.")
   "Run THUNK inside the event loop's thread. Safe to call from any thread."
   (sb-thread:with-mutex ((loop-lock loop))
     (unless (loop-wake-write-fd loop)
-      (nucleotide-error "the event loop is not running"))
+      (error 'event-loop-stopped))
     (sb-concurrency:send-message (loop-mailbox loop) thunk)
     (let ((byte (make-array 1 :element-type '(unsigned-byte 8)
                             :initial-element 0)))

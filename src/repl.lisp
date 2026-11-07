@@ -31,7 +31,7 @@
       (create-repl-secret path))
     (check-file-permissions path #o077)
     (when (zerop (length (with-open-file (in path :direction :input) (read-line in nil ""))))
-      (nucleotide-error "~A is empty" path))))
+      (environment-error "~A is empty" path))))
 
 (defun ensure-slynk ()
   (unless (find-package '#:slynk)
@@ -45,12 +45,12 @@
 (defun start-repl-server (&key (port *repl-port*) dont-close)
   "Open a Slynk listener on localhost:PORT, protected by ~/.sly-secret. Unless
 DONT-CLOSE, it stops listening after the first connection. Signals
-NUCLEOTIDE-ERROR if a REPL already listens on PORT, or if ~/.sly-secret is
+ENVIRONMENT-ERROR if a REPL already listens on PORT, or if ~/.sly-secret is
 empty, not yours or open to others."
   (ensure-slynk)
   (ensure-repl-secret)
   (when (repl-listening-p port)
-    (nucleotide-error "a REPL is already listening on port ~D" port))
+    (environment-error "a REPL is already listening on port ~D" port))
   (uiop:symbol-call '#:slynk '#:create-server :port port :dont-close dont-close)
   (loop :repeat 100
         :until (repl-listening-p port)

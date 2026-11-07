@@ -26,6 +26,5 @@ called with its value after the init file loaded."
   (loop :for (name . properties) :in *settings*
         :for check = (getf properties :check)
         :when check
-        :do (handler-case (funcall check (symbol-value name))
-              (error (c)
-                (nucleotide-error "~(~A~): ~A" name c)))))
+        :do (with-config-context (:setting name)
+              (funcall check (symbol-value name)))))

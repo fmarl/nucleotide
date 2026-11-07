@@ -13,7 +13,7 @@
     (with-stubs ((n::notify (lambda (&rest args) (declare (ignore args)))))
       (n::run-event-hooks :window-title :win "title"))
     (is (equal '((:win "title")) seen))
-    (signals n::nucleotide-error (n::on :no-such-event #'identity))))
+    (signals n:unknown-name (n::on :no-such-event #'identity))))
 
 (test (focus-changes-run-hooks-and-fill-the-history :fixture fresh-config)
   (let* ((wm (make-test-wm))

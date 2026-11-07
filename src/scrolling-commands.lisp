@@ -5,7 +5,7 @@
 
 (defun check-presets (value)
   (unless (and (consp value) (every (lambda (preset) (typep preset 'fraction)) value))
-    (nucleotide-error "~S is not a list of fractions like (1/3 1/2 2/3)" value)))
+    (invalid-value value "a list of fractions like (1/3 1/2 2/3)")))
 
 (define-setting *column-widths* '(1/3 1/2 2/3)
   :documentation "Fractions of the output width that CYCLE-COLUMN-WIDTH steps through."
@@ -37,8 +37,7 @@
   (multiple-value-bind (amount sign) (and (stringp change) (parse-percent change))
     (cond ((realp change) (constantly change))
           ((null amount)
-           (nucleotide-error "~S is not a fraction or a size like \"50%\" or \"+10%\""
-                             change))
+           (invalid-value change "a fraction or a size like \"50%\" or \"+10%\""))
           ((eql sign #\+) (lambda (fraction) (+ fraction amount)))
           ((eql sign #\-) (lambda (fraction) (- fraction amount)))
           (t (constantly amount)))))

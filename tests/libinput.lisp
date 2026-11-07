@@ -12,7 +12,7 @@
   (is (= 2 (n::libinput-value "click_method" :clickfinger)))
   (is (= 1 (n::libinput-value "scroll_method" :two-finger)))
   (is (= 1 (n::libinput-value "accel_profile" :flat)))
-  (signals n::nucleotide-error (n::libinput-value "accel_profile" :steep))
+  (signals n:config-error (n::libinput-value "accel_profile" :steep))
   (is (null (find-symbol "+RIVER-LIBINPUT-DEVICE-V1-ACCEL-PROFILE-STEEP+" '#:nucleotide))))
 
 (test accel-speed-is-a-little-endian-double
@@ -22,9 +22,9 @@
 (test repeat-and-scroll-settings-fit-the-wire
   (is (null (n::check-key-repeat nil)))
   (is (null (n::check-key-repeat '(25 600))))
-  (signals n::nucleotide-error (n::check-key-repeat '(25 3000000000)))
-  (signals n::nucleotide-error (n::check-key-repeat '(-1 600)))
-  (signals n::nucleotide-error (n::check-key-repeat '(25)))
+  (signals n:config-error (n::check-key-repeat '(25 3000000000)))
+  (signals n:config-error (n::check-key-repeat '(-1 600)))
+  (signals n:config-error (n::check-key-repeat '(25)))
   (is (null (n::check-scroll-factor 0.5)))
-  (signals n::nucleotide-error (n::check-scroll-factor 1e9))
-  (signals n::nucleotide-error (n::check-scroll-factor -1)))
+  (signals n:config-error (n::check-scroll-factor 1e9))
+  (signals n:config-error (n::check-scroll-factor -1)))

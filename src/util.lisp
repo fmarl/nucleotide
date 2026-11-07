@@ -16,10 +16,10 @@
          (uid (sb-posix:stat-uid stat)))
     (unless (or (= uid (sb-posix:getuid))
                 (and allow-root (zerop uid)))
-      (nucleotide-error "~A is not owned by you" path))
+      (environment-error "~A is not owned by you" path))
     (unless (zerop (logand (sb-posix:stat-mode stat) forbidden-bits))
-      (nucleotide-error "~A has unsafe permissions ~3,'0O"
-                        path (logand (sb-posix:stat-mode stat) #o777)))))
+      (environment-error "~A has unsafe permissions ~3,'0O"
+                         path (logand (sb-posix:stat-mode stat) #o777)))))
 
 (defun spawn-program (command)
   "Start COMMAND detached from nucleotide. A string is run by sh, so it may

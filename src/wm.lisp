@@ -67,7 +67,7 @@ accessor that holds the proxy.")
 
 (defun check-cursor-theme (value)
   (unless (typep value '(or null (cons string (cons (and wire-int unsigned-byte) null))))
-    (nucleotide-error "~S is not NIL or a theme and a size like (\"Adwaita\" 24)" value)))
+    (invalid-value value "NIL or a theme and a size like (\"Adwaita\" 24)")))
 
 (define-setting *cursor-theme* nil
   :documentation "NIL for the default of river, or (NAME SIZE): the XCursor theme
@@ -168,8 +168,9 @@ and size of the seat and of programs started afterwards."
   "Load the init file and run the window manager for the Wayland display
 DISPLAY-NAME, by default $WAYLAND_DISPLAY, in a new thread. Sets *WM*, opens the
 IPC socket and starts *AUTOSTART-PROGRAMS* the first time. Signals
-NUCLEOTIDE-ERROR if a WM is already running, XDG_RUNTIME_DIR is unset or the
-display is not river, and SB-BSD-SOCKETS:SOCKET-ERROR if it cannot connect."
+NUCLEOTIDE-ERROR if a WM is already running, ENVIRONMENT-ERROR if XDG_RUNTIME_DIR
+is unset or the display is not river, and SB-BSD-SOCKETS:SOCKET-ERROR if it
+cannot connect."
   (when (and *wm* (wm-thread *wm*)
              (sb-thread:thread-alive-p (wm-thread *wm*)))
     (nucleotide-error "a WM is already running, call (stop-wm) first"))
@@ -180,7 +181,7 @@ display is not river, and SB-BSD-SOCKETS:SOCKET-ERROR if it cannot connect."
     (wl-display-roundtrip display)
     (unless (wm-river wm)
       (wl-display-disconnect display)
-      (nucleotide-error "no river_window_manager_v1 global, is WAYLAND_DISPLAY river?"))
+      (environment-error "no river_window_manager_v1 global, is WAYLAND_DISPLAY river?"))
     (setf (wm-loop wm) (make-event-loop display)
           (wm-thread wm) (sb-thread:make-thread
                           (lambda () (run-event-loop (wm-loop wm)))
@@ -191,13 +192,18 @@ display is not river, and SB-BSD-SOCKETS:SOCKET-ERROR if it cannot connect."
         (notify "no IPC: ~A" c)))
     (run-autostart)))
 
+(define-condition wm-not-running (nucleotide-error) ()
+  (:report "nucleotide is not running"))
+
 (defmacro in-wm (&body body)
   "Run BODY in the WM thread (asynchronously). REPL threads must never touch
-proxies directly, so wrap all proxy access in this."
-  `(progn
-     (unless *wm*
-       (nucleotide-error "nucleotide is not running"))
-     (event-loop-post (wm-loop *wm*) (lambda () ,@body))))
+proxies directly, so wrap all proxy access in this. Signals WM-NOT-RUNNING without
+a WM, and EVENT-LOOP-STOPPED if its event loop ended."
+  (let ((wm (gensym "WM")))
+    `(let ((,wm *wm*))
+       (unless ,wm
+         (error 'wm-not-running))
+       (event-loop-post (wm-loop ,wm) (lambda () ,@body)))))
 
 (defun stop-wm ()
   "Stop the window manager that START-WM started. River has a second to answer
@@ -209,7 +215,7 @@ the stop request, and the event loop may have ended already."
             (in-wm (river-window-manager-v1.stop (wm-river *wm*)))
             (sb-thread:join-thread thread :default nil :timeout 1)
             (event-loop-stop (wm-loop *wm*)))
-        (nucleotide-error ()))
+        ((or wm-not-running event-loop-stopped) ()))
       (sb-thread:join-thread thread :default nil))
     (stop-ipc *wm*)
     (wl-display-disconnect (wm-display *wm*))

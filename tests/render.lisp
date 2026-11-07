@@ -9,8 +9,8 @@
 (test colors
   (is (equal '(111 140 171 255) (n::parse-color "#6f8cab")))
   (is (equal '(111 140 171 128) (n::parse-color "#6f8cab80")))
-  (signals n::nucleotide-error (n::parse-color "6f8cab"))
-  (signals n::nucleotide-error (n::parse-color "#zzzzzz")))
+  (signals n:invalid-value (n::parse-color "6f8cab"))
+  (signals n:invalid-value (n::parse-color "#zzzzzz")))
 
 (test an-empty-clip-box-disables-clipping
   (is (equal '(0 0 0 0) (n::clip-box-arguments (make-instance 'n::window)))))

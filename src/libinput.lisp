@@ -35,9 +35,7 @@ how to encode its value: the name of an enum, or :DOUBLE.")
 (defun enum-value (class enum entry)
   (let ((name (find-symbol (enum-constant-string (interface-wire-name class) enum entry)
                            '#:nucleotide)))
-    (unless (and name (boundp name))
-      (nucleotide-error "~A is not one of the values of ~A" entry enum))
-    (symbol-value name)))
+    (and name (boundp name) (symbol-value name))))
 
 (defun double-octets (number)
   (let ((double (coerce number 'double-float))
@@ -47,24 +45,25 @@ how to encode its value: the name of an enum, or :DOUBLE.")
     octets))
 
 (defun libinput-value (encoding value)
-  (cond ((eq encoding :double) (double-octets value))
-        ((keywordp value)
-         (enum-value 'river-libinput-device-v1 encoding
-                     (substitute #\_ #\- (string-downcase value))))
-        (t
-         (enum-value 'river-libinput-device-v1 encoding
-                     (if value "enabled" "disabled")))))
+  (if (eq encoding :double)
+      (double-octets value)
+      (or (enum-value 'river-libinput-device-v1 encoding
+                      (cond ((keywordp value) (substitute #\_ #\- (string-downcase value)))
+                            (value "enabled")
+                            (t "disabled")))
+          (unknown-name "value" value))))
 
 (defun check-libinput-settings (plist)
   (unless (and (listp plist) (evenp (length plist)))
-    (nucleotide-error "~S is not a plist like (:tap t)" plist))
+    (invalid-value plist "a plist like (:tap t)"))
   (loop :for (setting value) :on plist :by #'cddr
         :for encoding = (fourth (or (find setting *libinput-requests* :key #'first)
-                                    (nucleotide-error "unknown libinput setting ~S" setting)))
-        :do (if (eq encoding :double)
-                (unless (typep value '(real -1 1))
-                  (nucleotide-error "~S is not a number from -1 to 1" value))
-                (libinput-value encoding value))))
+                                    (unknown-name "libinput setting" setting)))
+        :do (with-config-context (:libinput-setting setting)
+              (if (eq encoding :double)
+                  (unless (typep value '(real -1 1))
+                    (invalid-value value "a number from -1 to 1"))
+                  (libinput-value encoding value)))))
 
 (defun watch-libinput-result (setting result)
   (push (lambda (event &rest args)
@@ -98,7 +97,7 @@ how to encode its value: the name of an enum, or :DOUBLE.")
 (defun check-key-repeat (value)
   (unless (typep value '(or null (cons (and wire-int unsigned-byte)
                                   (cons (and wire-int unsigned-byte) null))))
-    (nucleotide-error "~S is not NIL or a rate and a delay like (25 600)" value)))
+    (invalid-value value "NIL or a rate and a delay like (25 600)")))
 
 (define-setting *key-repeat* nil
   :documentation "NIL to keep the default of river, or (RATE DELAY): key repeats per
@@ -108,7 +107,7 @@ they appear."
 
 (defun check-scroll-factor (value)
   (unless (typep value '(or null (and wire-fixed (real 0))))
-    (nucleotide-error "~S is not NIL or a factor like 0.5" value)))
+    (invalid-value value "NIL or a factor like 0.5")))
 
 (define-setting *scroll-factor* nil
   :documentation "NIL to keep the default of river, or how much faster pointers scroll,

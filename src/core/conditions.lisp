@@ -3,14 +3,30 @@
 
 (in-package #:nucleotide)
 
-(define-condition nucleotide-error (simple-error) ())
+(define-condition nucleotide-error (error) ()
+  (:documentation "The base class of the errors nucleotide signals."))
+
+(define-condition simple-nucleotide-error (nucleotide-error simple-condition) ()
+  (:documentation "A function of nucleotide was called in a way it does not support."))
 
 (defun nucleotide-error (control &rest args)
-  (error 'nucleotide-error :format-control control :format-arguments args))
+  "Signal a NUCLEOTIDE-ERROR whose message is CONTROL formatted with ARGS."
+  (error 'simple-nucleotide-error :format-control control :format-arguments args))
+
+(define-condition environment-error (nucleotide-error simple-condition) ()
+  (:documentation "Something nucleotide needs from the system is missing or unsafe, like
+an environment variable, a private file or a free port."))
+
+(defun environment-error (control &rest args)
+  "Signal an ENVIRONMENT-ERROR whose message is CONTROL formatted with ARGS."
+  (error 'environment-error :format-control control :format-arguments args))
+
+(define-condition event-loop-stopped (nucleotide-error) ()
+  (:report "the event loop is not running"))
 
 (define-condition wl-error (nucleotide-error) ())
 
-(define-condition wl-protocol-error (wl-error) ()
+(define-condition wl-protocol-error (wl-error simple-condition) ()
   (:documentation "The server sent something we cannot parse."))
 
 (define-condition wl-disconnected (wl-error) ()

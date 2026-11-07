@@ -59,7 +59,7 @@
                     ((:app-id "mpv") (:workspace 0))
                     ((:app-id "mpv") (:output 1))
                     ((:app-id "mpv") (:float))))
-      (signals n::nucleotide-error (n::add-window-rule (first rule) (second rule))
+      (signals n:config-error (n::add-window-rule (first rule) (second rule))
                "~S was accepted" rule))
     (finishes (n::rule (:title (n::contains "Picture") :app-id 'string-upcase)
                        :float nil :workspace 2 :output "DP-1" :fullscreen t))))

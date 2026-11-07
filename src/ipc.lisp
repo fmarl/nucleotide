@@ -24,7 +24,7 @@
 
 (defun ipc-socket-path ()
   (let ((dir (or (uiop:getenv "XDG_RUNTIME_DIR")
-                 (nucleotide-error "XDG_RUNTIME_DIR is not set"))))
+                 (environment-error "XDG_RUNTIME_DIR is not set"))))
     (check-file-permissions dir #o077)
     (format nil "~A/nucleotide.~A.~D.sock"
             dir (file-namestring (or (uiop:getenv "WAYLAND_DISPLAY") "wayland-0"))

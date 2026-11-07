@@ -22,15 +22,15 @@
 
 (defun action-type (action)
   (or (alist-get action *rule-actions*)
-      (nucleotide-error "unknown rule action ~S, expected one of ~S"
-                        action (mapcar #'car *rule-actions*))))
+      (unknown-name "rule action" action (mapcar #'car *rule-actions*))))
 
 (defun check-rule (match actions)
-  (check-value match 'match)
-  (unless (plist-p actions)
-    (nucleotide-error "~S is not a plist of actions like (:float t)" actions))
-  (loop :for (action value) :on actions :by #'cddr
-        :do (check-value value (action-type action))))
+  (with-config-context (:rule match)
+    (check-value match 'match)
+    (unless (plist-p actions)
+      (invalid-value actions "a plist of actions like (:float t)"))
+    (loop :for (action value) :on actions :by #'cddr
+          :do (check-value value (action-type action)))))
 
 (defvar *window-rules* '()
   "List of (MATCH . ACTIONS) plists, applied one after another to every new window.")

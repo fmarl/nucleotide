@@ -11,7 +11,7 @@
   :documentation "The modifiers to hold for which-key."
   :check (lambda (value)
            (unless (plusp (parse-modifiers value))
-             (nucleotide-error "~S names no modifier" value))))
+             (invalid-value value "the name of a modifier like \"Super\""))))
 
 (defstruct which-key
   "LEADER and DELAY, in seconds or NIL, are the settings as they were when the

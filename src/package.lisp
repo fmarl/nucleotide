@@ -125,7 +125,21 @@
    #:start-repl-server
    #:stop-repl-server
    #:*debug-on-error*
-   #:*log-level*))
+   #:*log-level*
+   ;; Errors
+   #:nucleotide-error
+   #:config-error
+   #:config-error-context
+   #:invalid-value
+   #:invalid-value-value
+   #:invalid-value-expected
+   #:unknown-name
+   #:unknown-name-kind
+   #:unknown-name-name
+   #:unknown-name-known
+   #:environment-error
+   #:event-loop-stopped
+   #:wm-not-running))
 
 (defpackage #:nucleotide.user
   (:use #:cl #:nucleotide)

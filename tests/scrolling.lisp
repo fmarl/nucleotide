@@ -158,7 +158,7 @@
   (is (= 2/5 (funcall (n::size-changer "-10%") 1/2)))
   (is (= 2/3 (funcall (n::size-changer 2/3) 1/2)))
   (dolist (change '("10" "+%" "x%" "+10%%" "--10%" "+-10%" "+ 10%" "%" "" :wide))
-    (signals n::nucleotide-error (n::size-changer change))))
+    (signals n:invalid-value (n::size-changer change))))
 
 (defun scrolling-wm ()
   (let* ((wm (make-test-wm))

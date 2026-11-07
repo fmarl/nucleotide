@@ -214,7 +214,7 @@
     (if (char= #\/ (char name 0))
         name
         (let ((dir (or (uiop:getenv "XDG_RUNTIME_DIR")
-                       (nucleotide-error "XDG_RUNTIME_DIR is not set"))))
+                       (environment-error "XDG_RUNTIME_DIR is not set"))))
           (concatenate 'string dir "/" name)))))
 
 (defun wl-display-connect (&optional name)

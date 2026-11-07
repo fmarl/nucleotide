@@ -11,7 +11,7 @@
   (is (= 64 (n::parse-modifiers "Super")))
   (is (= 64 (n::parse-modifiers "Mod")))
   (is (= 65 (n::parse-modifiers "super+Shift")))
-  (signals n::nucleotide-error (n::parse-modifiers "Hyper")))
+  (signals n:unknown-name (n::parse-modifiers "Hyper")))
 
 (test keys
   (is (equal '(#x63 . 65) (n::parse-key "Super+Shift+C")))
@@ -28,9 +28,9 @@
   (is (equal '(#xfea0 . 0) (n::parse-key "cH")))
   (is (equal '(#x7e1 . 0) (n::parse-key "greek_ALPHA")))
   (is (equal '(#x1000561 . 0) (n::parse-key "armenian_AYB")))
-  (signals n::nucleotide-error (n::parse-key "NoSymbol"))
-  (signals n::nucleotide-error (n::parse-key "Super+NoSuchKey"))
-  (signals n::nucleotide-error (n::parse-key "")))
+  (signals n:config-error (n::parse-key "NoSymbol"))
+  (signals n:config-error (n::parse-key "Super+NoSuchKey"))
+  (signals n:config-error (n::parse-key "")))
 
 (test key-display-names
   (is (equal "Super+Space" (n::key-display-name (n::parse-key "Mod4+space"))))
@@ -46,14 +46,14 @@
 
 (test key-sequences
   (is (equal '((#x20 . 64) (#x74 . 0)) (n::parse-key-sequence "Super+Space T")))
-  (signals n::nucleotide-error (n::parse-key-sequence "A B C")))
+  (signals n:invalid-value (n::parse-key-sequence "A B C")))
 
 (test (bindings-take-commands :fixture fresh-config)
   (n::bind "Super+Q" n::close-window)
   (n::bind "Super+H" (n::focus :left))
   (is (equal '(n::close-window) (action "Super+Q")))
   (is (equal '(n::focus :left) (action "Super+H")))
-  (signals n::nucleotide-error (n::bind "Super+X" (n::no-such-command))))
+  (signals n:unknown-name (n::bind "Super+X" (n::no-such-command))))
 
 (test (bindings-replace-the-same-keys :fixture fresh-config)
   (n::bind "Super+Q" n::close-window)
@@ -81,7 +81,7 @@
     (is (equal "exit-session" (description "Super+Space Q")))
     (n::bind "Super+Space T" (n::set-layout n::monocle))
     (is (equal "set-layout monocle" (description "Super+Space T")))
-    (signals n::nucleotide-error
+    (signals n:config-error
              (n::bind "Super+Space M" (n::set-layout n::monocle) :description 'monocle))))
 
 (test (unbind :fixture fresh-config)

@@ -101,14 +101,59 @@
   (if (zerop (sb-posix:getuid))
       (skip "running as root")
       (progn
-        (signals n::nucleotide-error (n::check-file-permissions "/etc/passwd" #o022))
+        (signals n:environment-error (n::check-file-permissions "/etc/passwd" #o022))
         (finishes (n::check-file-permissions "/etc/passwd" #o022 :allow-root t))
-        (signals n::nucleotide-error
+        (signals n:environment-error
                  (n::check-file-permissions "/etc/passwd" #o044 :allow-root t)))))
 
 (test (bad-sizes-fail-when-they-are-bound :fixture fresh-config)
-  (signals n::nucleotide-error (n::set-binding "Super+Minus" '(n::set-column-width "-10")))
+  (signals n:config-error (n::set-binding "Super+Minus" '(n::set-column-width "-10")))
   (is (equal "Super+Minus" (n::set-binding "Super+Minus" '(n::set-column-width "-10%")))))
+
+(test (config-errors-name-the-value-and-where-it-is :fixture fresh-config)
+  (let ((c (handler-case (n:set-binding "Super+X" '(n::focus :leftt))
+             (n:config-error (c) c))))
+    (is (typep c 'n:invalid-value))
+    (is (eq :leftt (n:invalid-value-value c)))
+    (is (equal '((:action n::focus :leftt)) (n:config-error-context c)))
+    (is (search "FOCUS :LEFTT): :LEFTT is not a direction" (princ-to-string c))))
+  (setf n::*which-key-modifier* "")
+  (let ((c (handler-case (n::check-settings)
+             (n:config-error (c) c))))
+    (is (equal '((:setting . n:*which-key-modifier*)) (n:config-error-context c)))
+    (is (search "*which-key-modifier*: " (princ-to-string c)))))
+
+(test (unknown-names-list-the-known-ones :fixture fresh-config)
+  (let ((c (handler-case (n:on :no-such-event #'identity)
+             (n:unknown-name (c) c))))
+    (is (eq :no-such-event (n:unknown-name-name c)))
+    (is (member :window-opened (n:unknown-name-known c)))
+    (is (search "unknown event :NO-SUCH-EVENT, expected one of" (princ-to-string c)))))
+
+(test libinput-errors-name-what-the-user-wrote
+  (let ((c (config-error-of (lambda () (n::check-libinput-settings '(:accel-profile :steep))))))
+    (is (typep c 'n:unknown-name))
+    (is (eq :steep (n:unknown-name-name c)))
+    (is (equal '((:libinput-setting . :accel-profile)) (n:config-error-context c)))))
+
+(test (rule-errors-name-the-rule :fixture fresh-config)
+  (let ((c (config-error-of (lambda () (n::add-window-rule '(:app-id "foot") '(:workspace 0))))))
+    (is (typep c 'n:invalid-value))
+    (is (equal '((:rule :app-id "foot")) (n:config-error-context c)))
+    (is (search "rule (:APP-ID \"foot\"): " (princ-to-string c)))))
+
+(test config-contexts-see-the-variables-of-their-caller
+  ;; Only a variable of the package N can collide with one the macro introduces.
+  (let* ((n::entry "outer")
+         (condition (config-error-of
+                     (lambda ()
+                       (n::with-config-context (:action :test)
+                         (n:invalid-value n::entry "two"))))))
+    (is (equal "outer" (n:invalid-value-value condition)))))
+
+(test in-wm-without-a-wm-signals-that-it-is-not-running
+  (let ((n::*wm* nil))
+    (signals n:wm-not-running (n::in-wm nil))))
 
 (test the-init-file-package-sees-every-command-and-setting
   (dolist (symbol (append n::*builtin-commands* (mapcar #'car n::*settings*)))
@@ -142,7 +187,7 @@
                  (n::*libinput-settings* (:click-method :clickfingers))
                  (n::*libinput-settings* (:accel-speed 2))))
     (destructuring-bind (setting value) bad
-      (signals n::nucleotide-error
+      (signals n:config-error
                (n::call-with-default-config (lambda () (setf (symbol-value setting) value))))))
   (finishes (n::call-with-default-config
              (lambda ()

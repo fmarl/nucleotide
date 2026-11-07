@@ -92,6 +92,6 @@
   (is (= 1/2 (n::tiling-ratio (n::make-layout '(n::tiling :ratio 1/2)))))
   (dolist (spec '((n::tiling :ratio 0) (n::tiling :ratio 1) (n::tiling :ratio "1/2")
                   (n::tiling :size 2) (n::tiling :ratio) (n::tiling . 3) n::wm no-such-layout))
-    (signals n::nucleotide-error (n::make-layout spec) "~S was made" spec))
+    (signals n:config-error (n::make-layout spec) "~S was made" spec))
   (is (typep 'n::tiling 'n::layout-spec))
   (is (not (typep '(n::tiling :ratio 9) 'n::layout-spec))))

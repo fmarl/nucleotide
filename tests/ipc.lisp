@@ -165,7 +165,7 @@
   (with-private-directory (runtime)
     (with-environment (("XDG_RUNTIME_DIR" runtime))
       (sb-posix:chmod runtime #o755)
-      (signals n::nucleotide-error (n::ipc-socket-path))
+      (signals n:environment-error (n::ipc-socket-path))
       (sb-posix:chmod runtime #o700)
       (is (search runtime (n::ipc-socket-path))))))
 

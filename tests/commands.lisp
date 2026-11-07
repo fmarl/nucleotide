@@ -16,7 +16,7 @@
            (is (equal (list wm 1 2) (n::run-command wm '(test-command 1))))
            (is (equal (list wm 1 3) (n::run-command wm '(test-command 1 3))))
            (is (equal '(test-command) (n::command-names)))
-           (signals n::nucleotide-error (n::run-command wm 'missing)))
+           (signals n:unknown-name (n::run-command wm 'missing)))
       (fmakunbound 'test-command))))
 
 (test commands-end-the-highlight-and-the-overview-except-their-toggles
@@ -47,11 +47,11 @@
                     (n::set-layout (n::tiling :ratio 9)) (n::spawn) (n::spawn 1 2)
                     (n::set-column-width "-10") (n::toggle-highlight :appid "emacs")
                     (n::close-window 1)))
-    (signals n::nucleotide-error (n::set-binding "Super+X" action)
+    (signals n:config-error (n::set-binding "Super+X" action)
              "~S was bound" action))
   (is (search "between 0 and 1"
               (handler-case (n::set-binding "Super+X" '(n::set-layout (n::tiling :ratio 9)))
-                (n::nucleotide-error (c) (princ-to-string c)))))
+                (n:config-error (c) (princ-to-string c)))))
   (dolist (action '((n::switch-workspace 9) (n::focus) (n::focus :up) (n::focus-output :prev)
                     (n::set-layout n::scrolling) (n::set-layout (n::tiling :ratio 1/2))
                     (n::spawn "foot") (n::spawn "foot" "-e" "htop") (n::set-window-height 1/2)
@@ -82,9 +82,12 @@
                         (declare (ignore wm label-p) (type string label))
                         label))))
            (finishes (n::normalize-action '(counted-test-command)))
-           (signals n::nucleotide-error (n::normalize-action '(counted-test-command 0)))
+           (signals n:config-error (n::normalize-action '(counted-test-command 0)))
            (finishes (n::normalize-action '(named-test-command :name "y")))
-           (signals n::nucleotide-error (n::normalize-action '(named-test-command :name 3)))
-           (signals n::nucleotide-error (n::normalize-action '(named-test-command :size 3))))
+           (signals n:config-error (n::normalize-action '(named-test-command :name 3)))
+           (let ((c (config-error-of
+                     (lambda () (n::normalize-action '(named-test-command :size 3))))))
+             (is (equal '((:action named-test-command :size 3)) (n:config-error-context c)))
+             (is (not (search "number of arguments" (princ-to-string c))))))
       (fmakunbound 'counted-test-command)
       (fmakunbound 'named-test-command))))

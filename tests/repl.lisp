@@ -15,4 +15,4 @@
         (is (= #o600 (logand #o777 (sb-posix:stat-mode (sb-posix:stat path)))))
         (is (= 64 (length (with-open-file (in path) (read-line in)))))
         (sb-posix:chmod path #o644)
-        (signals n::nucleotide-error (n::ensure-repl-secret))))))
+        (signals n:environment-error (n::ensure-repl-secret))))))

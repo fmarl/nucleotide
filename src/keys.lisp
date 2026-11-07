@@ -11,7 +11,7 @@
                                    (uiop:getenv-absolute-directories "CPATH")
                                    (list #p"/usr/include/"))
               :thereis (probe-file (merge-pathnames "xkbcommon/xkbcommon-keysyms.h" dir)))
-        (nucleotide-error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
+        (environment-error "xkbcommon-keysyms.h not found, is libxkbcommon installed?")))
 
   (defun header-codepoint (line)
     "The character of a comment like /* U+20AC EURO SIGN */. Inexact ones look
@@ -124,7 +124,7 @@ matches bindings with the keysyms of the layout."
   (reduce #'logior
           (mapcar (lambda (name)
                     (or (cdr (assoc name *modifier-names* :test #'string-equal))
-                        (nucleotide-error "unknown modifier ~S" name)))
+                        (unknown-name "modifier" name)))
                   (if (stringp names) (split names "+") names))
           :initial-value 0))
 
@@ -133,14 +133,14 @@ matches bindings with the keysyms of the layout."
                     (char-keysym (char-downcase (char name 0)))
                     (keysym-from-name name))))
     (when (member keysym '(nil 0))
-      (nucleotide-error "unknown key ~S" name))
+      (unknown-name "key" name))
     keysym))
 
 (defun parse-key (key)
   "The (keysym . modifiers) of KEY, like \"Super+Shift+C\" or \"XF86AudioPlay\"."
   (let ((parts (split key "+")))
     (unless parts
-      (nucleotide-error "~S is not a key" key))
+      (invalid-value key "a key like \"Super+Q\""))
     (cons (key-keysym (first (last parts))) (parse-modifiers (butlast parts)))))
 
 (defun keysym-display-name (keysym)
@@ -162,7 +162,7 @@ matches bindings with the keysyms of the layout."
 (defun parse-key-sequence (keys)
   (let ((sequence (mapcar #'parse-key (split keys " "))))
     (unless (<= 1 (length sequence) 2)
-      (nucleotide-error "~S is not a key or a prefix and a key" keys))
+      (invalid-value keys "a key or a prefix and a key like \"Super+Space T\""))
     sequence))
 
 (defstruct (keybind (:constructor make-keybind (keys action description)))
@@ -197,9 +197,8 @@ matches bindings with the keysyms of the layout."
 
 (defun set-binding (keys action &key description)
   "Like BIND with an evaluated ACTION. Replaces bindings of the same keys and of
-chords that share their prefix with KEYS. Signals NUCLEOTIDE-ERROR for unknown
-keys or commands, wrong arguments and a DESCRIPTION that is neither NIL nor a
-string."
+chords that share their prefix with KEYS. Signals CONFIG-ERROR for unknown keys
+or commands, wrong arguments and a DESCRIPTION that is neither NIL nor a string."
   (let ((sequence (parse-key-sequence keys))
         (action (normalize-action action)))
     (check-value description 'description)
@@ -215,10 +214,10 @@ string."
 (defmacro bind (keys action &key description)
   "Bind KEYS, like \"Super+Q\" or \"Super+Space T\", to ACTION, like (focus :left).
 DESCRIPTION, like \"tiling\", names ACTION for which-key. Signals
-NUCLEOTIDE-ERROR like SET-BINDING."
+CONFIG-ERROR like SET-BINDING."
   `(set-binding ,keys ',action :description ,description))
 
 (defun unbind (keys)
-  "Remove the binding of KEYS. Signals NUCLEOTIDE-ERROR if KEYS cannot be parsed."
+  "Remove the binding of KEYS. Signals CONFIG-ERROR if KEYS cannot be parsed."
   (setf *bindings* (remove (parse-key-sequence keys) *bindings*
                            :key #'keybind-keys :test #'equal)))

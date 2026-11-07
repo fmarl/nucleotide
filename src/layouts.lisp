@@ -34,12 +34,12 @@ initargs like (TILING :RATIO 1/2)."
   (destructuring-bind (name &rest initargs) (if (consp spec) spec (list spec))
     (let ((class (and (symbolp name) (find-class name nil))))
       (unless (and class (subtypep class 'layout))
-        (nucleotide-error "~S is not a layout" name))
+        (invalid-value name "the name of a layout like tiling"))
       (unless (plist-p initargs)
-        (nucleotide-error "~S is not a plist of options like (:ratio 1/2)" initargs))
+        (invalid-value initargs "a plist of options like (:ratio 1/2)"))
       (handler-case (apply #'make-instance class initargs)
         (program-error (c)
-          (nucleotide-error "~S: ~A" spec c))))))
+          (config-error "~S: ~A" spec c))))))
 
 (define-value-type layout-spec "a layout like tiling or (tiling :ratio 1/2)"
   :check make-layout)

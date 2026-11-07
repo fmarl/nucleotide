@@ -124,7 +124,7 @@ returns those watched next, PRESS delivers an event."
       (update alt (logior alt n::+river-seat-v1-modifiers-mod4+))
       (is (= 1 (length (timers wm)))))
     (setf n::*which-key-modifier* "")
-    (signals n::nucleotide-error (n::check-settings))))
+    (signals n:config-error (n::check-settings))))
 
 (test (without-a-delay-nothing-is-watched-or-shown :fixture fresh-config)
   (setf n::*which-key-delay* 500)
