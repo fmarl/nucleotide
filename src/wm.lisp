@@ -3,7 +3,8 @@
 
 (in-package #:nucleotide)
 
-(defvar *wm* nil)
+(defvar *wm* nil
+  "The window manager that START-WM started, or NIL.")
 
 (defparameter *bound-globals*
   '((river-window-manager-v1 5 wm-river)
@@ -164,7 +165,11 @@ and size of the seat and of programs started afterwards."
     wm))
 
 (defun start-wm (&key display-name)
-  "Run the window manager in a new thread."
+  "Load the init file and run the window manager for the Wayland display
+DISPLAY-NAME, by default $WAYLAND_DISPLAY, in a new thread. Sets *WM*, opens the
+IPC socket and starts *AUTOSTART-PROGRAMS* the first time. Signals
+NUCLEOTIDE-ERROR if a WM is already running, XDG_RUNTIME_DIR is unset or the
+display is not river, and SB-BSD-SOCKETS:SOCKET-ERROR if it cannot connect."
   (when (and *wm* (wm-thread *wm*)
              (sb-thread:thread-alive-p (wm-thread *wm*)))
     (nucleotide-error "a WM is already running, call (stop-wm) first"))

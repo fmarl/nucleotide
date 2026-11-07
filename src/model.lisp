@@ -177,10 +177,16 @@ Manage sequences bring this in line with LOCKED.")
           (mappend #'cdr (wm-stash wm))))
 
 (defun all-windows (wm)
+  "The windows of all workspaces, also of those without an output."
   (loop :for ws :in (wm-workspaces wm) :append (workspace-windows ws)))
 
 (defun output-windows (wm)
   (loop :for ws :in (mappend #'output-workspaces (wm-outputs wm)) :append (workspace-windows ws)))
+
+(setf (documentation 'workspace-focus 'function) "The window of WS that has the focus
+while WS is active and nothing is highlighted, or NIL. Setting it to a window
+outside WS signals an error."
+      (documentation 'wm-active-workspace 'function) "The workspace of WM that has the focus.")
 
 (defmethod wm-highlight :around ((wm wm))
   (live (call-next-method)))

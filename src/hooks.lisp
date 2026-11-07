@@ -11,7 +11,8 @@
 (defun on (event function)
   "Call FUNCTION on EVENT: :WINDOW-OPENED and :WINDOW-CLOSED with the window,
 :WINDOW-TITLE with the window and its title, :FOCUS-CHANGED with the focused
-window or NIL, and :WORKSPACE-CHANGED with the active workspace."
+window or NIL, and :WORKSPACE-CHANGED with the active workspace. Signals
+NUCLEOTIDE-ERROR for any other EVENT."
   (unless (member event *hook-events*)
     (nucleotide-error "unknown event ~S, expected one of ~S" event *hook-events*))
   (setf *hooks* (alist-set event

@@ -197,7 +197,9 @@ matches bindings with the keysyms of the layout."
 
 (defun set-binding (keys action &key description)
   "Like BIND with an evaluated ACTION. Replaces bindings of the same keys and of
-chords that share their prefix with KEYS."
+chords that share their prefix with KEYS. Signals NUCLEOTIDE-ERROR for unknown
+keys or commands, wrong arguments and a DESCRIPTION that is neither NIL nor a
+string."
   (let ((sequence (parse-key-sequence keys))
         (action (normalize-action action)))
     (check-value description 'description)
@@ -212,10 +214,11 @@ chords that share their prefix with KEYS."
 
 (defmacro bind (keys action &key description)
   "Bind KEYS, like \"Super+Q\" or \"Super+Space T\", to ACTION, like (focus :left).
-DESCRIPTION, like \"tiling\", names ACTION for which-key."
+DESCRIPTION, like \"tiling\", names ACTION for which-key. Signals
+NUCLEOTIDE-ERROR like SET-BINDING."
   `(set-binding ,keys ',action :description ,description))
 
 (defun unbind (keys)
-  "Remove the binding of KEYS."
+  "Remove the binding of KEYS. Signals NUCLEOTIDE-ERROR if KEYS cannot be parsed."
   (setf *bindings* (remove (parse-key-sequence keys) *bindings*
                            :key #'keybind-keys :test #'equal)))

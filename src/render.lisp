@@ -14,12 +14,17 @@
           (and (= 7 (length color-code)) '(255))))
 
 (define-setting *border-width* 2
+  :documentation "Pixels of the border around each window."
   :check (type-check '(and wire-int unsigned-byte) "a number of pixels like 2"))
 
 (define-setting *border-focused* "#6f8cab"
+  :documentation "The border color of the focused window, like \"#6f8cab\", or with
+alpha like \"#6f8cabcc\"."
   :check #'parse-color)
 
 (define-setting *border-unfocused* "#ababab"
+  :documentation "The border color of the other windows, written like
+*BORDER-FOCUSED*."
   :check #'parse-color)
 
 (defun rgba->uint32 (rgba)

@@ -7,19 +7,26 @@
   :documentation "Pixels between windows and around them."
   :check (type-check '(and wire-int unsigned-byte) "a number of pixels like 8"))
 
-(defclass layout () ())
+(defclass layout ()
+  ()
+  (:documentation "The base class of layouts. A layout defines LAYOUT-ARRANGE and may
+define LAYOUT-UPDATE, LAYOUT-NEIGHBOR, LAYOUT-MOVE and LAYOUT-SUCCESSOR."))
 
 (define-value-type master-ratio "a ratio between 0 and 1 like 3/5"
   :type (real (0) (1)))
 
 (defclass tiling (layout)
   ((ratio :initarg :ratio :initform 3/5 :reader tiling-ratio
-          :documentation "The part of the width the master window takes.")))
+          :documentation "The part of the width the master window takes."))
+  (:documentation "The first window on the left, taking RATIO of the width (:RATIO,
+3/5 by default), the others stacked on the right."))
 
 (defmethod initialize-instance :after ((layout tiling) &key)
   (check-value (tiling-ratio layout) 'master-ratio))
 
-(defclass monocle (layout) ())
+(defclass monocle (layout)
+  ()
+  (:documentation "Every window covers the usable area of the output, inside *GAP*."))
 
 (defun make-layout (spec)
   "A layout from SPEC, the name of a layout class or a list of one and its

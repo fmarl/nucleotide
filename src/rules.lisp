@@ -33,7 +33,7 @@
         :do (check-value value (action-type action))))
 
 (defvar *window-rules* '()
-  "List of (MATCH . ACTIONS) plists, applied in order to every new window.")
+  "List of (MATCH . ACTIONS) plists, applied one after another to every new window.")
 
 (defun add-window-rule (match actions)
   (check-rule match actions)

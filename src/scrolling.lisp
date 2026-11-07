@@ -8,6 +8,8 @@
   '(real (0) 1))
 
 (define-setting *default-column-width* 1/2
+  :documentation "The width of new columns of the scrolling layout, and the one
+TOGGLE-FULL-WIDTH returns to, as a fraction of the output."
   :check (type-check 'fraction "a fraction like 1/2"))
 
 (defclass column ()
@@ -37,7 +39,9 @@ column has none, as it could not show it.")))
    (offset :initform 0 :accessor scrolling-offset)
    (anchor :initform nil :accessor scrolling-anchor
            :documentation "The focused tiled window as of the last arrangement.")
-   (center :initform nil :accessor scrolling-center-p)))
+   (center :initform nil :accessor scrolling-center-p))
+  (:documentation "Columns of windows side by side, scrolled so that the focused one
+is visible, as in niri."))
 
 (defmethod scrolling-anchor :around ((layout scrolling))
   (live (call-next-method)))

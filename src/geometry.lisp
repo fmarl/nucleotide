@@ -4,10 +4,14 @@
 (in-package #:nucleotide)
 
 (defstruct (rect (:constructor rect (x y width height)))
+  "A rectangle in pixels: its top left corner X and Y, its WIDTH and HEIGHT."
   (x 0 :type integer :read-only t)
   (y 0 :type integer :read-only t)
   (width 0 :type integer :read-only t)
   (height 0 :type integer :read-only t))
+
+(setf (documentation 'rect 'function) "A rect with the top left corner X and Y,
+WIDTH and HEIGHT.")
 
 (defstruct (point (:constructor point (x y)))
   (x 0 :type integer :read-only t)

@@ -4,6 +4,7 @@
 (in-package #:nucleotide)
 
 (define-setting *repl-port* 4005
+  :documentation "The localhost port TOGGLE-REPL opens a Slynk listener on."
   :check (type-check '(integer 1 65535) "a port like 4005"))
 
 (defun repl-secret-file ()
@@ -43,7 +44,9 @@
 
 (defun start-repl-server (&key (port *repl-port*) dont-close)
   "Open a Slynk listener on localhost:PORT, protected by ~/.sly-secret. Unless
-DONT-CLOSE, it stops listening after the first connection."
+DONT-CLOSE, it stops listening after the first connection. Signals
+NUCLEOTIDE-ERROR if a REPL already listens on PORT, or if ~/.sly-secret is
+empty, not yours or open to others."
   (ensure-slynk)
   (ensure-repl-secret)
   (when (repl-listening-p port)
