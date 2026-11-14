@@ -208,6 +208,8 @@ workspace shown on the neighboring output, and follow them there."
 (define-handler (wm (output output) :removed) ()
   (unassign-output wm output)
   (dolist (win (all-windows wm))
+    (when (eq (window-shown-fullscreen win) output)
+      (setf (%window-shown-fullscreen win) nil))
     (when (eq (window-fullscreen win) output)
       (request wm :exit-fullscreen win)))
   (mark-dirty wm)

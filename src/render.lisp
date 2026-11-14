@@ -41,13 +41,16 @@ alpha like \"#6f8cabcc\"."
 
 (defparameter *stacking-order*
   '((:tiled nil) (:maximized nil) (:tiled t) (:maximized t)
-    (:floating nil) (:floating t) (:fullscreen nil) (:fullscreen t))
+    (:floating nil) (:floating t) (:fullscreen nil) (:fullscreen t)
+    (:fullscreen-dialog nil) (:fullscreen-dialog t))
   "The placement of windows and whether they have the focus, from the bottom up. A
 focused tiled window comes above maximized ones, which keep their place in its
 layout.")
 
 (defun stacking-rank (wm win)
-  (position (list (window-placement win) (eq win (wm-focus wm))) *stacking-order*
+  (position (list (if (fullscreen-dialog-p win) :fullscreen-dialog (window-placement win))
+                  (eq win (wm-focus wm)))
+            *stacking-order*
             :test #'equal))
 
 (defun clip-box-arguments (win)
@@ -67,7 +70,8 @@ layout.")
 
 (defun render-window (wm win)
   (river-window-v1.show (window-proxy win))
-  (apply #'river-window-v1.set-borders (window-proxy win) +all-edges+ *border-width*
+  (apply #'river-window-v1.set-borders (window-proxy win) +all-edges+
+         (if (window-fullscreen win) 0 *border-width*)
          (border-color wm win))
   (when (supports-p (window-proxy win) 2)
     (apply #'river-window-v1.set-clip-box (window-proxy win) (clip-box-arguments win)))

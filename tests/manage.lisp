@@ -125,6 +125,53 @@
       (is (eq left (n::wm-focused-output wm)))
       (is (eq focused (n::workspace-focus (n::output-workspace right)))))))
 
+(test new-windows-leave-the-focus-to-a-fullscreen-window-unless-they-are-its-dialogs
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0))
+         (ws (n::output-workspace output))
+         (video (open-window-on ws))
+         (other (make-instance 'n::window))
+         (dialog (make-instance 'n::window)))
+    (setf (n::%window-fullscreen video) output
+          (n::%window-parent dialog) video
+          (n::%window-floating-p dialog) t)
+    (n::add-window ws other :focus nil)
+    (n::place-new-window wm other)
+    (is (eq video (n::wm-focus wm)))
+    (n::add-window ws dialog :focus nil)
+    (n::place-new-window wm dialog)
+    (is (eq dialog (n::wm-focus wm)))))
+
+(test fullscreen-windows-with-dialogs-cover-their-output-themselves
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0))
+         (ws (n::output-workspace output))
+         (video (make-instance 'n::window :proxy :video))
+         (dialog (make-instance 'n::window :proxy :dialog))
+         (calls '()))
+    (n::add-window ws video)
+    (n::add-window ws dialog)
+    (setf (n::%window-fullscreen video) output
+          (n::%window-floating-p dialog) t)
+    (with-stubs ((n::river-window-v1.fullscreen (lambda (proxy output)
+                                                   (declare (ignore proxy output))
+                                                   (push :fullscreen calls)))
+                 (n::river-window-v1.exit-fullscreen (lambda (proxy)
+                                                        (declare (ignore proxy))
+                                                        (push :exit calls)))
+                 (n::propose-size (lambda (win size) (declare (ignore win size)))))
+      (n::manage-fullscreen-display wm)
+      (is (eq output (n::window-shown-fullscreen video)))
+      (setf (n::%window-parent dialog) video)
+      (n::manage-fullscreen-display wm)
+      (n::manage-layout ws output)
+      (is (null (n::window-shown-fullscreen video)))
+      (is (equal '(0 0) (list (n::window-x video) (n::window-y video))))
+      (n::remove-window dialog)
+      (n::manage-fullscreen-display wm)
+      (n::manage-fullscreen-display wm))
+    (is (equal '(:fullscreen :exit :fullscreen) (reverse calls)))))
+
 (test fullscreen-windows-keep-their-place-in-the-layout
   (let* ((wm (make-test-wm))
          (output (add-output wm 0))

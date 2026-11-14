@@ -47,12 +47,10 @@ outside of submaps again, new ones among them."
       (window-output win)))
 
 (defun enter-fullscreen (win output)
-  (river-window-v1.fullscreen (window-proxy win) (output-proxy output))
   (river-window-v1.inform-fullscreen (window-proxy win))
   (setf (%window-fullscreen win) output))
 
 (defun exit-fullscreen (win)
-  (river-window-v1.exit-fullscreen (window-proxy win))
   (river-window-v1.inform-not-fullscreen (window-proxy win))
   (setf (%window-fullscreen win) nil))
 
@@ -71,7 +69,18 @@ outside of submaps again, new ones among them."
   (dolist (win (all-windows wm))
     (let ((output (and (window-fullscreen win) (window-output win))))
       (when (and output (not (eq output (window-fullscreen win))))
-        (enter-fullscreen win output)))))
+        (setf (%window-fullscreen win) output)))))
+
+(defun manage-fullscreen-display (wm)
+  "River shows no windows above a fullscreen one, so a fullscreen window with
+dialogs covers its output as a normal window, which MANAGE-LAYOUT places."
+  (dolist (win (all-windows wm))
+    (let ((output (and (not (has-dialogs-p win)) (window-fullscreen win))))
+      (unless (eq output (window-shown-fullscreen win))
+        (if output
+            (river-window-v1.fullscreen (window-proxy win) (output-proxy output))
+            (river-window-v1.exit-fullscreen (window-proxy win)))
+        (setf (%window-shown-fullscreen win) output)))))
 
 (defun manage-maximized (wm)
   (drain-requests (wm)
@@ -102,8 +111,9 @@ floating ones may maximize themselves."
 
 (defun place-new-window (wm win)
   "Without a workspace rule, WIN opens with its shown parent or on
-NEW-WINDOW-OUTPUT and gets the focus. A dialog of the highlighted window joins
-it. Only the manage sequence knows all of them."
+NEW-WINDOW-OUTPUT and gets the focus, unless a fullscreen window has the focus
+there and WIN is not its dialog. A dialog of the highlighted window joins it.
+Only the manage sequence knows all of them."
   (let* ((output (new-window-output wm))
          (rule (rule-workspace wm (window-actions win) output))
          (parent (window-parent win))
@@ -114,10 +124,14 @@ it. Only the manage sequence knows all of them."
                    ((and parent (workspace-shown-p (window-workspace parent)))
                     (window-workspace parent))
                    (output (output-workspace output))
-                   (t (window-workspace win)))))
+                   (t (window-workspace win))))
+         (fullscreen (let ((focus (workspace-focus ws)))
+                       (and focus (window-fullscreen focus) (not (dialog-of-p win focus))
+                            focus))))
     (unless (eq ws (window-workspace win))
       (move-to-workspace win ws))
-    (cond (joins-highlight (setf (workspace-focus ws) win))
+    (cond (fullscreen (setf (workspace-focus ws) fullscreen))
+          (joins-highlight (setf (workspace-focus ws) win))
           ((or (not rule) (eq rule (wm-active-workspace wm)))
            (focus-window wm win)))))
 
@@ -150,8 +164,9 @@ sizes, and 0 lets the window choose."
     (propose-size win (rect-size rect))))
 
 (defun manage-layout (ws output)
-  "Place the tiled and maximized windows of WS, which OUTPUT shows. River places
-fullscreen windows, and floating ones are placed when rendering."
+  "Place the tiled and maximized windows of WS, which OUTPUT shows, and the
+fullscreen ones river does not show fullscreen. River places the others, and
+floating windows are placed when rendering."
   (let* ((area (usable-area output))
          (layout (workspace-layout ws))
          (managed (layout-windows ws))
@@ -162,7 +177,9 @@ fullscreen windows, and floating ones are placed when rendering."
         (ecase (window-placement win)
           (:tiled (place-window win (cdr (assoc win rects)) output))
           (:maximized (place-window win area output))
-          ((:floating :fullscreen)))))))
+          (:fullscreen (unless (window-shown-fullscreen win)
+                         (place-window win (output-rect output) nil)))
+          (:floating))))))
 
 (defun manage-warp (wm)
   (let ((target (second (first (last (take-requests wm '(:warp))))))
@@ -213,6 +230,7 @@ sizes, focus and IPC see the result."
   (manage-new-windows wm)
   (manage-fullscreens wm)
   (manage-fullscreen-outputs wm)
+  (manage-fullscreen-display wm)
   (manage-maximized wm)
   (manage-pointer-op wm)
   (manage-focus-follows-pointer wm)

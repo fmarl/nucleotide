@@ -69,6 +69,29 @@
     (is (n::window-visible-p wm terminal))
     (is (n::window-visible-p wm game))))
 
+(test fullscreen-windows-stay-visible-below-their-dialogs
+  (let* ((wm (make-test-wm))
+         (output (add-output wm 0))
+         (ws (n::output-workspace output))
+         (video (open-window-on ws))
+         (floating (open-window-on ws))
+         (dialog (open-window-on ws)))
+    (setf (n::%window-fullscreen video) output
+          (n::%window-floating-p floating) t
+          (n::%window-floating-p dialog) t
+          (n::%window-parent dialog) video)
+    (n::focus-window wm dialog)
+    (is (n::window-visible-p wm video))
+    (is (equal (list floating video dialog)
+               (sort (list dialog video floating) #'<
+                     :key (lambda (win) (n::stacking-rank wm win)))))
+    (setf (n::%window-maximized-p dialog) t)
+    (is (equal (list video dialog)
+               (sort (list dialog video) #'<
+                     :key (lambda (win) (n::stacking-rank wm win)))))
+    (n::focus-window wm floating)
+    (is (not (n::window-visible-p wm video)))))
+
 (test border-colors-are-premultiplied-32-bit-values
   (is (equal '(#xffffffff 0 #x80808080 #xffffffff) (n::rgba->uint32 '(255 0 128 255))))
   (is (equal '(#x80808080 0 0 #x80808080) (n::rgba->uint32 '(255 0 0 128))))

@@ -59,6 +59,9 @@ until a floating window is placed.")
 did not move in place until the window moves.")
    (fullscreen :initform nil :reader window-fullscreen :writer (setf %window-fullscreen)
                :documentation "The output while fullscreen, else NIL.")
+   (shown-fullscreen :initform nil :reader window-shown-fullscreen
+                     :writer (setf %window-shown-fullscreen)
+                     :documentation "The output river shows the window fullscreen on, else NIL.")
    (maximized :initform nil :reader window-maximized-p :writer (setf %window-maximized-p))
    (restore-size :initform nil :reader window-restore-size :writer (setf %window-restore-size)
                  :documentation "The size a maximized window had, NIL if unknown.")
@@ -247,6 +250,17 @@ and run the clause of each with its arguments, the oldest first."
                    (t (walk (window-parent current) (cons current seen))))))
     (and root win (walk win '()))))
 
+(defun has-dialogs-p (win)
+  (some (lambda (other) (and (not (eq other win)) (dialog-of-p other win)))
+        (workspace-windows (window-workspace win))))
+
+(defun fullscreen-dialog-p (win)
+  "Whether WIN is a floating dialog of a fullscreen window, also while maximized,
+as HAS-DIALOGS-P counts it then."
+  (and (not (window-fullscreen win))
+       (some (lambda (other) (and (window-fullscreen other) (dialog-of-p win other)))
+             (workspace-windows (window-workspace win)))))
+
 (defun highlighted-p (wm win)
   (let ((highlight (wm-highlight wm)))
     (and highlight
@@ -263,15 +277,15 @@ the focus."
         (workspace-focus (wm-active-workspace wm)))))
 
 (defun window-visible-p (wm win)
-  "River shows fullscreen windows above all others, so one hides while another
-window of its output has the focus."
+  "River shows fullscreen windows above all others, so one hides while a window
+of its output other than its dialogs has the focus."
   (let ((ws (window-workspace win))
         (highlight (wm-highlight wm))
         (focus (wm-focus wm)))
     (cond ((highlighted-p wm win) t)
           ((not (workspace-shown-p ws)) nil)
           ((and highlight (eq ws (wm-active-workspace wm))) nil)
-          ((and (window-fullscreen win) focus (not (eq focus win)))
+          ((and (window-fullscreen win) focus (not (dialog-of-p focus win)))
            (not (eq (window-fullscreen win) (wm-focused-output wm))))
           ((eq (window-placement win) :tiled) (not (eq (window-clip win) :hidden)))
           (t t))))
