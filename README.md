@@ -82,7 +82,7 @@ layout of new workspaces, and `*gap*` for the gaps of all layouts.
 ## Monitors
 Every monitor has workspaces 1 to 9, or as many as `*num-of-workspaces*` says.
 `Super+1` to `Super+9` switch the workspace on the focused monitor, and with
-Ctrl they send the focused window there. `Super+,` and `Super+.` focus the
+Shift they send the focused window there. `Super+,` and `Super+.` focus the
 monitor to the left or right. Add Shift to send the window there, or Ctrl to
 swap the workspace with the one shown there.
 

@@ -89,12 +89,11 @@
   (n::unbind "Super+Q")
   (is (null n::*bindings*)))
 
-(test (shifted-digits-do-what-the-digits-do :fixture fresh-config)
+(test (shifted-digits-send-the-window-to-the-workspace :fixture fresh-config)
   (n::use-defaults)
-  (is (action "Super+3"))
-  (is (action "Super+Ctrl+3"))
-  (is (equal (action "Super+3") (action "Super+Shift+3")))
-  (is (equal (action "Super+Ctrl+3") (action "Super+Ctrl+Shift+3"))))
+  (is (equal '(n::switch-workspace 3) (action "Super+3")))
+  (is (equal '(n::send-to-workspace 3) (action "Super+Shift+3")))
+  (is (null (action "Super+Ctrl+3"))))
 
 (test characters-prefer-the-keysyms-that-layouts-produce
   (is (equal '(#x61 #xe4 #xdf #x20ac #x6c4 #x7e1 #x101f642)

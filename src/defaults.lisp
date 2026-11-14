@@ -39,9 +39,7 @@
   (bind "Super+Q" close-window)
   (loop :for n :from 1 :to 9
         :do (set-binding (format nil "Super+~D" n) `(switch-workspace ,n))
-        (set-binding (format nil "Super+Shift+~D" n) `(switch-workspace ,n))
-        (set-binding (format nil "Super+Ctrl+~D" n) `(send-to-workspace ,n))
-        (set-binding (format nil "Super+Ctrl+Shift+~D" n) `(send-to-workspace ,n)))
+        (set-binding (format nil "Super+Shift+~D" n) `(send-to-workspace ,n)))
   (bind "Super+Space T" (set-layout tiling) :description "tiling")
   (bind "Super+Space M" (set-layout monocle) :description "monocle")
   (bind "Super+Space S" (set-layout scrolling) :description "scrolling")
