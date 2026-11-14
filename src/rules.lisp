@@ -4,7 +4,7 @@
 (in-package #:nucleotide)
 
 (defun pattern-p (object)
-  (or (stringp object) (functionp object) (and object (symbolp object))))
+  (or (stringp object) (functionp object) (and (symbolp object) (fboundp object))))
 
 (defun match-p (object)
   (and (plist-p object)

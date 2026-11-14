@@ -76,3 +76,12 @@
       (is (eq (second (n::output-workspaces a)) (target :workspace 2)))
       (is (null (target :output "C")))
       (is (null (target :float t))))))
+
+(test patterns-must-be-strings-or-functions
+  (with-rules
+    (is (typep (config-error-of (lambda () (n::rule (:app-id :foot) :float t)))
+               'n::invalid-value))
+    (is (typep (config-error-of (lambda () (n::rule (:title 'no-such-function) :float t)))
+               'n::invalid-value))
+    (n::rule (:app-id 'stringp) :float t)
+    (is (= 1 (length n::*window-rules*)))))
