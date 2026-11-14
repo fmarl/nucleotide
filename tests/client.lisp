@@ -159,3 +159,7 @@
         (signals w::nucleotide-error (test-object.newer old))
         (test-object.newer new)
         (is (equal (list new) sent))))))
+
+(test an-empty-wayland-display-is-an-environment-error
+  (with-environment (("WAYLAND_DISPLAY" ""))
+    (signals w:environment-error (w::wl-socket-path))))

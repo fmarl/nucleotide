@@ -209,11 +209,13 @@
 
 (defun wl-socket-path (&optional name)
   (let ((name (or name (uiop:getenv "WAYLAND_DISPLAY") "wayland-0")))
-    (if (char= #\/ (char name 0))
-        name
-        (let ((dir (or (uiop:getenv "XDG_RUNTIME_DIR")
-                       (environment-error "XDG_RUNTIME_DIR is not set"))))
-          (concatenate 'string dir "/" name)))))
+    (cond ((zerop (length name))
+           (environment-error "the Wayland display name is empty, check WAYLAND_DISPLAY"))
+          ((char= #\/ (char name 0))
+           name)
+          (t (let ((dir (or (uiop:getenv "XDG_RUNTIME_DIR")
+                            (environment-error "XDG_RUNTIME_DIR is not set"))))
+               (concatenate 'string dir "/" name))))))
 
 (defun wl-display-connect (&optional name)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
