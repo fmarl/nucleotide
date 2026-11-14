@@ -7,9 +7,6 @@
   (logior +river-window-v1-edges-top+ +river-window-v1-edges-bottom+
           +river-window-v1-edges-left+ +river-window-v1-edges-right+))
 
-(defconstant +window-capabilities+
-  (logior +river-window-v1-capabilities-fullscreen+ +river-window-v1-capabilities-maximize+))
-
 (defun manage-binding-layouts (wm)
   (drain-requests (wm)
                   (:configure-binding (binding)
@@ -84,7 +81,8 @@ outside of submaps again, new ones among them."
                                          (river-window-v1.inform-unmaximized (window-proxy win))))))
 
 (defun configure-window (win)
-  "Only windows that support nothing else draw their own decorations."
+  "Only windows that support nothing else draw their own decorations, and only
+floating ones may maximize themselves."
   (river-window-v1.set-tiled (window-proxy win)
                              (if (window-floating-p win)
                                  +river-window-v1-edges-none+
@@ -92,7 +90,11 @@ outside of submaps again, new ones among them."
   (if (eql (window-decoration-hint win) +river-window-v1-decoration-hint-only-supports-csd+)
       (river-window-v1.use-csd (window-proxy win))
       (river-window-v1.use-ssd (window-proxy win)))
-  (river-window-v1.set-capabilities (window-proxy win) +window-capabilities+))
+  (river-window-v1.set-capabilities (window-proxy win)
+                                    (if (window-floating-p win)
+                                        (logior +river-window-v1-capabilities-fullscreen+
+                                                +river-window-v1-capabilities-maximize+)
+                                        +river-window-v1-capabilities-fullscreen+)))
 
 (defun new-window-output (wm)
   (or (and *open-on-pointer-output* (pointer-output wm))

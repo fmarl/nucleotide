@@ -163,20 +163,27 @@ workspace."
   (request wm :exit-fullscreen win))
 
 (define-handler (wm (win window) :maximize-requested) ()
-  (maximize wm win))
+  (when (window-floating-p win)
+    (maximize wm win)))
 
 (define-handler (wm (win window) :unmaximize-requested) ()
-  (unmaximize wm win))
+  (when (window-floating-p win)
+    (unmaximize wm win)))
 
 (define-handler (wm (win window) :decoration-hint) (hint)
   (setf (%window-decoration-hint win) hint)
   (when (window-rules-applied-p win)
     (request wm :configure win)))
 
+(defun client-op-allowed-p (wm win seat)
+  "Only the user floats windows. Clients that draw their own titlebar ask for a
+move on a mere click into it."
+  (and (eq seat (wm-seat wm)) (window-floating-p win) (window-visible-p wm win)))
+
 (define-handler (wm (win window) :pointer-move-requested) (seat)
-  (when (and (eq seat (wm-seat wm)) (window-visible-p wm win))
+  (when (client-op-allowed-p wm win seat)
     (start-pointer-op wm win :move)))
 
 (define-handler (wm (win window) :pointer-resize-requested) (seat edges)
-  (when (and (eq seat (wm-seat wm)) (window-visible-p wm win))
+  (when (client-op-allowed-p wm win seat)
     (start-pointer-op wm win :resize edges)))
