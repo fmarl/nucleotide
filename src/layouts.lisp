@@ -98,10 +98,18 @@ fullscreen, without changing LAYOUT."))
           (swap-windows workspace win other))))))
 
 (defgeneric layout-successor (layout workspace win)
-  (:documentation "The window to focus when WIN leaves WORKSPACE.")
+  (:documentation "The window to focus when WIN leaves WORKSPACE, by default the
+one focused last.")
   (:method (layout workspace win)
     (declare (ignore layout))
-    (find win (workspace-windows workspace) :test-not #'eq)))
+    (let ((others (remove win (workspace-windows workspace))))
+      (or (most-recently-focused others) (first others)))))
+
+(defun most-recently-focused (windows)
+  (let ((focused (remove nil windows :key #'window-focused-at)))
+    (and focused
+         (reduce (lambda (a b) (if (> (window-focused-at b) (window-focused-at a)) b a))
+                 focused))))
 
 (defun stack-rects-by (fractions area gap)
   "The last rect takes what rounding leaves."

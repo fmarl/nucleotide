@@ -55,10 +55,18 @@
     (n::layout-move (n::make-layout 'n::monocle) ws c :next)
     (is (equal (list c b a) (n::workspace-windows ws)))))
 
-(test the-successor-is-another-window
-  (let ((layout (n::make-layout 'n::tiling)))
-    (is (eq 'b (n::layout-successor layout (workspace-with 'a 'b) 'a)))
-    (is (null (n::layout-successor layout (workspace-with 'a) 'a)))))
+(test the-successor-is-the-window-focused-last
+  (let* ((layout (n::make-layout 'n::tiling))
+         (a (make-instance 'n::window))
+         (b (make-instance 'n::window))
+         (c (make-instance 'n::window))
+         (ws (workspace-with a b c)))
+    (is (eq b (n::layout-successor layout ws a)))
+    (setf (n::%window-focused-at c) 2
+          (n::%window-focused-at b) 1)
+    (is (eq c (n::layout-successor layout ws a)))
+    (is (eq b (n::layout-successor layout ws c)))
+    (is (null (n::layout-successor layout (workspace-with a) a)))))
 
 (test moving-passes-floating-windows-by
   (let* ((ws (make-instance 'n::workspace :name "test"))
