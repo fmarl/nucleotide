@@ -16,10 +16,6 @@
 (define-value-type color "a color like \"#6f8cab\""
   :check parse-color)
 
-(define-setting *border-width* 2
-  :documentation "Pixels of the border around each window."
-  :type pixels)
-
 (define-setting *border-focused* "#6f8cab"
   :documentation "The border color of the focused window, like \"#6f8cab\", or with
 alpha like \"#6f8cabcc\"."

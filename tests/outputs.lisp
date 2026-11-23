@@ -149,8 +149,9 @@
       (is (eq (car (last (n::output-workspaces again))) (n::output-workspace again)))
       (is (eq (n::output-workspace again) (n::wm-active-workspace wm))))))
 
-(test windows-that-fill-the-output-are-not-clipped
-  (let ((output (make-instance 'n::output :proxy nil)))
+(test borderless-windows-that-fill-the-output-are-not-clipped
+  (let ((n::*border-width* 0)
+        (output (make-instance 'n::output :proxy nil)))
     (setf (n::output-rect output) (n::rect 0 0 1000 800))
     (is (null (n::clip-box (n::rect 0 0 1000 800) output)))
     (is (equal '(1 0 1000 800)
@@ -184,3 +185,18 @@
       (n::focus-output wm :next))
     (is (eq right (n::wm-focused-output wm)))
     (is (null (n::requests wm '(:warp))))))
+
+(test borders-are-clipped-at-every-output-edge
+  (let ((output (make-instance 'n::output :proxy nil)))
+    (setf (n::output-rect output) (n::rect 0 1440 2256 1504))
+    (dolist (n::*border-width* '(2 12))
+      (let ((inside (n::inset (n::output-rect output) n::*border-width*)))
+        (is (null (n::clip-box inside output)))
+        (dolist (offset '((0 -1) (-1 0) (1 0) (0 1)))
+          (let* ((x (+ (n::rect-x inside) (first offset)))
+                 (y (+ (n::rect-y inside) (second offset)))
+                 (rect (n::rect x y (n::rect-width inside) (n::rect-height inside))))
+            (is (equal (list (- x) (- 1440 y) 2256 1504)
+                       (n::rect-list (n::clip-box rect output)))))))
+      (is (equal '(0 0 2256 1504)
+                 (n::rect-list (n::clip-box (n::output-rect output) output)))))))
