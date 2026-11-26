@@ -10,6 +10,10 @@
   :documentation "Open new windows on the output under the pointer rather than on
 the focused one.")
 
+(define-setting *border-width* 2
+  :documentation "Pixels of the border around each window."
+  :type pixels)
+
 (defun output-ready-p (output)
   (plusp (rect-width (output-rect output))))
 
@@ -20,10 +24,10 @@ the focused one.")
         (output-rect output))))
 
 (defun clip-box (rect output)
-  "NIL if RECT lies within OUTPUT, :HIDDEN if it lies outside, else the box of
-OUTPUT relative to RECT to clip it to."
+  "NIL if RECT and its border lie within OUTPUT, :HIDDEN if RECT lies outside,
+else the box of OUTPUT relative to RECT to clip it to."
   (let ((area (output-rect output)))
-    (cond ((rect-within-p rect area) nil)
+    (cond ((rect-within-p (inset rect (- *border-width*)) area) nil)
           ((zerop (overlap-area rect area)) :hidden)
           (t (rect (- (rect-x area) (rect-x rect)) (- (rect-y area) (rect-y rect))
                    (rect-width area) (rect-height area))))))
